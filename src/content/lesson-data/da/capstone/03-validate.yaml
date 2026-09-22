@@ -1,0 +1,463 @@
+goals:
+  - ตรวจกระทบยอด (reconciliation) เพื่อจับแถวที่หายหรือซ้ำจากการ join
+  - ทดสอบความไวของข้อสรุปต่อการเปลี่ยนนิยามและต่อ outlier
+  - ยืนยันว่าความต่างที่เห็นมีนัยสำคัญทางสถิติ และรู้ว่าสถิติบอกอะไรไม่ได้
+
+examples:
+  - id: x1
+    title: กระทบยอด — ตัวเลขย่อยต้องบวกกลับเป็นตัวเลขรวม
+    lang: sql
+    prompt: |
+      ก่อนเชื่อตารางที่แบ่งรายได้เป็นกลุ่ม ต้องพิสูจน์ก่อนว่าไม่มีแถวหายหรือซ้ำระหว่างทาง
+    steps:
+      - text: |
+          หาตัวเลขอ้างอิงก่อน — รายได้รวมปี 2025 ที่คำนวณตรงๆ โดยไม่ผ่านการ join อะไรเพิ่ม
+        code: |
+          SELECT SUM(li.quantity * li.unit_price) AS total_revenue
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          WHERE o.status = 'completed'
+            AND EXTRACT(year FROM o.order_date) = 2025
+      - text: |
+          คำนวณผลรวมจากตารางที่แบ่งกลุ่มแล้ว (ผ่าน CTE และ join เพิ่ม) — สองค่านี้ต้องเท่ากันเป๊ะ
+          ถ้าไม่เท่าต้องหยุดหาสาเหตุก่อน ห้ามเดินต่อ
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, MIN(order_date) AS first_day
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), sales_2025 AS (
+            SELECT CASE WHEN EXTRACT(year FROM f.first_day) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+                   li.quantity * li.unit_price AS line
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+          )
+          SELECT SUM(line) AS sum_of_parts,
+                 (SELECT SUM(li.quantity * li.unit_price)
+                  FROM orders o
+                  JOIN order_items li ON li.order_id = o.order_id
+                  WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025) AS total_revenue
+          FROM sales_2025
+    pitfall:
+      text: |
+        การ join กับตารางสรุปที่สร้างจาก "เงื่อนไขคนละชุด" ทำให้แถวหายเงียบๆ — ตัวอย่างนี้นับรายได้
+        **ทุกสถานะ** ของปี 2025 (19,905,276) แต่ join กับ `first_order` ที่สร้างจากออเดอร์ `completed` เท่านั้น
+        ลูกค้าที่มีแต่ออเดอร์ยกเลิก/คืนของจึงหลุดออกไป เหลือ 19,479,401 — หายไป 425,875 โดยไม่มี error
+        การกระทบยอดคือสิ่งเดียวที่จับความผิดพลาดแบบนี้ได้
+      code: |
+        WITH first_order AS (
+          SELECT customer_id, MIN(order_date) AS first_day
+          FROM orders WHERE status = 'completed' GROUP BY 1
+        )
+        SELECT (SELECT SUM(li.quantity * li.unit_price)
+                FROM orders o
+                JOIN order_items li ON li.order_id = o.order_id
+                WHERE EXTRACT(year FROM o.order_date) = 2025) AS total_all_status,
+               (SELECT SUM(li.quantity * li.unit_price)
+                FROM orders o
+                JOIN order_items li ON li.order_id = o.order_id
+                JOIN first_order f ON f.customer_id = o.customer_id
+                WHERE EXTRACT(year FROM o.order_date) = 2025) AS after_inner_join
+  - id: x2
+    title: ความต่างของ retention ระหว่างช่องทาง ใช่ความบังเอิญไหม
+    lang: python
+    prompt: |
+      ช่องทาง promo มี retention 7.3% เทียบกับ organic 22.4% แต่ promo มีลูกค้าแค่ 219 คน
+      — กลุ่มเล็กผันผวนได้มาก ต้องทดสอบก่อนเชื่อ
+    steps:
+      - text: |
+          ทดสอบด้วย two-proportion z-test — สมมติฐานว่างคือสองช่องทางมี retention เท่ากัน
+        code: |
+          import numpy as np
+          import scipy.stats as stats
+
+          n_organic, r_organic = 1240, 278
+          n_promo, r_promo = 219, 16
+
+          p_pool = (r_organic + r_promo) / (n_organic + n_promo)
+          se = np.sqrt(p_pool * (1 - p_pool) * (1 / n_organic + 1 / n_promo))
+          z_stat = (r_organic / n_organic - r_promo / n_promo) / se
+          p_value = stats.norm.sf(abs(z_stat)) * 2
+          print(round(z_stat, 2), p_value)
+      - text: |
+          ตรวจไขว้ด้วย chi-square test ซึ่งคิดคนละมุมแต่ทดสอบสมมติฐานเดียวกัน — ได้ข้อสรุปตรงกัน
+        code: |
+          import scipy.stats as stats
+
+          n_organic, r_organic = 1240, 278
+          n_promo, r_promo = 219, 16
+          table = [[n_organic - r_organic, r_organic], [n_promo - r_promo, r_promo]]
+
+          chi2_stat, p_chi, dof, expected = stats.chi2_contingency(table)
+          print(round(chi2_stat, 2), p_chi)
+    pitfall:
+      text: |
+        ตัวเลขเปอร์เซ็นต์จากกลุ่มเล็กขยับง่ายมากจนตีความผิดได้ — cohort ที่เล็กที่สุดในชุดข้อมูลนี้มีลูกค้า 65 คน
+        ลูกค้าเปลี่ยนใจกลับมาซื้อเพิ่มแค่คนเดียว retention ก็ขยับ 1.5 จุดแล้ว ก่อนจะเทียบเปอร์เซ็นต์
+        ของสองกลุ่มจึงต้องดูขนาดกลุ่มเสมอ และถ้ากลุ่มเล็กต้องทดสอบนัยสำคัญก่อนสรุป
+      code: |
+        cohort_size = 65
+        returned = 10
+        print(round(returned / cohort_size * 100, 1))
+        print(round((returned + 1) / cohort_size * 100, 1))
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      คำนวณ p-value สองด้านจาก z_stat ที่ให้มา เก็บไว้ในตัวแปร p_value — เติม `___` ให้ครบ
+    starter: |
+      import scipy.stats as stats
+
+      z_stat = 5.14
+      p_value = stats.norm.sf(___(z_stat)) * ___
+    solution: |
+      import scipy.stats as stats
+
+      z_stat = 5.14
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+    check: |
+      check_value(p_value, _sol["p_value"], name="p_value")
+    hints:
+      - "sf คือพื้นที่หางขวา จึงต้องใส่ค่าสัมบูรณ์เข้าไป"
+      - ทดสอบสองด้านต้องคูณสอง
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้รวมปี 2025 (เฉพาะ `completed`) ใช้เป็นตัวเลขอ้างอิงของการกระทบยอด
+      แสดงคอลัมน์เดียวชื่อ total_revenue
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT SUM(li.quantity * li.unit_price) AS total_revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+        AND EXTRACT(year FROM o.order_date) = 2025
+    hints:
+      - คำนวณตรงๆ โดยไม่ join อะไรเพิ่มเพื่อให้เป็นตัวอ้างอิงที่เชื่อได้
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      กระทบยอดรายเดือนกับรายปี — แสดง sum_of_months (ผลรวมของรายได้รายเดือนปี 2025)
+      และ total_revenue (รายได้รวมปี 2025) เฉพาะ `completed` ทั้งคู่ต้องเท่ากัน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+      )
+      SELECT SUM(revenue) AS sum_of_months,
+             (SELECT SUM(li.quantity * li.unit_price)
+              FROM orders o
+              JOIN order_items li ON li.order_id = o.order_id
+              WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025) AS total_revenue
+      FROM monthly
+    hints:
+      - รวมยอดรายเดือนจาก CTE แล้วเทียบกับยอดรวมที่คำนวณตรงๆ
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณรายได้ปี 2025 (เฉพาะ `completed`) ด้วย pandas เพื่อตรวจไขว้กับผลจาก SQL
+      เก็บไว้ในตัวแปร revenue_2025
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      revenue_2025 = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      revenue_2025 = sales[sales['order_date'].dt.year == 2025]['line'].sum()
+    check: |
+      check_value(revenue_2025, _sol["revenue_2025"], name="revenue_2025")
+    hints:
+      - merge ก่อน กรองสถานะและปี แล้วค่อยรวมยอด
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      ทดสอบความไวต่อนิยาม — รายได้ปี 2025 แยกใหม่/เดิมโดยใช้ **ปีที่สมัครสมาชิก** เป็นเกณฑ์
+      แสดง customer_type, revenue, revenue_pct (ปัด 1 ตำแหน่ง) เรียงตาม revenue จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT CASE WHEN EXTRACT(year FROM c.signup_date) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             ROUND(SUM(li.quantity * li.unit_price) * 100.0
+                   / SUM(SUM(li.quantity * li.unit_price)) OVER (), 1) AS revenue_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - คราวนี้ใช้ signup_date ของตาราง customers แทนวันที่ซื้อครั้งแรก
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณ z_stat ของ two-proportion z-test เทียบ retention เดือนที่ 1 ระหว่าง organic (1240 คน กลับมา 278)
+      กับ promo (219 คน กลับมา 16) เก็บไว้ในตัวแปร z_stat
+    starter: |
+      import numpy as np
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      z_stat = ___
+    solution: |
+      import numpy as np
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      p_pool = (r_organic + r_promo) / (n_organic + n_promo)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / n_organic + 1 / n_promo))
+      z_stat = (r_organic / n_organic - r_promo / n_promo) / se
+    check: |
+      check_value(z_stat, _sol["z_stat"], name="z_stat")
+    hints:
+      - "หา pooled proportion ก่อน แล้วค่อยหา standard error"
+      - "z = ผลต่างของสัดส่วน ÷ standard error"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ต่อจากข้อที่แล้ว คำนวณ p-value สองด้านจาก z_stat เก็บไว้ในตัวแปร p_value
+      แล้วเก็บผลสรุปว่ามีนัยสำคัญที่ระดับ 0.05 หรือไม่ (True/False) ไว้ในตัวแปร significant
+    starter: |
+      import numpy as np
+      import scipy.stats as stats
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      p_value = ___
+      significant = ___
+    solution: |
+      import numpy as np
+      import scipy.stats as stats
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      p_pool = (r_organic + r_promo) / (n_organic + n_promo)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / n_organic + 1 / n_promo))
+      z_stat = (r_organic / n_organic - r_promo / n_promo) / se
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+      significant = p_value < 0.05
+    check: |
+      check_value(p_value, _sol["p_value"], name="p_value")
+      check_value(significant, _sol["significant"], name="significant")
+    hints:
+      - ต่อยอดจาก z_stat ของข้อที่แล้ว
+      - "significant เป็นค่า True/False จากการเทียบ p_value กับ 0.05"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      ทดสอบความทนต่อ outlier — รายได้ปี 2025 แยกใหม่/เดิม (ตามปีที่ซื้อครั้งแรก) โดย**ตัดลูกค้า
+      ที่จ่ายมากที่สุด 1% ออก** ใช้ `NTILE(100) OVER (ORDER BY rev DESC)` แล้วเก็บเฉพาะกลุ่มที่ > 1
+      แสดง customer_type, revenue, revenue_pct (ปัด 1 ตำแหน่ง) เรียงตาม revenue จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, MIN(order_date) AS first_day
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), per_customer AS (
+        SELECT o.customer_id,
+               CASE WHEN EXTRACT(year FROM f.first_day) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+               SUM(li.quantity * li.unit_price) AS rev
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1, 2
+      ), ranked AS (
+        SELECT *, NTILE(100) OVER (ORDER BY rev DESC) AS pct_rank
+        FROM per_customer
+      )
+      SELECT customer_type,
+             SUM(rev) AS revenue,
+             ROUND(SUM(rev) * 100.0 / SUM(SUM(rev)) OVER (), 1) AS revenue_pct
+      FROM ranked
+      WHERE pct_rank > 1
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - สรุปยอดต่อลูกค้าก่อน แล้วค่อยจัดอันดับด้วย NTILE(100)
+      - "กลุ่มที่ 1 คือลูกค้าที่จ่ายสูงสุด 1% จึงกรองด้วย pct_rank > 1"
+  - id: e8
+    level: applied
+    lang: sql
+    prompt: |
+      ทดสอบความไวต่อนิยามรายได้ — แสดง completed_only (รายได้ปี 2025 เฉพาะ completed)
+      และ all_status (รายได้ปี 2025 ทุกสถานะ) ในแถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT SUM(CASE WHEN o.status = 'completed' THEN li.quantity * li.unit_price ELSE 0 END) AS completed_only,
+             SUM(li.quantity * li.unit_price) AS all_status
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE EXTRACT(year FROM o.order_date) = 2025
+    hints:
+      - "ใช้ SUM(CASE WHEN ...) เพื่อคิดสองนิยามใน query เดียว"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ตรวจไขว้ด้วย chi-square test จากตาราง contingency ของ organic (1240 คน กลับมา 278)
+      และ promo (219 คน กลับมา 16) เก็บค่าสถิติไว้ในตัวแปร chi2_stat และ p-value ไว้ในตัวแปร p_chi
+    starter: |
+      import scipy.stats as stats
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      chi2_stat, p_chi = ___
+    solution: |
+      import scipy.stats as stats
+
+      n_organic, r_organic = 1240, 278
+      n_promo, r_promo = 219, 16
+      table = [[n_organic - r_organic, r_organic], [n_promo - r_promo, r_promo]]
+      chi2_stat, p_chi, dof, expected = stats.chi2_contingency(table)
+    check: |
+      check_value(chi2_stat, _sol["chi2_stat"], name="chi2_stat")
+      check_value(p_chi, _sol["p_chi"], name="p_chi")
+    hints:
+      - "แต่ละแถวของตารางคือ [ไม่กลับมา, กลับมา] ของแต่ละช่องทาง"
+      - "chi2_contingency คืนค่าสี่ตัว: สถิติ, p-value, degrees of freedom และตารางค่าคาดหวัง"
+  - id: e10
+    level: challenge
+    lang: sql
+    prompt: |
+      กระทบยอดของตารางแยกช่องทาง — แสดง sum_by_channel (ผลรวมรายได้ของทุกช่องทาง เฉพาะ `completed`)
+      และ total_revenue (รายได้รวมทั้งหมด เฉพาะ `completed`) ในแถวเดียว ทั้งคู่ต้องเท่ากัน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH by_channel AS (
+        SELECT c.channel, SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN customers c ON c.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      )
+      SELECT SUM(revenue) AS sum_by_channel,
+             (SELECT SUM(li.quantity * li.unit_price)
+              FROM orders o
+              JOIN order_items li ON li.order_id = o.order_id
+              WHERE o.status = 'completed') AS total_revenue
+      FROM by_channel
+    hints:
+      - ถ้าสองค่าไม่เท่ากัน แปลว่ามีออเดอร์ที่ join กับตาราง customers ไม่ติด
+      - ในชุดข้อมูลนี้ทุกออเดอร์มีลูกค้าครบ ผลจึงต้องเท่ากันพอดี
+
+quiz:
+  - id: q1
+    question: การกระทบยอด (reconciliation) จับความผิดพลาดแบบไหนได้ดีที่สุด
+    choices:
+      - text: แถวหายหรือซ้ำจากการ join ซึ่งไม่ทำให้เกิด error แต่ทำให้ตัวเลขผิด
+        correct: true
+        why: join ที่เงื่อนไขไม่ตรงกันทำให้ข้อมูลหายเงียบๆ การบวกกลับเป็นวิธีเดียวที่จับได้เร็ว
+      - text: syntax error ใน SQL
+        why: syntax error ฐานข้อมูลฟ้องเองอยู่แล้ว
+      - text: การเลือกกราฟผิดประเภท
+        why: เป็นเรื่องการนำเสนอ ไม่เกี่ยวกับการกระทบยอด
+      - text: ข้อมูลที่ยังไม่ได้ทำความสะอาด
+        why: การกระทบยอดตรวจความครบถ้วนของการคำนวณ ไม่ได้ตรวจคุณภาพของข้อมูลต้นทาง
+  - id: q2
+    question: เปลี่ยนนิยาม "ลูกค้าใหม่" แล้วได้ 84% กับ 82% ควรทำยังไง
+    choices:
+      - text: รายงานได้ตามปกติ เพราะเรื่องที่เล่าไม่เปลี่ยน แต่ควรระบุนิยามที่ใช้ให้ชัด
+        correct: true
+        why: ข้อสรุปที่ทนต่อการเปลี่ยนนิยาม (robust) คือข้อสรุปที่ปลอดภัยพอจะเสนอ
+      - text: เลือกตัวเลขที่สูงกว่าเพราะน่าประทับใจกว่า
+        why: การเลือกตัวเลขให้เข้าทางข้อสรุปของตัวเองคือการบิดเบือน
+      - text: ทิ้งการวิเคราะห์นี้เพราะผลไม่คงที่
+        why: ต่างกัน 2 จุดถือว่าคงที่มาก เรื่องที่เล่าเหมือนเดิมทุกประการ
+      - text: เฉลี่ยสองตัวเลขแล้วรายงาน 83%
+        why: ตัวเลขทั้งสองมาจากนิยามคนละแบบ การเฉลี่ยทำให้ไม่มีนิยามใดตรงกับตัวเลขที่รายงาน
+  - id: q3
+    question: z-test บอกว่า retention ของ promo ต่ำกว่า organic อย่างมีนัยสำคัญ (p < 0.0001) สรุปได้ว่าอะไร
+    choices:
+      - text: ความต่างนี้ไม่น่าจะมาจากการสุ่ม แต่ยังสรุปไม่ได้ว่าช่องทาง promo เป็นสาเหตุ
+        correct: true
+        why: ช่องทางไม่ได้ถูกสุ่ม (ไม่ใช่การทดลอง) คนที่ตอบสนองต่อส่วนลดหนักอาจเป็นคนละกลุ่มตั้งแต่แรก
+      - text: พิสูจน์แล้วว่าแคมเปญ promo ทำให้ลูกค้าไม่กลับมาซื้อ
+        why: ข้อมูลเชิงสังเกตบอกความสัมพันธ์ได้ แต่บอกสาเหตุไม่ได้ถ้าไม่มีการสุ่มหรือออกแบบการทดลอง
+      - text: แปลว่าความต่างนี้ใหญ่มากในเชิงธุรกิจ
+        why: นัยสำคัญทางสถิติกับขนาดของผลเป็นคนละเรื่อง ต้องดูขนาดของความต่างแยกต่างหาก
+      - text: แปลว่ากลุ่มตัวอย่างใหญ่พอแล้วจึงไม่ต้องระวังอะไรอีก
+        why: ขนาดตัวอย่างพอสำหรับการทดสอบนี้ แต่ยังต้องระวังเรื่องการตีความสาเหตุอยู่ดี
+  - id: q4
+    question: ตัดลูกค้าที่จ่ายสูงสุด 1% ออกแล้วผลเปลี่ยนจาก 84% เป็น 83.6% แปลว่าอะไร
+    choices:
+      - text: ข้อสรุปไม่ได้ขึ้นกับลูกค้ารายใหญ่ไม่กี่ราย จึงเชื่อถือได้มากขึ้น
+        correct: true
+        why: ถ้าตัดส่วนบนออกแล้วผลพลิก แปลว่าข้อสรุปเปราะและต้องเขียนกำกับไว้ในรายงาน
+      - text: แปลว่าต้องตัดลูกค้ารายใหญ่ออกจากรายงานจริงด้วย
+        why: การตัดออกเป็นแค่การทดสอบความทนทาน ไม่ใช่วิธีคำนวณตัวเลขที่จะรายงาน
+      - text: แปลว่าลูกค้ารายใหญ่ไม่สำคัญต่อธุรกิจ
+        why: ลูกค้ารายใหญ่ยังสำคัญมาก แค่ข้อสรุปเรื่องสัดส่วนนี้ไม่ได้ขึ้นกับพวกเขาเท่านั้น
+      - text: แปลว่าข้อมูลมี outlier ที่ต้องแก้ไข
+        why: ค่าสูงเหล่านี้เป็นยอดซื้อจริง ไม่ใช่ข้อมูลผิดที่ต้องแก้
+
+summary:
+  - กระทบยอดทุกตารางสรุป — ตัวเลขย่อยต้องบวกกลับเป็นตัวเลขรวมได้เสมอ ไม่งั้นมีแถวหายหรือซ้ำ
+  - ทดสอบความไวต่อนิยามและต่อ outlier เพื่อรู้ว่าข้อสรุปทนทานแค่ไหนก่อนเอาไปเสนอ
+  - นัยสำคัญทางสถิติบอกว่าความต่างไม่น่าใช่ความบังเอิญ แต่ไม่ได้พิสูจน์สาเหตุเมื่อข้อมูลไม่ได้มาจากการสุ่ม
+
+interview:
+  - id: i1
+    q: ก่อนส่งรายงานให้ผู้บริหาร ตรวจอะไรบ้าง
+    a: |
+      ตรวจสี่อย่าง: (1) กระทบยอด — ผลรวมของกลุ่มย่อยต้องเท่ากับผลรวมทั้งหมด และสัดส่วนต้องรวมได้ 100%
+      (2) ความไวต่อนิยาม — เปลี่ยนนิยามสำคัญ (เช่น ลูกค้าใหม่ หรือสถานะออเดอร์ที่นับ) แล้วข้อสรุปยังเหมือนเดิมไหม
+      (3) นัยสำคัญ — ความต่างที่เป็นหัวใจของข้อสรุป ทดสอบแล้วไม่ใช่ความบังเอิญจากกลุ่มตัวอย่างเล็ก
+      (4) ความทนต่อ outlier — ตัดส่วนบนสุดออกแล้วผลยังเหมือนเดิม นอกจากนี้ยังชอบคำนวณตัวเลขหลักซ้ำ
+      ด้วยเครื่องมืออีกตัว (เช่น SQL แล้วทวนด้วย pandas) เพราะจับ bug จากการ join ได้ดีมาก
+  - id: i2
+    q: ถ้าตรวจแล้วพบว่าข้อสรุปเปลี่ยนไปมากเมื่อเปลี่ยนนิยาม จะทำยังไง
+    a: |
+      รายงานทั้งสองตัวเลขพร้อมอธิบายว่านิยามไหนให้ผลแบบไหน และทำไมถึงเลือกนิยามหลักตัวนั้น
+      ไม่ใช่เลือกเฉพาะตัวที่เข้าทางข้อสรุปของตัวเอง เพราะถ้าคนอื่นคำนวณด้วยอีกนิยามแล้วได้คนละเรื่อง
+      ความน่าเชื่อถือของงานทั้งชิ้นจะหายไปทันที การเปิดเผยความไวของผลยังช่วยให้ทีมตัดสินใจได้ดีขึ้นด้วย
+      เพราะเขาจะรู้ว่าข้อสรุปนี้แข็งแรงแค่ไหนและควรลงเดิมพันหนักแค่ไหน
+
+flashcards:
+  - id: c1
+    front: reconciliation ในงานวิเคราะห์คืออะไร
+    back: การพิสูจน์ว่าตัวเลขย่อยบวกกลับเป็นตัวเลขรวมได้ เพื่อจับแถวที่หายหรือซ้ำจากการ join
+  - id: c2
+    front: sensitivity analysis ตรวจอะไร
+    back: เปลี่ยนนิยามหรือสมมติฐานสำคัญแล้วดูว่าข้อสรุปยังเหมือนเดิมไหม
+  - id: c3
+    front: p-value เล็กมากในข้อมูลเชิงสังเกต สรุปเรื่องสาเหตุได้ไหม
+    back: ไม่ได้ — บอกได้แค่ว่าความต่างไม่น่ามาจากการสุ่ม การสรุปสาเหตุต้องมีการทดลองที่สุ่มจริง

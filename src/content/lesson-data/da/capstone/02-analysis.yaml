@@ -1,0 +1,471 @@
+goals:
+  - ตอบคำถามย่อยของ capstone ทีละข้อด้วย SQL แล้วจดตัวเลขไว้ก่อนตีความ
+  - แยกรายได้ตามลูกค้าใหม่/ลูกค้าเดิม คำนวณกำไรขั้นต้น และเทียบคุณภาพของแต่ละช่องทาง
+  - ประกอบคำตอบทั้งหมดกลับเป็นเรื่องเล่าเดียวที่เชื่อมเหตุผลกันได้
+
+examples:
+  - id: x1
+    title: รายได้ปี 2025 มาจากลูกค้าใหม่หรือลูกค้าเดิม
+    lang: sql
+    prompt: |
+      รายได้โต 21.3% แล้วเงินก้อนนี้มาจากใคร — คนที่เพิ่งรู้จักร้านปีนี้ หรือคนที่ซื้อกับเรามาก่อนแล้ว
+    steps:
+      - text: |
+          หาว่าลูกค้าแต่ละคนซื้อครั้งแรกเมื่อไหร่ก่อน แล้วใช้ปีของออเดอร์แรกเป็นตัวติดป้ายว่าใหม่หรือเดิม
+        code: |
+          SELECT customer_id, MIN(order_date) AS first_day
+          FROM orders
+          WHERE status = 'completed'
+          GROUP BY 1
+          ORDER BY first_day
+          LIMIT 10
+      - text: |
+          ต่อป้ายเข้ากับยอดขายปี 2025 แล้วรวมยอด — ได้คำตอบว่า 84% ของรายได้มาจากลูกค้าที่เพิ่งซื้อครั้งแรกปีนั้น
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, MIN(order_date) AS first_day
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), sales_2025 AS (
+            SELECT o.customer_id,
+                   CASE WHEN EXTRACT(year FROM f.first_day) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+                   li.quantity * li.unit_price AS line
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+          )
+          SELECT customer_type,
+                 COUNT(DISTINCT customer_id) AS customers,
+                 SUM(line) AS revenue,
+                 ROUND(SUM(line) * 100.0 / SUM(SUM(line)) OVER (), 1) AS revenue_pct
+          FROM sales_2025
+          GROUP BY 1
+          ORDER BY revenue DESC
+    pitfall:
+      text: |
+        ถ้าใช้ `signup_date` แทน "วันที่ซื้อครั้งแรก" เพื่อแบ่งใหม่/เดิม จะได้ 82% / 18% แทนที่จะเป็น 84% / 16%
+        ตัวเลขไม่ได้ต่างกันมากในชุดข้อมูลนี้ แต่ **นิยามคนละอย่าง**: คนที่สมัครปี 2024 แล้วเพิ่งซื้อครั้งแรกปี 2025
+        จะถูกนับเป็น "ลูกค้าเดิม" ทั้งที่เพิ่งเริ่มซื้อ ตอนรายงานต้องเลือกนิยามให้ตรงกับคำถาม
+        (เรากำลังถามเรื่องพฤติกรรมการซื้อ จึงควรใช้วันที่ซื้อครั้งแรก)
+      code: |
+        SELECT CASE WHEN EXTRACT(year FROM c.signup_date) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               ROUND(SUM(li.quantity * li.unit_price) * 100.0
+                     / SUM(SUM(li.quantity * li.unit_price)) OVER (), 1) AS revenue_pct
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN customers c ON c.customer_id = o.customer_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+        ORDER BY revenue DESC
+  - id: x2
+    title: กำไรขั้นต้นแยกตามหมวดสินค้า
+    lang: sql
+    prompt: |
+      รายได้โตแล้วกำไรโตตามไหม — ตาราง products มีคอลัมน์ cost จึงคำนวณกำไรขั้นต้นได้
+    steps:
+      - text: |
+          กำไรต่อรายการ = (ราคาขาย − ต้นทุน) × จำนวน — ต้อง join ถึงตาราง products เพื่อดึง cost มา
+        code: |
+          SELECT ROUND(SUM(li.quantity * li.unit_price), 2) AS revenue,
+                 ROUND(SUM(li.quantity * p.cost), 2) AS cogs,
+                 ROUND(SUM(li.quantity * (li.unit_price - p.cost)), 2) AS gross_profit
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          JOIN products p ON p.product_id = li.product_id
+          WHERE o.status = 'completed'
+      - text: |
+          แยกตามหมวดแล้วคำนวณ margin — Electronics ทำรายได้มากที่สุดแต่ margin ต่ำที่สุด
+        code: |
+          SELECT p.category,
+                 SUM(li.quantity * li.unit_price) AS revenue,
+                 ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                       / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          JOIN products p ON p.product_id = li.product_id
+          WHERE o.status = 'completed'
+          GROUP BY 1
+          ORDER BY revenue DESC
+    pitfall:
+      text: |
+        margin รวมต้องคำนวณจาก **ผลรวมหารผลรวม** (กำไรรวม ÷ รายได้รวม) ไม่ใช่ค่าเฉลี่ยของ margin รายแถว
+        โค้ดด้านล่างเฉลี่ยอัตราส่วนของแต่ละรายการสินค้า ได้ 39.3% ทั้งที่ margin จริงคือ 28.8%
+        — เพราะสินค้าราคาถูกที่ margin สูงมีจำนวนรายการเยอะ แต่มีน้ำหนักต่อรายได้จริงน้อยมาก
+        การเฉลี่ยอัตราส่วนโดยไม่ถ่วงน้ำหนักเป็นกับดักที่เจอบ่อยและตรวจจับยาก
+      code: |
+        SELECT ROUND(AVG((li.unit_price - p.cost) / li.unit_price) * 100, 1) AS avg_of_ratios,
+               ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                     / SUM(li.quantity * li.unit_price), 1) AS true_margin
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN products p ON p.product_id = li.product_id
+        WHERE o.status = 'completed'
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      รายได้ต่อลูกค้าแยกตามช่องทาง (เฉพาะ `completed`) แสดง channel, customers, revenue,
+      revenue_per_customer (ปัด 0 ตำแหน่ง) เรียงจากรายได้ต่อลูกค้ามากไปน้อย เติม `___` ให้ครบ
+    starter: |
+      SELECT c.channel,
+             COUNT(___ o.customer_id) AS customers,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(___ o.customer_id), 0) AS revenue_per_customer
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE o.status = ___
+      GROUP BY 1
+      ORDER BY revenue_per_customer DESC
+    solution: |
+      SELECT c.channel,
+             COUNT(DISTINCT o.customer_id) AS customers,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.customer_id), 0) AS revenue_per_customer
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY revenue_per_customer DESC
+    ordered: true
+    hints:
+      - ลูกค้าคนเดียวมีหลายออเดอร์และหลายรายการสินค้า ต้องนับแบบไม่ซ้ำ
+      - นิยามรายได้ของงานนี้นับเฉพาะออเดอร์ completed
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      กำไรขั้นต้นรวมทั้งหมด (เฉพาะ `completed`) ปัด 2 ตำแหน่ง แสดงคอลัมน์เดียวชื่อ gross_profit
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(SUM(li.quantity * (li.unit_price - p.cost)), 2) AS gross_profit
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+    hints:
+      - กำไรต่อรายการ = (ราคาขาย − ต้นทุน) × จำนวน
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      margin รวมเป็นเปอร์เซ็นต์ (กำไรขั้นต้น ÷ รายได้) ปัด 1 ตำแหน่ง เฉพาะ `completed`
+      แสดงคอลัมน์เดียวชื่อ margin_pct
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                   / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+    hints:
+      - ผลรวมหารผลรวม ไม่ใช่ค่าเฉลี่ยของอัตราส่วนรายแถว
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ซื้อ (completed) ในปี 2024 และจำนวนที่กลับมาซื้ออีกในปี 2025
+      แสดงคอลัมน์ buyers_2024, returned_2025
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH b2024 AS (
+        SELECT DISTINCT customer_id FROM orders
+        WHERE status = 'completed' AND EXTRACT(year FROM order_date) = 2024
+      ), b2025 AS (
+        SELECT DISTINCT customer_id FROM orders
+        WHERE status = 'completed' AND EXTRACT(year FROM order_date) = 2025
+      )
+      SELECT COUNT(*) AS buyers_2024,
+             COUNT(b2025.customer_id) AS returned_2025
+      FROM b2024
+      LEFT JOIN b2025 ON b2025.customer_id = b2024.customer_id
+    hints:
+      - ทำรายชื่อลูกค้าของแต่ละปีเป็น CTE แล้ว LEFT JOIN กัน
+      - "COUNT(คอลัมน์จากฝั่งขวา) นับเฉพาะแถวที่จับคู่ได้"
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      กำไรขั้นต้นและ margin แยกตามปี (เฉพาะ `completed`) แสดง y, gross_profit (ปัด 2 ตำแหน่ง),
+      margin_pct (ปัด 1 ตำแหน่ง) เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT EXTRACT(year FROM o.order_date) AS y,
+             ROUND(SUM(li.quantity * (li.unit_price - p.cost)), 2) AS gross_profit,
+             ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                   / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - เพิ่มปีเข้าไปใน GROUP BY ของสองข้อที่แล้ว
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้ปี 2025 แยกลูกค้าใหม่ (ซื้อครั้งแรกปี 2025) กับลูกค้าเดิม แสดง customer_type, customers,
+      revenue, revenue_pct (ปัด 1 ตำแหน่ง) เรียงตาม revenue จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, MIN(order_date) AS first_day
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), sales_2025 AS (
+        SELECT o.customer_id,
+               CASE WHEN EXTRACT(year FROM f.first_day) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+               li.quantity * li.unit_price AS line
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+      )
+      SELECT customer_type,
+             COUNT(DISTINCT customer_id) AS customers,
+             SUM(line) AS revenue,
+             ROUND(SUM(line) * 100.0 / SUM(SUM(line)) OVER (), 1) AS revenue_pct
+      FROM sales_2025
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - ติดป้ายลูกค้าจากปีของออเดอร์แรก ไม่ใช่จากวันสมัคร
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้และ margin แยกตามหมวดสินค้า (เฉพาะ `completed`) แสดง category, revenue,
+      revenue_pct (สัดส่วนของรายได้ทั้งหมด ปัด 1 ตำแหน่ง), margin_pct (ปัด 1 ตำแหน่ง)
+      เรียงตามรายได้จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT p.category,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             ROUND(SUM(li.quantity * li.unit_price) * 100.0
+                   / SUM(SUM(li.quantity * li.unit_price)) OVER (), 1) AS revenue_pct,
+             ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                   / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - "SUM(SUM(...)) OVER () ให้ผลรวมของทุกกลุ่มไว้ใช้เป็นตัวหาร"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      ผล A/B test ของหน้า checkout — นับระดับ session (session ที่มี event `purchase` ถือว่าซื้อ)
+      แสดง variant, sessions, purchases, cvr_pct (ปัด 2 ตำแหน่ง) เรียงตาม variant
+      นับเฉพาะ session ที่อยู่ในการทดลอง (`variant` ไม่ว่าง)
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH sessions AS (
+        SELECT session_id, variant,
+               MAX(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) AS purchased
+        FROM events
+        WHERE variant IS NOT NULL
+        GROUP BY 1, 2
+      )
+      SELECT variant,
+             COUNT(*) AS sessions,
+             SUM(purchased) AS purchases,
+             ROUND(SUM(purchased) * 100.0 / COUNT(*), 2) AS cvr_pct
+      FROM sessions
+      GROUP BY 1
+      ORDER BY variant
+    ordered: true
+    hints:
+      - ยุบข้อมูลให้เป็นระดับ session ก่อน (ซื้อ/ไม่ซื้อ ต่อหนึ่ง session) แล้วค่อยสรุปต่อ
+      - "MAX(CASE WHEN ...) เป็นวิธีถามว่า 'กลุ่มนี้มีเหตุการณ์นั้นไหม'"
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      ตารางสรุปคุณภาพของแต่ละช่องทางในแถวเดียวกัน — แสดง channel, customers (ลูกค้าที่เคยซื้อ),
+      revenue_per_customer (ปัด 0 ตำแหน่ง) และ m1_pct (retention เดือนที่ 1 ปัด 1 ตำแหน่ง)
+      เรียงตาม revenue_per_customer จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), value AS (
+        SELECT c.channel,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN customers c ON c.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      ), retention AS (
+        SELECT c.channel,
+               ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                     / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+        FROM first_order f
+        JOIN customers c ON c.customer_id = f.customer_id
+        LEFT JOIN activity a ON a.customer_id = f.customer_id
+        GROUP BY 1
+      )
+      SELECT v.channel, v.customers,
+             ROUND(v.revenue / v.customers, 0) AS revenue_per_customer,
+             r.m1_pct
+      FROM value v
+      JOIN retention r ON r.channel = v.channel
+      ORDER BY revenue_per_customer DESC
+    ordered: true
+    hints:
+      - คำนวณแต่ละมุมเป็น CTE แยกกัน แล้วค่อย join รวมตอนท้าย
+      - ทั้งสองมุมจัดกลุ่มด้วย channel เหมือนกัน จึง join ด้วยคอลัมน์นั้นได้เลย
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      เทียบว่าหมวดสินค้าแต่ละหมวดมีสัดส่วน "รายได้" กับสัดส่วน "กำไรขั้นต้น" ต่างกันแค่ไหน
+      แสดง category, revenue_pct, profit_pct (ปัดทั้งคู่ 1 ตำแหน่ง) และ gap (profit_pct − revenue_pct
+      ปัด 1 ตำแหน่ง) เรียงตาม gap จากน้อยไปมาก — หมวดที่ gap ติดลบมากคือหมวดที่ "ขายได้เยอะแต่กำไรน้อย"
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH by_category AS (
+        SELECT p.category,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               SUM(li.quantity * (li.unit_price - p.cost)) AS profit
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN products p ON p.product_id = li.product_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      )
+      SELECT category,
+             ROUND(revenue * 100.0 / SUM(revenue) OVER (), 1) AS revenue_pct,
+             ROUND(profit * 100.0 / SUM(profit) OVER (), 1) AS profit_pct,
+             ROUND(profit * 100.0 / SUM(profit) OVER () - revenue * 100.0 / SUM(revenue) OVER (), 1) AS gap
+      FROM by_category
+      ORDER BY gap
+    ordered: true
+    hints:
+      - สรุปรายได้และกำไรต่อหมวดใน CTE ก่อน แล้วค่อยคิดสัดส่วนด้วย window function
+      - "SUM(revenue) OVER () คือรายได้รวมของทุกหมวด"
+
+quiz:
+  - id: q1
+    question: 84% ของรายได้ปี 2025 มาจากลูกค้าที่เริ่มซื้อปีนั้น บอกอะไรเกี่ยวกับความยั่งยืน
+    choices:
+      - text: ธุรกิจพึ่งพาการหาลูกค้าใหม่เกือบทั้งหมด ถ้าช่องทางหาลูกค้าสะดุด รายได้จะตกทันที
+        correct: true
+        why: รายได้ที่มาจากลูกค้าเดิมคือฐานที่มั่นคงกว่า เพราะไม่ต้องจ่ายเพื่อให้เขากลับมาทุกครั้ง
+      - text: แปลว่าแคมเปญการตลาดทำงานได้ดีมาก จึงไม่มีอะไรต้องกังวล
+        why: การหาลูกค้าใหม่ได้เก่งเป็นข้อดี แต่ถ้าลูกค้าไม่กลับมา ต้นทุนการเติบโตจะสูงขึ้นเรื่อยๆ
+      - text: แปลว่าลูกค้าเดิมเลิกซื้อทั้งหมดแล้ว
+        why: ยังมีลูกค้าเดิม 221 คนที่กลับมาซื้อ เพียงแต่สัดส่วนน้อยเมื่อเทียบกับลูกค้าใหม่
+      - text: บอกอะไรไม่ได้ ต้องดูกำไรอย่างเดียว
+        why: กำไรสำคัญ แต่โครงสร้างของรายได้บอกความเสี่ยงที่ตัวเลขกำไรปีเดียวไม่บอก
+  - id: q2
+    question: ทำไม margin รวมถึงคำนวณจาก AVG ของ margin รายแถวไม่ได้
+    choices:
+      - text: เพราะแต่ละรายการมีน้ำหนักต่อรายได้ไม่เท่ากัน ต้องใช้ผลรวมหารผลรวมเสมอ
+        correct: true
+        why: ในข้อมูลนี้ AVG ของอัตราส่วนให้ 39.3% ขณะที่ margin จริงคือ 28.8%
+      - text: เพราะ AVG ใช้กับตัวเลขทศนิยมไม่ได้
+        why: AVG ใช้กับทศนิยมได้ ปัญหาอยู่ที่การไม่ถ่วงน้ำหนัก
+      - text: เพราะ margin รายแถวมีค่าติดลบ
+        why: ในชุดข้อมูลนี้ต้นทุนต่ำกว่าราคาขายเสมอ ปัญหาไม่ได้อยู่ที่ค่าติดลบ
+      - text: เพราะ SQL คำนวณ AVG ผิดเมื่อมี JOIN
+        why: AVG คำนวณถูกตามที่สั่ง แต่สิ่งที่สั่งไม่ใช่สิ่งที่ต้องการ
+  - id: q3
+    question: ข้อสรุปใดเขียนได้จากตารางรายได้ต่อลูกค้าแยกช่องทาง
+    choices:
+      - text: ลูกค้าจากช่องทาง organic มีมูลค่าต่อคนสูงกว่าช่องทาง promo ราวสองเท่า
+        correct: true
+        why: ข้อมูลบอก "มูลค่าของลูกค้าที่ได้มา" ได้ แต่ไม่ได้บอกต้นทุนที่จ่ายไปเพื่อให้ได้มา
+      - text: ควรย้ายงบโฆษณาทั้งหมดไปที่ organic เพราะคุ้มที่สุด
+        why: ไม่มีข้อมูลต้นทุนของแต่ละช่องทาง จึงเทียบความคุ้มค่า (ROI) ไม่ได้
+      - text: ช่องทาง promo ไม่มีประโยชน์เลย
+        why: promo ยังสร้างรายได้ 1.2 ล้าน เพียงแต่มูลค่าต่อคนต่ำกว่า ต้องดูต้นทุนก่อนถึงจะตัดสินได้
+      - text: ช่องทาง referral แย่ที่สุดเพราะมีลูกค้าน้อยที่สุด
+        why: จำนวนลูกค้าน้อยไม่ได้แปลว่าแย่ — referral มีทั้งรายได้ต่อคนและ retention สูง
+  - id: q4
+    question: ทำไมถึงควร "จดตัวเลขไว้ก่อน แล้วค่อยตีความตอนท้าย"
+    choices:
+      - text: เพื่อไม่ให้รีบสรุปแล้วมองหาแต่หลักฐานที่สนับสนุนข้อสรุปแรกที่คิดได้
+        correct: true
+        why: confirmation bias ทำให้เราหยุดมองข้อมูลที่ขัดกับข้อสรุปของตัวเองโดยไม่รู้ตัว
+      - text: เพราะการตีความระหว่างทางทำให้ query ช้าลง
+        why: ไม่เกี่ยวกับประสิทธิภาพ
+      - text: เพราะต้องรอให้ข้อมูลครบทุกตารางก่อนถึงจะตีความได้
+        why: ตีความทีละส่วนได้ ประเด็นคือระวังการปักใจเชื่อเร็วเกินไป
+      - text: เพราะข้อสรุปควรมาจากผู้บริหารไม่ใช่ DA
+        why: DA มีหน้าที่เสนอข้อสรุปจากข้อมูล ไม่ใช่รอให้คนอื่นตีความให้
+
+summary:
+  - ตอบคำถามย่อยทีละข้อ จดตัวเลขไว้ แล้วค่อยประกอบเป็นเรื่องเล่าตอนท้าย เพื่อกัน confirmation bias
+  - รายได้ปี 2025 โต 21.3% แต่ 84% มาจากลูกค้าใหม่ และลูกค้าปี 2024 กลับมาเพียง 17.5% — สัญญาณว่าการเติบโตยังไม่ยั่งยืน
+  - margin รวมต้องคิดจากผลรวมหารผลรวม และต้องดู mix ของหมวดสินค้า เพราะหมวดที่ขายดีที่สุดอาจ margin ต่ำที่สุด
+
+interview:
+  - id: i1
+    q: เล่าโปรเจกต์วิเคราะห์ข้อมูลที่เคยทำให้ฟังหน่อย
+    a: |
+      เล่าเป็นโครง 4 ส่วน: (1) คำถามธุรกิจและทำไมมันสำคัญ — "รายได้โต 21% แต่ยั่งยืนไหม"
+      (2) วิธีที่ใช้ตอบ — แตกเป็นคำถามย่อย 6 ข้อ ใช้ metric tree, cohort retention, กำไรขั้นต้น และ funnel
+      (3) สิ่งที่พบพร้อมตัวเลข — 84% ของรายได้มาจากลูกค้าใหม่, ลูกค้าเดิมกลับมา 17.5%,
+      ช่องทาง promo retention 7.3% เทียบกับ organic 22.4% (4) ข้อเสนอและผลที่คาดว่าจะเกิด
+      พร้อมบอกข้อจำกัดของข้อมูลตรงๆ เช่น ไม่มีต้นทุนการตลาดจึงคำนวณ ROI ไม่ได้
+      — การบอกข้อจำกัดได้เองเป็นสัญญาณว่าเข้าใจงานจริง ไม่ใช่แค่รันโค้ดตามสูตร
+  - id: i2
+    q: ถ้าเจอว่าหมวดสินค้าที่ขายดีที่สุดมี margin ต่ำที่สุด จะเสนออะไร
+    a: |
+      ก่อนเสนอต้องดูก่อนว่าหมวดนั้นมีบทบาทอะไรในธุรกิจ — สินค้าราคาสูง margin ต่ำ (เช่น Electronics)
+      อาจเป็นตัวดึงลูกค้าเข้าร้านแล้วไปทำกำไรจากหมวดอื่นต่อ จึงควรเช็คว่าลูกค้าที่ซื้อหมวดนี้
+      ซื้อหมวดอื่นด้วยไหมและกลับมาซื้อซ้ำหรือเปล่า ถ้าใช่ การตัดหมวดนี้ทิ้งจะทำให้เสียทั้งระบบ
+      ข้อเสนอที่ปลอดภัยกว่าคือดันสินค้า margin สูงเป็นตัวเสริมในตะกร้าเดียวกัน (cross-sell)
+      และติดตามสัดส่วนกำไรต่อหมวดเป็น guardrail metric ไม่ใช่ดูแต่ยอดขายรวม
+
+flashcards:
+  - id: c1
+    front: รายได้จากลูกค้าใหม่ 84% บอกอะไร
+    back: ธุรกิจพึ่งพาการหาลูกค้าใหม่เกือบทั้งหมด ถ้าช่องทางหาลูกค้าสะดุด รายได้จะตกทันที
+  - id: c2
+    front: คำนวณ margin รวมยังไงให้ถูก
+    back: กำไรรวม ÷ รายได้รวม (ผลรวมหารผลรวม) ไม่ใช่ค่าเฉลี่ยของ margin รายแถว
+  - id: c3
+    front: ทำไมต้องจดตัวเลขก่อนตีความ
+    back: กัน confirmation bias — ไม่ให้เรามองหาแต่หลักฐานที่สนับสนุนข้อสรุปแรกที่คิดได้

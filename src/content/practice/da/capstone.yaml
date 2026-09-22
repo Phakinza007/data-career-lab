@@ -1,0 +1,420 @@
+title: "ชุดฝึกรวมท้ายสาย DA"
+exercises:
+  - id: p1
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์ รายได้ และ AOV (ปัด 2 ตำแหน่ง) ของทั้งชุดข้อมูล เฉพาะ `completed`
+      แสดง orders, revenue, aov
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(DISTINCT o.order_id) AS orders,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+    hints:
+      - หลัง JOIN หนึ่งแถวคือหนึ่งรายการสินค้า ต้องนับออเดอร์แบบไม่ซ้ำ
+  - id: p2
+    level: basic
+    lang: sql
+    prompt: |
+      สินค้า 5 อันดับแรกที่ทำรายได้สูงสุด (เฉพาะ `completed`) แสดง product_name, revenue
+      เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT p.product_name, SUM(li.quantity * li.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY revenue DESC
+      LIMIT 5
+    ordered: true
+    hints:
+      - join ถึงตาราง products เพื่อให้ได้ชื่อสินค้า
+  - id: p3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าแยกตามเมือง (ตาราง customers) เรียงจากมากไปน้อย เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.groupby('city').size().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.groupby('city').size()` นับจำนวนแถวต่อกลุ่ม"
+  - id: p4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนแถวที่ซ้ำกันทั้งแถวในไฟล์ `data/raw/customers_raw.csv` เก็บจำนวน (int) ไว้ในตัวแปร n_duplicates
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_duplicates = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_duplicates = int(raw.duplicated().sum())
+    check: |
+      check_value(n_duplicates, _sol["n_duplicates"], name="n_duplicates")
+    hints:
+      - "`.duplicated()` ทำเครื่องหมายแถวที่ซ้ำ (ไม่นับแถวแรกของกลุ่ม)"
+  - id: p5
+    level: basic
+    lang: sql
+    prompt: |
+      conversion rate รวมของ funnel เป็นเปอร์เซ็นต์ปัด 2 ตำแหน่ง แสดงคอลัมน์เดียวชื่อ cvr_pct
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+    hints:
+      - นับ session ของสองขั้นในแถวเดียวด้วย CASE WHEN
+  - id: p6
+    level: applied
+    lang: sql
+    prompt: |
+      ลูกค้าที่ซื้อมากที่สุด 10 อันดับแรก (เฉพาะ `completed`) แสดง customer_id, orders, revenue
+      เรียงตามรายได้จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT o.customer_id,
+             COUNT(DISTINCT o.order_id) AS orders,
+             SUM(li.quantity * li.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY revenue DESC
+      LIMIT 10
+    ordered: true
+    hints:
+      - จัดกลุ่มระดับลูกค้าแล้วเรียงด้วยรายได้
+  - id: p7
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้รายเดือนของปี 2025 พร้อมค่าเฉลี่ยเคลื่อนที่ 3 เดือน (ปัด 2 ตำแหน่ง)
+      แสดง month, revenue, moving_avg_3m เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+      )
+      SELECT month, revenue,
+             ROUND(AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3m
+      FROM monthly
+      ORDER BY month
+    ordered: true
+    hints:
+      - "AVG(...) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) คือค่าเฉลี่ย 3 เดือนล่าสุด"
+  - id: p8
+    level: applied
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของ cohort ปี 2025 แสดง cohort_month, cohort_size, m1_pct (ปัด 1 ตำแหน่ง)
+      เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), grid AS (
+        SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+        FROM activity GROUP BY 1, 2
+      )
+      SELECT g.cohort_month, s.cohort_size,
+             ROUND(g.customers * 100.0 / s.cohort_size, 1) AS m1_pct
+      FROM grid g
+      JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+        ON s.cohort_month = g.cohort_month
+      WHERE g.month_no = 1 AND EXTRACT(year FROM g.cohort_month) = 2025
+      ORDER BY g.cohort_month
+    ordered: true
+    hints:
+      - ทบทวน module business metrics บทที่ 3
+  - id: p9
+    level: applied
+    lang: python
+    prompt: |
+      ทำความสะอาดคอลัมน์ city ของ `data/raw/customers_raw.csv` (ตัดช่องว่างหน้า-หลังและจัดตัวพิมพ์
+      ด้วย `.str.title()`) แล้วนับจำนวนลูกค้าต่อเมือง เรียงจากมากไปน้อย เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      city = raw['city'].str.strip().str.title()
+      result = city.value_counts().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.strip()` ก่อนเสมอ แล้วค่อยจัดตัวพิมพ์"
+      - "`value_counts()` นับจำนวนของแต่ละค่า"
+  - id: p10
+    level: applied
+    lang: python
+    prompt: |
+      ช่วงความเชื่อมั่น 95% ของยอดขายเฉลี่ยต่อออเดอร์ (เฉพาะ `completed`)
+      เก็บขอบล่างไว้ในตัวแปร ci_low และขอบบนไว้ในตัวแปร ci_high
+    starter: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      ci_low, ci_high = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      order_rev = sales.groupby('order_id')['line'].sum()
+      mean = order_rev.mean()
+      se = order_rev.std(ddof=1) / np.sqrt(len(order_rev))
+      ci_low, ci_high = stats.norm.interval(0.95, loc=mean, scale=se)
+    check: |
+      check_value(ci_low, _sol["ci_low"], name="ci_low")
+      check_value(ci_high, _sol["ci_high"], name="ci_high")
+    hints:
+      - สรุปยอดต่อออเดอร์ก่อนด้วย groupby('order_id')
+      - "standard error = ส่วนเบี่ยงเบนมาตรฐาน ÷ รากที่สองของจำนวนตัวอย่าง"
+  - id: p11
+    level: applied
+    lang: python
+    prompt: |
+      ทดสอบว่า purchase rate ของ variant B ต่างจาก variant A อย่างมีนัยสำคัญไหม
+      (ใช้ข้อมูล session ที่อยู่ในการทดลองจาก events) เก็บ z_stat และ p_value
+    starter: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      z_stat, p_value = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+      counts = sessions.groupby('variant')['purchased'].agg(['size', 'sum'])
+      nA, bA = counts.loc['A', 'size'], counts.loc['A', 'sum']
+      nB, bB = counts.loc['B', 'size'], counts.loc['B', 'sum']
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (bB / nB - bA / nA) / se
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+    check: |
+      check_value(z_stat, _sol["z_stat"], name="z_stat")
+      check_value(p_value, _sol["p_value"], name="p_value")
+    hints:
+      - ยุบข้อมูลให้เป็นระดับ session (ซื้อ/ไม่ซื้อ) ก่อนนับ
+      - ทบทวน module สถิติ บทที่ 5 (A/B testing)
+  - id: p12
+    level: applied
+    lang: sql
+    prompt: |
+      กำไรขั้นต้นและ margin แยกตามหมวดสินค้า (เฉพาะ `completed`) แสดง category, gross_profit
+      (ปัด 2 ตำแหน่ง), margin_pct (ปัด 1 ตำแหน่ง) เรียงตาม margin_pct จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT p.category,
+             ROUND(SUM(li.quantity * (li.unit_price - p.cost)), 2) AS gross_profit,
+             ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                   / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      JOIN products p ON p.product_id = li.product_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY margin_pct DESC
+    ordered: true
+    hints:
+      - margin คิดจากผลรวมหารผลรวม
+  - id: p13
+    level: applied
+    lang: python
+    prompt: |
+      ตาราง RFM ระดับลูกค้า (recency ถึง 31 ธ.ค. 2025, frequency, monetary) เฉพาะ `completed`
+      แล้วเก็บเฉพาะลูกค้า 10 อันดับแรกที่ monetary สูงสุด (เรียงจากมากไปน้อย)
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      rfm = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+      result = rfm.sort_values('monetary', ascending=False).head(10)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - ทบทวน module business metrics บทที่ 4 (RFM)
+  - id: p14
+    level: challenge
+    lang: sql
+    prompt: |
+      ลูกค้าที่ซื้อครั้งแรกปี 2025 และกลับมาซื้ออีกอย่างน้อยหนึ่งครั้งภายในปีเดียวกัน
+      แสดง cohort_month, new_customers, repeat_customers, repeat_pct (ปัด 1 ตำแหน่ง) เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, MIN(order_date) AS first_day
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), repeats AS (
+        SELECT f.customer_id,
+               DATE_TRUNC('month', f.first_day) AS cohort_month,
+               COUNT(DISTINCT CASE WHEN o.order_date > f.first_day
+                                    AND EXTRACT(year FROM o.order_date) = 2025
+                                   THEN o.order_id END) AS later_orders
+        FROM first_order f
+        JOIN orders o ON o.customer_id = f.customer_id AND o.status = 'completed'
+        WHERE EXTRACT(year FROM f.first_day) = 2025
+        GROUP BY 1, 2
+      )
+      SELECT cohort_month,
+             COUNT(*) AS new_customers,
+             COUNT(CASE WHEN later_orders > 0 THEN 1 END) AS repeat_customers,
+             ROUND(COUNT(CASE WHEN later_orders > 0 THEN 1 END) * 100.0 / COUNT(*), 1) AS repeat_pct
+      FROM repeats
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - นับออเดอร์ที่เกิดหลังวันซื้อครั้งแรกของลูกค้าคนนั้น
+      - แยกการนับ "ลูกค้าทั้งหมด" กับ "ลูกค้าที่ซื้อซ้ำ" ด้วย CASE WHEN
+  - id: p15
+    level: challenge
+    lang: python
+    prompt: |
+      ตารางสรุปสำหรับรายงาน — รายได้ กำไรขั้นต้น และ margin_pct (ปัด 1 ตำแหน่ง) รายเดือนของปี 2025
+      (เฉพาะ `completed`) โดย index เป็นเดือนแบบ `2025-01` เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      sales = items.merge(orders, on='order_id').merge(products, on='product_id')
+      sales = sales[(sales['status'] == 'completed') & (sales['order_date'].dt.year == 2025)].copy()
+      sales['line'] = sales['quantity'] * sales['unit_price']
+      sales['profit'] = sales['quantity'] * (sales['unit_price'] - sales['cost'])
+      sales['month'] = sales['order_date'].dt.to_period('M').astype(str)
+      result = sales.groupby('month').agg(revenue=('line', 'sum'), gross_profit=('profit', 'sum'))
+      result['margin_pct'] = (result['gross_profit'] / result['revenue'] * 100).round(1)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - merge ให้ถึงตาราง products เพื่อได้ต้นทุน
+      - คำนวณคอลัมน์อัตราส่วนหลังจากรวมยอดแล้ว
+  - id: p16
+    level: challenge
+    lang: sql
+    prompt: |
+      หาสินค้าที่ "ขายดีแต่กำไรน้อย" — สินค้าที่รายได้ติด 10 อันดับแรกแต่ margin ต่ำกว่า 25%
+      แสดง product_name, revenue, margin_pct (ปัด 1 ตำแหน่ง) เรียงตามรายได้จากมากไปน้อย
+      (เฉพาะออเดอร์ `completed`)
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH per_product AS (
+        SELECT p.product_name,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               ROUND(SUM(li.quantity * (li.unit_price - p.cost)) * 100.0
+                     / SUM(li.quantity * li.unit_price), 1) AS margin_pct
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN products p ON p.product_id = li.product_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      ), top10 AS (
+        SELECT * FROM per_product ORDER BY revenue DESC LIMIT 10
+      )
+      SELECT product_name, revenue, margin_pct
+      FROM top10
+      WHERE margin_pct < 25
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - หา 10 อันดับแรกก่อนใน CTE แล้วค่อยกรอง margin
+      - ถ้ากรอง margin ก่อนจะได้คนละคำตอบ เพราะ "10 อันดับแรก" ต้องมาจากสินค้าทั้งหมด
