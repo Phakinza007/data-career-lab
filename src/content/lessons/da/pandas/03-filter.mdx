@@ -1,0 +1,60 @@
+---
+track: da
+module: pandas
+order: 3
+title: กรองข้อมูล (filter)
+minutes: 25
+prereqs: [da/pandas/02-loc-iloc]
+---
+
+## เงื่อนไข boolean และการรวมหลายเงื่อนไข
+
+```python
+products[products['price'] > 1000]
+```
+
+`products['price'] > 1000` ได้ Series ของค่า `True`/`False` (หนึ่งค่าต่อแถว) — เอา Series นี้ไปใส่ใน `[...]`
+เพื่อกรองเฉพาะแถวที่เป็น `True`
+
+รวมหลายเงื่อนไขด้วย:
+
+| ตัวดำเนินการ | ความหมาย |
+| --- | --- |
+| `&` | AND (ต้องจริงทั้งคู่) |
+| `\|` | OR (จริงอย่างน้อยหนึ่ง) |
+| `~` | NOT (กลับค่าความจริง) |
+
+**สำคัญมาก:** ต้องใส่วงเล็บรอบแต่ละเงื่อนไขย่อยเสมอ:
+
+```python
+products[(products['category'] == 'Home') & (products['price'] <= 1000)]
+```
+
+ถ้าลืมวงเล็บ Python จะตีความ `&`/`|` ก่อน `==`/`<`/`>` ทำให้เกิด error หรือผลลัพธ์ที่ไม่ตรงกับที่ตั้งใจ
+(ต่างจาก SQL ที่ `AND`/`OR` มีความสำคัญต่ำกว่าตัวเปรียบเทียบอยู่แล้ว โดยไม่ต้องใส่วงเล็บ)
+
+## isin() แทนเงื่อนไข == หลายอัน
+
+```python
+customers[customers['city'].isin(['Phuket', 'Hat Yai'])]
+```
+
+เขียนสั้นกว่า `(customers['city'] == 'Phuket') | (customers['city'] == 'Hat Yai')` และอ่านง่ายกว่ามาก
+เมื่อมีค่าที่ต้องเทียบหลายค่า
+
+## between() แทนช่วงตัวเลข
+
+```python
+products[products['price'].between(500, 1000)]
+```
+
+เทียบเท่ากับ `(products['price'] >= 500) & (products['price'] <= 1000)` — รวมขอบทั้งสองด้าน
+
+## กรองข้อความด้วย .str.contains()
+
+```python
+customers[customers['email'].str.contains('00042')]
+```
+
+`.str` เปิดทางเข้าฟังก์ชันจัดการข้อความของ pandas ทั้งหมด (`.str.contains`, `.str.startswith`, `.str.strip`,
+`.str.upper` ฯลฯ) — จะได้ใช้เต็มๆ ในบทที่ 7 ตอนทำความสะอาดข้อมูล

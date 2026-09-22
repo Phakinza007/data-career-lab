@@ -1,0 +1,60 @@
+---
+track: da
+module: pandas
+order: 1
+title: DataFrame พื้นฐาน
+minutes: 25
+prereqs: [da/sql/07-interview-review]
+---
+
+## จาก SQL มาสู่ pandas
+
+จบสาย SQL แล้ว ต่อไปนี้จะเรียนวิธีทำงานกับข้อมูลด้วยภาษา Python ผ่านไลบรารี **pandas**
+แนวคิดหลายอย่างเหมือนกับ SQL ทุกประการ (filter, group, join) แค่เปลี่ยน syntax — สายนี้จะเน้นเทียบให้เห็นความเหมือน
+
+หน่วยข้อมูลหลักของ pandas คือ **DataFrame** (ตาราง 2 มิติ คล้ายตารางใน SQL) และ **Series**
+(หนึ่งคอลัมน์ของ DataFrame)
+
+## อ่านข้อมูลด้วย read_csv
+
+```python
+import pandas as pd
+
+products = pd.read_csv("data/products.csv")
+```
+
+หลังอ่านไฟล์แล้ว ควรสำรวจโครงสร้างก่อนเสมอ:
+
+| คำสั่ง | บอกอะไร |
+| --- | --- |
+| `products.head()` | ตัวอย่าง 5 แถวแรก |
+| `products.shape` | (จำนวนแถว, จำนวนคอลัมน์) |
+| `products.columns` | รายชื่อคอลัมน์ |
+| `products.dtypes` | ชนิดข้อมูลของแต่ละคอลัมน์ |
+| `products.describe()` | สรุปสถิติของคอลัมน์ตัวเลข (count, mean, std, min, max, ...) |
+
+## เลือกคอลัมน์
+
+```python
+products['price']              # คอลัมน์เดียว → ได้ Series
+products[['product_name', 'price']]   # หลายคอลัมน์ → ได้ DataFrame
+```
+
+## เรียงข้อมูลด้วย sort_values
+
+```python
+products.sort_values('price', ascending=False).head(5)
+```
+
+- ค่าเริ่มต้นของ `ascending` คือ `True` (น้อยไปมาก) — ถ้าอยากได้มากไปน้อยต้องใส่ `ascending=False` เอง
+- เรียงหลายคอลัมน์ได้ด้วยการส่ง list: `sort_values(['category', 'price'])`
+- `.nlargest(n, 'col')` / `.nsmallest(n, 'col')` ทำสิ่งเดียวกับ `sort_values().head(n)` แต่สื่อความหมายชัดกว่า
+
+## สำรวจคอลัมน์ข้อความด้วย value_counts และ unique
+
+```python
+products['category'].value_counts()   # นับจำนวนแถวของแต่ละค่า เรียงมากไปน้อยให้อัตโนมัติ
+products['category'].unique()         # รายชื่อค่าที่ไม่ซ้ำ (ไม่มีตัวเลขจำนวน)
+```
+
+`value_counts()` ตอบคำถาม "ค่าไหนเยอะที่สุด" ได้ตรงๆ ส่วน `unique()` แค่บอกว่า "มีค่าอะไรบ้าง" — เลือกใช้ให้ตรงกับคำถาม

@@ -1,0 +1,309 @@
+goals:
+  - สร้างตารางสรุปแบบ "กว้าง" ด้วย pivot_table (values/index/columns/aggfunc/fill_value)
+  - แปลงข้อมูลจาก "กว้าง" เป็น "ยาว" ด้วย melt
+  - รู้ว่า pivot_table ที่ใส่ aggfunc เป็น list จะได้คอลัมน์ซ้อนกัน (MultiIndex) ที่ดึงค่ายากกว่าปกติ
+
+examples:
+  - id: x1
+    title: จำนวนออเดอร์แต่ละคู่ (สถานะ, วิธีจ่ายเงิน) แบบตารางกว้าง
+    lang: python
+    prompt: |
+      อยากเห็นจำนวนออเดอร์แยกตามสถานะและวิธีจ่ายเงินพร้อมกันในตารางเดียว
+    steps:
+      - text: |
+          `pivot_table` จัดวางค่าหนึ่งคอลัมน์เป็น `index` (แถว) อีกคอลัมน์เป็น `columns` (คอลัมน์)
+          ถ้าบางคู่ไม่มีข้อมูลเลย ช่องนั้นจะเป็นค่าว่าง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          orders.pivot_table(values='order_id', index='status', columns='payment_method', aggfunc='count')
+      - text: |
+          เติมช่องว่างด้วย `fill_value=0`
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          orders.pivot_table(values='order_id', index='status', columns='payment_method', aggfunc='count', fill_value=0)
+    pitfall:
+      text: |
+        ถ้าใส่ `aggfunc=['min', 'max']` (มากกว่า 1 ฟังก์ชันพร้อมกัน) จะได้คอลัมน์ซ้อนกัน (MultiIndex)
+        เช่น `('min', 'price')` แทนที่จะเป็นชื่อคอลัมน์ธรรมดา ทำให้เรียกใช้ค่าต่อยากขึ้นมาก
+        ถ้าต้องการหลายฟังก์ชันพร้อมกัน ควรใช้ `.agg()` แบบตั้งชื่อเอง (บทที่แล้ว) แทน
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        result = products.pivot_table(values='price', index='category', aggfunc=['min', 'max'])
+        list(result.columns)
+  - id: x2
+    title: แปลงคอลัมน์ price/cost ให้เป็นแถว (long format) ด้วย melt
+    lang: python
+    prompt: |
+      บางครั้งอยากได้ข้อมูลแบบ "ยาว" (แต่ละแถวคือ 1 ค่า) แทนที่จะเป็น "กว้าง" (แต่ละคอลัมน์คือ 1 ตัวชี้วัด)
+    steps:
+      - text: |
+          ดูตารางแบบกว้างก่อน (product_id, price, cost อยู่คนละคอลัมน์)
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products[['product_id', 'price', 'cost']].head(2)
+      - text: |
+          `melt(id_vars='product_id')` แปลงคอลัมน์ price/cost ให้กลายเป็นแถว
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products[['product_id', 'price', 'cost']].head(2).melt(id_vars='product_id')
+    pitfall:
+      text: |
+        ถ้าลืมใส่ `id_vars` เลย `melt()` จะเอาทุกคอลัมน์ (รวม `product_id`) ไปแปลงเป็นแถวหมด
+        ทำให้ไม่เหลือคอลัมน์ไว้บอกว่าแต่ละแถวเดิมเป็นของสินค้าไหน
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของสินค้าแต่ละหมวด (ปัดเป็นจำนวนเต็ม) แบบ pivot_table เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.pivot_table(values='price', index='category', aggfunc='___').round(0)
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.pivot_table(values='price', index='category', aggfunc='mean').round(0)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ฟังก์ชันหาค่าเฉลี่ยคือ mean
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนสินค้าในแต่ละหมวด (pivot_table, aggfunc='count') เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.pivot_table(values='product_id', index='category', aggfunc='count')
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`aggfunc='count'` นับจำนวนแถวในแต่ละกลุ่ม"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ในแต่ละคู่ (สถานะ, วิธีจ่ายเงิน) แบบตารางกว้าง (fill_value=0) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders.pivot_table(values='order_id', index='status', columns='payment_method', aggfunc='count', fill_value=0)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - เหมือนตัวอย่าง x1
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      แปลงคอลัมน์ price กับ cost ของ 2 สินค้าแรก (product_id, price, cost) ให้เป็น long format
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[['product_id', 'price', 'cost']].head(2).melt(id_vars='product_id')
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - เหมือนตัวอย่าง x2
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ราคาเฉลี่ย (ปัดเป็นจำนวนเต็ม) ของสินค้าแต่ละหมวด (pivot_table) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.pivot_table(values='price', index='category', aggfunc='mean').round(0)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - เหมือน f1
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      รายได้รวม (completed, quantity×unit_price) แยกตามหมวดสินค้า×สถานะ แบบตารางกว้าง
+      (fill_value=0, ปัดเป็นจำนวนเต็ม) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      rev = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+      rev = rev.assign(revenue=lambda d: d.quantity * d.unit_price)
+      result = rev.pivot_table(values='revenue', index='category', columns='status', aggfunc='sum', fill_value=0).round(0)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - รวมทักษะ merge จากบทที่แล้วเข้ากับ pivot_table
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ส่วนลดเฉลี่ย (ปัด 1 ตำแหน่ง) แยกตามวิธีจ่ายเงิน×ปีของออเดอร์ แบบตารางกว้าง เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      o2 = orders.assign(y=pd.to_datetime(orders['order_date']).dt.year)
+      result = o2.pivot_table(values='discount_pct', index='payment_method', columns='y', aggfunc='mean').round(1)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - สร้างคอลัมน์ปีด้วย assign ก่อน แล้วค่อย pivot_table
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      แปลง price/cost ของสินค้าทั้งหมดเป็น long format (id_vars=category) แล้วรวมยอด cost ต่อหมวด
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      m = products[['category', 'price', 'cost']].melt(id_vars='category', var_name='metric', value_name='value')
+      result = m[m['metric'] == 'cost'].groupby('category')['value'].sum().round(0)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - melt ก่อน แล้วกรองเฉพาะ metric='cost' แล้วค่อย groupby
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จากตาราง (สถานะ×วิธีจ่ายเงิน) ในตัวอย่าง x1 คำนวณสัดส่วน % ของแต่ละช่องเทียบกับผลรวมของแถวนั้น
+      (ปัด 1 ตำแหน่ง) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      piv = orders.pivot_table(values='order_id', index='status', columns='payment_method', aggfunc='count', fill_value=0)
+      result = piv.div(piv.sum(axis=1), axis=0).mul(100).round(1)
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`.div(piv.sum(axis=1), axis=0)` หารแต่ละแถวด้วยผลรวมของแถวนั้น"
+
+quiz:
+  - id: q1
+    question: pivot_table กับ groupby ต่างกันยังไง
+    choices:
+      - text: แนวคิดคล้ายกัน แต่ pivot_table จัดวางผลลัพธ์เป็นตาราง "กว้าง" (มี columns= แยกเป็นคอลัมน์) ได้ในคำสั่งเดียว
+        correct: true
+        why: pivot_table เหมาะกับการสรุปเป็น 2 มิติพร้อมกัน (แถว×คอลัมน์) ในขณะที่ groupby ให้ผลแบบยาว
+      - text: pivot_table เร็วกว่า groupby เสมอ
+        why: ความเร็วไม่ใช่ประเด็นหลัก pivot_table จริงๆ แล้วสร้างจาก groupby+unstack ภายใน
+      - text: ใช้แทนกันไม่ได้เลย
+        why: หลายกรณีทำสิ่งเดียวกันได้ทั้งคู่ ต่างกันแค่รูปแบบผลลัพธ์ที่ได้
+      - text: groupby ใช้ได้กับคอลัมน์เดียวเท่านั้น
+        why: groupby ใช้ได้กับหลายคอลัมน์พร้อมกัน (groupby(['a','b'])) เหมือนกัน
+  - id: q2
+    question: melt ทำอะไร
+    choices:
+      - text: แปลงข้อมูลจากตาราง "กว้าง" (หลายคอลัมน์) ให้เป็น "ยาว" (หลายแถว, คอลัมน์ variable/value)
+        correct: true
+        why: melt คือการย้อนกลับของ pivot_table
+      - text: รวมสองตารางเข้าด้วยกัน
+        why: การรวมสองตารางคือ merge ไม่ใช่ melt
+      - text: ลบแถวที่ซ้ำกันออก
+        why: การลบแถวซ้ำคือ drop_duplicates ไม่ใช่ melt
+      - text: แปลงตาราง "ยาว" ให้เป็น "กว้าง"
+        why: ตรงข้ามกัน pivot_table ทำแบบนั้น melt ทำในทิศทางกลับกัน
+  - id: q3
+    question: "aggfunc เป็น list (เช่น ['min','max']) ให้ผลลัพธ์แบบไหน"
+    choices:
+      - text: ได้คอลัมน์ซ้อนกัน (MultiIndex) ที่ดึงค่ายากขึ้น
+        correct: true
+        why: ทางที่ดีกว่าคือใช้ .agg() แบบตั้งชื่อเองแทนเมื่อต้องการหลายฟังก์ชันพร้อมกัน
+      - text: error ทันที
+        why: ไม่ error แต่ได้โครงสร้างคอลัมน์ที่ซับซ้อนขึ้น (MultiIndex)
+      - text: ได้ผลลัพธ์เหมือนใช้ aggfunc เดียว
+        why: ได้คอลัมน์เพิ่มขึ้นตามจำนวนฟังก์ชัน และซ้อนกันเป็น MultiIndex
+      - text: pandas จะเลือกใช้แค่ฟังก์ชันแรกในลิสต์
+        why: pandas คำนวณทุกฟังก์ชันในลิสต์ ไม่ได้เลือกแค่อันแรก
+
+summary:
+  - pivot_table สร้างตารางสรุปแบบกว้าง (index=แถว, columns=คอลัมน์, values=ค่า, aggfunc=วิธีสรุป)
+  - melt แปลงข้อมูลจากกว้างเป็นยาว เป็นการย้อนกลับของ pivot_table
+  - aggfunc เป็น list ทำให้ได้คอลัมน์ซ้อนกัน (MultiIndex) ใช้ .agg() แบบตั้งชื่อเองแทนถ้าต้องการความชัดเจน
+
+interview:
+  - id: i1
+    q: เมื่อไหร่ควรใช้ pivot_table แทน groupby
+    a: |
+      ใช้ `pivot_table` เมื่อต้องการนำเสนอผลลัพธ์เป็นตาราง "กว้าง" ที่มี 2 มิติ (แถว×คอลัมน์) พร้อมกัน
+      เช่น รายงานสรุปที่จะส่งให้คนอื่นอ่านหรือทำเป็น dashboard ในขณะที่ `groupby` เหมาะกับตอนจะเอาผล
+      ไปประมวลผลต่อในโค้ด (ผลลัพธ์เป็นรูปแบบยาว จัดการต่อง่ายกว่า)
+
+flashcards:
+  - id: c1
+    front: pivot_table กับ melt ต่างกันยังไง
+    back: pivot_table ทำให้ตารางกว้างขึ้น (สรุปเป็น 2 มิติ) melt ทำตรงข้าม (แปลงกว้างเป็นยาว)
+  - id: c2
+    front: pivot_table aggfunc เป็น list ได้ผลลัพธ์แบบไหน
+    back: ได้คอลัมน์ซ้อนกัน (MultiIndex) ดึงค่ายากขึ้น ควรใช้ .agg() ตั้งชื่อเองแทน

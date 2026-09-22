@@ -1,0 +1,480 @@
+goals:
+  - หาค่าที่ขาดหายด้วย isna()/notna() และจัดการด้วย dropna()/fillna()
+  - หาและลบแถวที่ซ้ำกันด้วย duplicated()/drop_duplicates()
+  - ทำความสะอาดข้อความ (.str.strip()/.str.title()) ให้ค่าที่ควรเหมือนกันไม่ถูกนับแยก
+  - แปลงคอลัมน์วันที่ที่มีหลายรูปแบบปนกันในคอลัมน์เดียวให้ถูกต้องทั้งหมด
+  - รู้ทันพฤติกรรม chained assignment ในปัจจุบันที่ไม่มี warning เตือนเลย
+
+examples:
+  - id: x1
+    title: หา missing values ในข้อมูลลูกค้าดิบ
+    lang: python
+    prompt: |
+      ข้อมูลลูกค้าดิบ (customers_raw) มีค่าว่างปนอยู่ อยากรู้ว่าคอลัมน์ไหนมีปัญหาบ้าง
+    steps:
+      - text: |
+          `.isna()` ให้ True/False ทีละช่อง `.sum()` ต่อจะนับจำนวน True ในแต่ละคอลัมน์
+        code: |
+          import pandas as pd
+
+          raw = pd.read_csv("data/raw/customers_raw.csv")
+          raw.isna().sum()
+      - text: |
+          ดูตัวอย่างแถวที่ไม่มีอีเมลจริงๆ
+        code: |
+          import pandas as pd
+
+          raw = pd.read_csv("data/raw/customers_raw.csv")
+          raw[raw['email'].isna()].head()
+    pitfall:
+      text: |
+        ถ้าใช้ `raw['email'] == ''` (เทียบกับสตริงว่าง) แทน `.isna()` โดยคิดว่าช่องว่างในไฟล์ CSV
+        ถูกอ่านเป็นสตริงว่าง จะได้ 0 แถวเสมอ เพราะ pandas อ่านช่อง CSV ที่ว่างเป็นค่า missing (NaN)
+        ไม่ใช่สตริงว่าง ต้องใช้ `isna()` เท่านั้นถึงจะเจอ (ยืนยันแล้วว่า isna() เจอ 165 แถว)
+      code: |
+        import pandas as pd
+
+        raw = pd.read_csv("data/raw/customers_raw.csv")
+        len(raw[raw['email'] == ''])
+  - id: x2
+    title: ทำความสะอาดชื่อเมืองที่เขียนไม่ตรงกัน
+    lang: python
+    prompt: |
+      คอลัมน์ city ในข้อมูลดิบเขียนไม่ตรงกัน (ตัวพิมพ์ใหญ่-เล็ก ช่องว่างเกิน) ทั้งที่จริงมีแค่ 8 เมือง
+    steps:
+      - text: |
+          นับจำนวนค่าที่ไม่ซ้ำก่อน (ไม่รวมค่าว่าง)
+        code: |
+          import pandas as pd
+
+          raw = pd.read_csv("data/raw/customers_raw.csv")
+          raw['city'].dropna().nunique()
+      - text: |
+          ตัดช่องว่างหน้า-หลังด้วย `.str.strip()` แล้วทำเป็น Title Case ด้วย `.str.title()` แล้วนับใหม่
+        code: |
+          import pandas as pd
+
+          raw = pd.read_csv("data/raw/customers_raw.csv")
+          raw['city'].dropna().str.strip().str.title().nunique()
+    pitfall:
+      text: |
+        ถ้าทำความสะอาดด้วย `.str.upper()` อย่างเดียว (ไม่ `.strip()` ก่อน) จะยังเหลือปัญหาซ้ำเป็นสองเท่า
+        (16 แทนที่จะเป็น 8) เพราะช่องว่างหน้า-หลังยังทำให้ `"BANGKOK"` กับ `" BANGKOK "` ถูกนับแยกกันอยู่
+        ต้องตัดช่องว่างก่อนเสมอ (.strip()) แล้วค่อยจัดการตัวพิมพ์
+      code: |
+        import pandas as pd
+
+        raw = pd.read_csv("data/raw/customers_raw.csv")
+        raw['city'].dropna().str.upper().nunique()
+  - id: x3
+    title: แปลงคอลัมน์วันที่ที่เขียนหลายรูปแบบปนกัน
+    lang: python
+    prompt: |
+      คอลัมน์ signup_date เขียนได้ 3 แบบปนกัน (ISO, DD/MM/YYYY, YYYY/MM/DD) ต้องแปลงให้ถูกต้องทั้งหมด
+    steps:
+      - text: |
+          ลองแบบง่ายสุดก่อน `format='mixed'` ให้ pandas เดารูปแบบทีละค่าเอง — **ใช้งานได้ ไม่ error**
+          แต่ผลลัพธ์ผิดสำหรับแถวรูปแบบ DD/MM/YYYY (เช่น `'03/01/2024'` กลายเป็น 1 มี.ค. แทนที่จะเป็น 3 ม.ค.)
+          เพราะไม่รู้ว่าต้องอ่านวันก่อนเดือน
+        code: |
+          import pandas as pd
+
+          pd.to_datetime(pd.Series(['03/01/2024']), format='mixed').dt.strftime('%Y-%m-%d')[0]
+      - text: |
+          ลองแก้ด้วย `dayfirst=True` — **ยังผิดอยู่** เพราะตอนนี้กลับไปทำให้สตริงแบบ ISO ที่ไม่กำกวมอยู่แล้ว
+          (เช่น `'2024-01-03'`) ผิดไปด้วย
+        code: |
+          import pandas as pd
+
+          pd.to_datetime(pd.Series(['2024-01-03']), format='mixed', dayfirst=True).dt.strftime('%Y-%m-%d')[0]
+      - text: |
+          วิธีที่ถูกต้อง — parse ทีละรูปแบบแยกกันด้วย `format=` ที่ตรงเป๊ะ (ใช้ `errors='coerce'` ให้ค่าที่ไม่ตรง
+          รูปแบบกลายเป็น NaT แทนที่จะ error) แล้วรวมด้วย `.combine_first()`
+        code: |
+          import pandas as pd
+
+          raw = pd.read_csv("data/raw/customers_raw.csv")
+          d1 = pd.to_datetime(raw['signup_date'], format='%Y-%m-%d', errors='coerce')
+          d2 = pd.to_datetime(raw['signup_date'], format='%d/%m/%Y', errors='coerce')
+          d3 = pd.to_datetime(raw['signup_date'], format='%Y/%m/%d', errors='coerce')
+          parsed = d1.combine_first(d2).combine_first(d3)
+          int(parsed.isna().sum())
+    pitfall:
+      text: |
+        ยืนยันความเสียหายแบบเจาะจง: `dayfirst=True` ทำให้สตริง ISO ที่ไม่กำกวมอยู่แล้ว (`'2024-01-03'`)
+        ถูกแปลงเป็น `'2024-03-01'` ซึ่งผิด — เพราะ `dayfirst` มีผลกับ**ทุก**สตริงที่ parse แบบ `format='mixed'`
+        ไม่ใช่แค่สตริงที่กำกวมจริงๆ
+      code: |
+        import pandas as pd
+
+        pd.to_datetime(pd.Series(['2024-01-03']), format='mixed', dayfirst=True).dt.strftime('%Y-%m-%d')[0]
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      หาแถวที่ไม่มีอีเมล (missing) เก็บไว้ในตัวแปร result เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = raw[raw['email'].___()]
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = raw[raw['email'].isna()]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ฟังก์ชันเช็คค่าว่างคือ isna
+  - id: f2
+    lang: python
+    prompt: |
+      ลบแถวที่ซ้ำกันทั้งแถว เก็บไว้ในตัวแปร result เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = raw.___()
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = raw.drop_duplicates()
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ฟังก์ชันลบแถวซ้ำคือ drop_duplicates
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนค่าว่าง (NaN) ในแต่ละคอลัมน์ของข้อมูลลูกค้าดิบ เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = raw.isna().sum()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.isna().sum()` นับจำนวนค่าว่างทีละคอลัมน์"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนแถวที่ไม่มีเมือง (city เป็นค่าว่าง) เก็บไว้ในตัวแปร n_missing_city
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_missing_city = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_missing_city = int(raw['city'].isna().sum())
+    check: |
+      check_value(n_missing_city, _sol["n_missing_city"], name="n_missing_city")
+    hints:
+      - เหมือน e1 แต่เจาะจงคอลัมน์เดียว
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนแถวที่เหลือหลังลบแถวที่ไม่มีอีเมลออก (dropna) เก็บไว้ในตัวแปร n_remaining
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_remaining = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_remaining = len(raw.dropna(subset=['email']))
+    check: |
+      check_value(n_remaining, _sol["n_remaining"], name="n_remaining")
+    hints:
+      - "`dropna(subset=['col'])` ลบเฉพาะแถวที่คอลัมน์นั้นเป็นค่าว่าง"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนแถวทั้งหมดหลังลบแถวที่ซ้ำกันทั้งแถว เก็บไว้ในตัวแปร n_after
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_after = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_after = len(raw.drop_duplicates())
+    check: |
+      check_value(n_after, _sol["n_after"], name="n_after")
+    hints:
+      - เหมือน f2 แต่ครั้งนี้ต้องการแค่จำนวนแถว
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      ทำความสะอาดคอลัมน์ city (ตัดช่องว่างหน้า-หลัง แล้วทำเป็น Title Case) นับจำนวนเมืองที่ไม่ซ้ำ
+      (ไม่รวมค่าว่าง) เก็บไว้ในตัวแปร n_cities
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_cities = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_cities = raw['city'].dropna().str.strip().str.title().nunique()
+    check: |
+      check_value(n_cities, _sol["n_cities"], name="n_cities")
+    hints:
+      - เหมือนตัวอย่าง x2
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนคู่แถวที่ซ้ำกันทั้งหมด (นับทุกแถวที่มีคู่ซ้ำ ไม่ใช่แค่แถวส่วนเกิน — ใช้ keep=False)
+      เก็บไว้ในตัวแปร n_dup_rows
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_dup_rows = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_dup_rows = int(raw.duplicated(keep=False).sum())
+    check: |
+      check_value(n_dup_rows, _sol["n_dup_rows"], name="n_dup_rows")
+    hints:
+      - "ค่าเริ่มต้นของ duplicated คือ keep='first' (ไม่นับแถวแรกว่าซ้ำ) แต่ข้อนี้ต้องการ keep=False"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      แปลงคอลัมน์ signup_date ให้ถูกต้องทั้งคอลัมน์ด้วยเทคนิค parse-แยกรูปแบบ-แล้ว-combine_first
+      (ห้ามใช้ dayfirst) เก็บผลลัพธ์ (Series ของวันที่) ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      d1 = pd.to_datetime(raw['signup_date'], format='%Y-%m-%d', errors='coerce')
+      d2 = pd.to_datetime(raw['signup_date'], format='%d/%m/%Y', errors='coerce')
+      d3 = pd.to_datetime(raw['signup_date'], format='%Y/%m/%d', errors='coerce')
+      result = d1.combine_first(d2).combine_first(d3)
+    check: |
+      check_true(result.isna().sum() == 0, "result ยังมี NaT เหลืออยู่ — ต้องแปลงให้ครบทุกรูปแบบ")
+      check_series(result, _sol["result"], name="result")
+    hints:
+      - ดูโค้ดเต็มในตัวอย่าง x3 ขั้นที่ 3
+      - ต้อง parse 3 รูปแบบแยกกัน (errors='coerce') แล้วรวมด้วย combine_first ตามลำดับ
+  - id: e8
+    level: applied
+    lang: python
+    prompt: |
+      ใช้คอลัมน์วันที่ที่แปลงถูกต้องแล้ว (เทคนิคเดียวกับ e7) หา 3 เดือนที่มีคนสมัครเยอะที่สุด
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      d1 = pd.to_datetime(raw['signup_date'], format='%Y-%m-%d', errors='coerce')
+      d2 = pd.to_datetime(raw['signup_date'], format='%d/%m/%Y', errors='coerce')
+      d3 = pd.to_datetime(raw['signup_date'], format='%Y/%m/%d', errors='coerce')
+      signup_dt = d1.combine_first(d2).combine_first(d3)
+      result = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      d1 = pd.to_datetime(raw['signup_date'], format='%Y-%m-%d', errors='coerce')
+      d2 = pd.to_datetime(raw['signup_date'], format='%d/%m/%Y', errors='coerce')
+      d3 = pd.to_datetime(raw['signup_date'], format='%Y/%m/%d', errors='coerce')
+      signup_dt = d1.combine_first(d2).combine_first(d3)
+      raw2 = raw.assign(month=signup_dt.dt.to_period('M').astype(str))
+      result = raw2.groupby('month').size().sort_values(ascending=False).head(3)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.dt.to_period('M')` ตัดวันที่ให้เหลือแค่ปี-เดือน"
+    notes: |
+      ตัวเลขนี้มาจากข้อมูลดิบ (มีแถวซ้ำ 100 คู่ปนอยู่) จึงต่างจากตัวเลขในบท SQL ที่ใช้ตาราง customers
+      ที่สะอาดแล้ว (425 สำหรับเดือนมิถุนายน 2025) — เป็นความตั้งใจ ไม่ใช่ข้อผิดพลาด
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      สาธิตว่า chained assignment ไม่มีผลอะไรกับข้อมูลต้นฉบับ: สร้าง df = pd.DataFrame({'a': [1,2,3]})
+      แล้วลอง sub = df[df['a']>1]; sub['a'] = 99 เก็บค่า df['a'] หลังจากนั้นไว้ในตัวแปร after_chained (list)
+    starter: |
+      import pandas as pd
+
+      df = pd.DataFrame({'a': [1, 2, 3]})
+      sub = df[df['a'] > 1]
+      sub['a'] = 99
+      after_chained = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.DataFrame({'a': [1, 2, 3]})
+      sub = df[df['a'] > 1]
+      sub['a'] = 99
+      after_chained = df['a'].tolist()
+    check: |
+      check_value(after_chained, _sol["after_chained"], name="after_chained")
+    hints:
+      - "ลองดูว่า df (ตัวต้นฉบับ) เปลี่ยนไปหรือเปล่าหลังจากแก้ sub"
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      ทำความสะอาดข้อมูลลูกค้าดิบให้ครบวงจร: ลบแถวที่ไม่มีอีเมล, ทำความสะอาด city (strip+title),
+      แปลง signup_date ให้ถูกต้อง (เทคนิคเดียวกับ e7), แล้วลบแถวที่อีเมลซ้ำกัน
+      (drop_duplicates(subset=['email'])) นับจำนวนลูกค้าที่เหลือ เก็บไว้ในตัวแปร n_clean
+    starter: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_clean = ___
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      clean = raw.dropna(subset=['email']).copy()
+      clean['city'] = clean['city'].str.strip().str.title()
+      d1 = pd.to_datetime(clean['signup_date'], format='%Y-%m-%d', errors='coerce')
+      d2 = pd.to_datetime(clean['signup_date'], format='%d/%m/%Y', errors='coerce')
+      d3 = pd.to_datetime(clean['signup_date'], format='%Y/%m/%d', errors='coerce')
+      clean['signup_date'] = d1.combine_first(d2).combine_first(d3)
+      clean = clean.drop_duplicates(subset=['email'])
+      n_clean = len(clean)
+    check: |
+      check_value(n_clean, _sol["n_clean"], name="n_clean")
+    hints:
+      - ทำทีละขั้นตามลำดับที่โจทย์บอก แล้วนับจำนวนแถวสุดท้าย
+      - ใช้ .copy() หลัง dropna ก่อนแก้ไขคอลัมน์ต่อ กัน SettingWithCopyWarning
+
+quiz:
+  - id: q1
+    question: "raw['email'] == '' ทำไมไม่เจอแถวที่ไม่มีอีเมลเลย"
+    choices:
+      - text: pandas อ่านช่องว่างใน CSV เป็นค่า missing (NaN) ไม่ใช่สตริงว่าง ต้องใช้ isna()
+        correct: true
+        why: ยืนยันแล้วว่า == '' เจอ 0 แถวเสมอ ทั้งที่ isna() เจอ 165 แถว
+      - text: pandas ไม่รองรับการเทียบสตริงว่างเลย
+        why: เทียบได้ปกติ แค่ไม่มีแถวไหนเป็นสตริงว่างจริงๆ เพราะ pandas แปลงเป็น NaN แทน
+      - text: ต้องใช้ raw['email'].str == '' แทน
+        why: ปัญหาไม่ได้อยู่ที่ syntax แต่อยู่ที่ค่าจริงๆ ถูกเก็บเป็น NaN ไม่ใช่สตริงว่าง
+      - text: เกิดเฉพาะกับคอลัมน์ email เท่านั้น
+        why: เกิดกับทุกคอลัมน์ข้อความที่มีช่อง CSV ว่างเหมือนกัน ไม่ใช่แค่ email
+  - id: q2
+    question: "duplicated() ค่าเริ่มต้น (keep='first') กับ duplicated(keep=False) ต่างกันยังไง"
+    choices:
+      - text: ค่าเริ่มต้นทำเครื่องหมายเฉพาะสำเนาส่วนเกิน (แถวแรกไม่นับว่าซ้ำ) ส่วน keep=False ทำเครื่องหมายทุกแถวที่มีคู่ซ้ำรวมแถวแรกด้วย
+        correct: true
+        why: ถ้าอยากรู้ "ทุกแถวที่เกี่ยวข้องกับการซ้ำ" ต้องใช้ keep=False ไม่ใช่ค่าเริ่มต้น
+      - text: ทั้งสองแบบให้ผลเหมือนกัน
+        why: ต่างกันตรงที่แถวแรกของกลุ่มซ้ำถูกนับหรือไม่
+      - text: keep=False เร็วกว่า
+        why: ความเร็วไม่ใช่ประเด็นหลัก ความต่างอยู่ที่ว่าแถวไหนถูกทำเครื่องหมายว่าซ้ำ
+      - text: ค่าเริ่มต้นนับทุกแถวที่ซ้ำ keep=False นับแค่ส่วนเกิน
+        why: กลับกัน ค่าเริ่มต้น (keep='first') นับแค่ส่วนเกิน keep=False นับทุกแถว
+  - id: q3
+    question: "ทำไม pd.to_datetime() เฉยๆ กับคอลัมน์ที่มีวันที่หลายรูปแบบปนกันถึง error"
+    choices:
+      - text: ต้องใช้ format='mixed' หรือระบุ format= ทีละแบบเอง
+        correct: true
+        why: pd.to_datetime() เฉยๆ คาดหวังว่าทุกค่าจะตรงกับ format เดียวกัน ถ้าปนกันจะ error ทันที
+      - text: pandas ไม่รองรับการแปลงวันที่จากข้อความเลย
+        why: รองรับปกติ แค่ต้องบอกวิธีจัดการรูปแบบที่ปนกัน
+      - text: ต้องแปลงเป็นตัวเลขก่อนเสมอ
+        why: ไม่จำเป็น pd.to_datetime() แปลงจากข้อความได้โดยตรงถ้าระบุ format ให้ถูก
+      - text: เกิดเฉพาะกับข้อมูลที่มีมากกว่า 1000 แถวเท่านั้น
+        why: เกิดกับข้อมูลกี่แถวก็ได้ ขึ้นกับว่ารูปแบบข้อความปนกันจริงหรือไม่
+  - id: q4
+    question: "ทำไม format='mixed' กับ dayfirst=True ยังแก้ปัญหาคอลัมน์ที่ผสมกันจริงๆ ไม่ได้สมบูรณ์"
+    choices:
+      - text: มันสลับวัน-เดือนของรูปแบบ ISO ที่ไม่กำกวมอยู่แล้วไปด้วย ทางที่ถูกต้องคือ parse แยกทีละรูปแบบแล้ว combine_first
+        correct: true
+        why: ยืนยันแล้วว่า dayfirst=True ทำให้ '2024-01-03' (ISO) ผิดไปเป็น '2024-03-01'
+      - text: dayfirst=True ใช้กับ format='mixed' ไม่ได้เลย จะ error
+        why: ไม่ error แต่ให้ผลลัพธ์ที่ผิดแบบเงียบๆ (ไม่มี error หรือ warning เตือน)
+      - text: ปัญหานี้เกิดกับข้อมูลไทยเท่านั้น
+        why: เกิดกับข้อมูลภาษาไหนก็ได้ที่มีวันที่หลายรูปแบบปนกัน ไม่เกี่ยวกับภาษา
+      - text: dayfirst=True แก้ปัญหาได้สมบูรณ์แล้ว ไม่มีข้อเสีย
+        why: ไม่จริง มันทำให้รูปแบบ ISO ที่ไม่กำกวมผิดไปด้วย
+  - id: q5
+    question: "chained assignment (df[cond]['col'] = ค่า) ในปัจจุบันมีพฤติกรรมยังไงเมื่อรันจริง"
+    choices:
+      - text: ไม่ error ไม่ warning แต่ไม่มีผลอะไรกับข้อมูลต้นฉบับเลย ต้องใช้ .loc[cond, 'col'] = ค่า แทนเสมอ
+        correct: true
+        why: ยืนยันแล้วด้วย warnings.catch_warnings() ว่าไม่มี warning ใดๆ ถูกส่งออกมาเลย
+      - text: error ทันที
+        why: ไม่ error รันผ่านได้ปกติ แค่ไม่มีผลกับข้อมูลจริง
+      - text: มี warning เตือนเหมือนเดิม (SettingWithCopyWarning)
+        why: pandas เวอร์ชันปัจจุบัน (Copy-on-Write) ไม่แสดง warning นี้แล้ว
+      - text: แก้ไขข้อมูลต้นฉบับได้ตามปกติ
+        why: ไม่ได้แก้ไขข้อมูลต้นฉบับเลย เพราะ sub เป็นสำเนาที่แยกออกไปแล้ว
+
+summary:
+  - "raw['col'] == '' หาค่าว่างจาก CSV ไม่เจอ เพราะ pandas อ่านช่องว่างเป็น NaN ต้องใช้ isna()"
+  - ทำความสะอาดข้อความต้อง .strip() ก่อนเสมอ แล้วค่อยจัดการตัวพิมพ์ (.str.title()/.str.upper())
+  - "วันที่หลายรูปแบบปนกันต้อง parse แยกทีละรูปแบบ (errors='coerce') แล้วรวมด้วย combine_first — format='mixed' กับ dayfirst แก้ไม่ได้สมบูรณ์"
+  - chained assignment ในปัจจุบันไม่มี warning เตือนเลย แก้ไขข้อมูลต้องใช้ .loc[] เสมอ
+
+interview:
+  - id: i1
+    q: เจอไฟล์ CSV ใหม่ ขั้นตอนแรกๆ ที่ควรทำเพื่อเช็คคุณภาพข้อมูลมีอะไรบ้าง
+    a: |
+      ดู `shape`/`dtypes` ก่อนเพื่อรู้ขนาดและชนิดข้อมูล ตามด้วย `isna().sum()` ต่อคอลัมน์ (มีค่าว่างตรงไหนบ้าง)
+      และ `duplicated().sum()` (มีแถวซ้ำไหม) จากนั้นเช็ค `unique()`/`nunique()` ของคอลัมน์ข้อความสำคัญ
+      เพื่อเจอปัญหาแบบที่เจอในบทนี้ (ตัวพิมพ์ไม่ตรงกัน ช่องว่างเกิน) ก่อนเริ่มวิเคราะห์จริง
+  - id: i2
+    q: คอลัมน์วันที่มีหลายรูปแบบปนกัน จะแปลงให้ถูกต้องทั้งหมดยังไง
+    a: |
+      ห้ามใช้ `pd.to_datetime()` เฉยๆ (จะ error) และห้ามใช้ `format='mixed'` กับหรือไม่กับ `dayfirst=True`
+      เพียงอย่างเดียว (ทั้งสองแบบให้ผลผิดสำหรับบางรูปแบบ) วิธีที่ถูกต้องคือ parse แยกทีละรูปแบบด้วย
+      `format=` ที่ตรงเป๊ะและ `errors='coerce'` (ให้ค่าที่ไม่ตรงกลายเป็น NaT แทนที่จะ error) แล้วรวมผล
+      ทั้งหมดด้วย `.combine_first()` ตามลำดับ สุดท้ายควรเช็คว่า `.isna().sum()` ของผลลัพธ์เป็น 0 เพื่อยืนยัน
+      ว่าแปลงครบทุกแถวจริง
+  - id: i3
+    q: ทำไมการแก้ไข DataFrame ผ่าน chained indexing ถึงเป็นอันตราย และปัจจุบัน (pandas ที่ใช้ Copy-on-Write เป็นค่าเริ่มต้น) มีพฤติกรรมต่างจากเดิมยังไง
+    a: |
+      `df[เงื่อนไข]` อาจคืนสำเนา (copy) ของข้อมูล ไม่ใช่ตัวข้อมูลจริง การเขียนต่อด้วย `['col'] = ค่า`
+      (chained indexing) จึงอาจแก้ไขแค่สำเนาชั่วคราวที่ไม่มีใครอ้างอิงถึงอีกแล้ว
+
+      ปัจจุบันปัญหานี้อันตรายกว่าเดิม เพราะ pandas เวอร์ชันที่ใช้ Copy-on-Write เป็นค่าเริ่มต้นไม่แสดง
+      `SettingWithCopyWarning` เตือนเหมือนเวอร์ชันก่อนหน้าอีกต่อไป — โค้ดดูเหมือนรันผ่านปกติทุกอย่าง
+      แต่ข้อมูลต้นฉบับไม่ถูกแก้ไขจริงเลย ทางที่ปลอดภัยเสมอคือเขียนในคำสั่งเดียวด้วย `.loc[เงื่อนไข, 'col'] = ค่า`
+
+flashcards:
+  - id: c1
+    front: ทำไม raw['col'] == '' หาแถวที่ไม่มีข้อมูลจาก CSV ไม่เจอ
+    back: pandas อ่านช่อง CSV ที่ว่างเป็น NaN ไม่ใช่สตริงว่าง ต้องใช้ isna() แทน
+  - id: c2
+    front: วิธีแปลงคอลัมน์วันที่ที่มีหลายรูปแบบปนกันอย่างถูกต้อง
+    back: parse แยกทีละรูปแบบด้วย format= ที่ตรงเป๊ะ (errors='coerce') แล้วรวมด้วย combine_first ห้ามใช้ dayfirst
+  - id: c3
+    front: chained assignment ในปัจจุบันมีผลกับข้อมูลต้นฉบับไหม
+    back: ไม่มีผลเลย และไม่มี warning เตือนด้วย ต้องใช้ .loc[เงื่อนไข, 'col'] = ค่า แทนเสมอ

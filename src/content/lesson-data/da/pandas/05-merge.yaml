@@ -1,0 +1,349 @@
+goals:
+  - เชื่อมตารางด้วย pd.merge()/.merge() ทั้งแบบ inner/left/right/outer
+  - หา "แถวที่ไม่มีคู่" ด้วย how='left' แล้วกรอง .isna()
+  - เชื่อมได้มากกว่า 2 ตาราง และระวังปัญหาแถวเบิ้ล (fan-out) — แนวคิดเดียวกับ SQL JOIN ทุกประการ
+
+examples:
+  - id: x1
+    title: ลูกค้าคนไหนที่ยังไม่เคยสั่งซื้อเลย
+    lang: python
+    prompt: |
+      ทีมการตลาดอยากส่งโปรโมชันไปกระตุ้นลูกค้าที่สมัครแล้วแต่ยังไม่เคยสั่งซื้อเลย
+    steps:
+      - text: |
+          ลอง merge แบบ inner (ค่าเริ่มต้น) ก่อน — สังเกตว่าจำนวนแถวคือจำนวน**ออเดอร์** ไม่ใช่จำนวนลูกค้า
+          เพราะลูกค้าคนเดียวมีได้หลายออเดอร์
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          customers = pd.read_csv("data/customers.csv")
+          len(orders.merge(customers, on='customer_id'))
+      - text: |
+          เปลี่ยนเป็น `how='left'` แล้วกรองแถวที่ `order_id` เป็นค่าว่าง (`.isna()`) — นี่คือลูกค้าที่ "จับคู่ไม่ได้"
+          กับออเดอร์ไหนเลย
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          customers = pd.read_csv("data/customers.csv")
+          no_orders = customers.merge(orders, on='customer_id', how='left')
+          no_orders[no_orders['order_id'].isna()][['customer_id', 'city']]
+    pitfall:
+      text: |
+        ถ้าใช้ `how='inner'` (ค่าเริ่มต้น) แทน `how='left'` ตอนหาลูกค้าที่ไม่เคยสั่งซื้อ จะไม่มีทางเจอใครเลย
+        (นับได้ 0 แถวเสมอ) เพราะ inner merge ตัดแถวที่จับคู่ไม่ได้ทิ้งไปตั้งแต่ต้น ไม่มีทางที่ `order_id`
+        จะเป็นค่าว่างให้เจอ
+      code: |
+        import pandas as pd
+
+        orders = pd.read_csv("data/orders.csv")
+        customers = pd.read_csv("data/customers.csv")
+        merged = customers.merge(orders, on='customer_id')
+        len(merged[merged['order_id'].isna()])
+  - id: x2
+    title: รายได้รวมแต่ละหมวดสินค้า (เฉพาะออเดอร์ completed)
+    lang: python
+    prompt: |
+      อยากรู้ว่าหมวดไหนทำรายได้ให้ร้านมากที่สุด นับเฉพาะออเดอร์ที่จบสมบูรณ์ (completed)
+    steps:
+      - text: |
+          เชื่อม `order_items` กับ `orders` แล้วกับ `products` (merge ได้มากกว่า 2 ตารางต่อกันเรื่อยๆ)
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+          merged = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+          merged.head()
+      - text: |
+          กรองเฉพาะ completed, สร้างคอลัมน์ revenue ด้วย `.assign()`, แล้ว groupby ตามหมวด
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+          merged = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+          rev = merged[merged['status'] == 'completed'].assign(revenue=lambda d: d.quantity * d.unit_price)
+          rev.groupby('category')['revenue'].sum()
+    pitfall:
+      text: |
+        ถ้านับ "จำนวนออเดอร์ที่ซื้อสินค้าหมวด Electronics" ด้วย `len(...)` ตรงๆ หลัง merge กับ `order_items`
+        จะได้ 2534 (นับรายการสินค้า ไม่ใช่ออเดอร์ เพราะออเดอร์เดียวอาจมีสินค้าหมวด Electronics หลายชิ้น)
+        ค่าที่ถูกต้องคือนับ `.nunique()` ของ `order_id` ซึ่งได้ 2249 — ปัญหานี้เรียกว่า fan-out เหมือนที่เจอใน SQL JOIN
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ (นับไม่ซ้ำ) ที่ซื้อสินค้าหมวด Electronics เก็บไว้ในตัวแปร n_orders
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      merged = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+      n_orders = merged[merged['category'] == 'Electronics']['order_id'].___()
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      merged = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+      n_orders = merged[merged['category'] == 'Electronics']['order_id'].nunique()
+    check: |
+      check_value(n_orders, _sol["n_orders"], name="n_orders")
+    hints:
+      - นับแบบไม่ซ้ำใช้ nunique()
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      เชื่อม order_items กับ products ด้วย product_id แล้วนับจำนวนแถวทั้งหมด เก็บไว้ในตัวแปร n_rows
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      n_rows = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      n_rows = len(order_items.merge(products, on='product_id'))
+    check: |
+      check_value(n_rows, _sol["n_rows"], name="n_rows")
+    hints:
+      - "`.merge(อีกตาราง, on='คอลัมน์ที่ใช้เชื่อม')`"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      เชื่อม orders กับ customers เรียงตาม order_id เอาแค่ 5 แถวแรก แสดง order_id, city
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      customers = pd.read_csv("data/customers.csv")
+      result = orders.merge(customers, on='customer_id').sort_values('order_id')[['order_id', 'city']].head(5)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - เชื่อมก่อนแล้วค่อยเรียงและตัดเอา 5 แถว
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยสั่งซื้อเลย เก็บไว้ในตัวแปร n_customers
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      n_customers = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = customers.merge(orders, on='customer_id', how='left')
+      n_customers = len(merged[merged['order_id'].isna()])
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+    hints:
+      - ใช้ how='left' แล้วกรอง order_id ที่เป็นค่าว่าง
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      รายได้รวม (quantity × unit_price) ของออเดอร์ที่ completed ทั้งหมด ปัด 2 ตำแหน่ง
+      เก็บไว้ในตัวแปร total_revenue
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      total_revenue = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed']
+      total_revenue = round(float((completed['quantity'] * completed['unit_price']).sum()), 2)
+    check: |
+      check_value(total_revenue, _sol["total_revenue"], name="total_revenue")
+    hints:
+      - กรองเฉพาะ completed ก่อน แล้วค่อยรวม quantity*unit_price
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      หมวดสินค้าที่มีรายได้มากที่สุด (เฉพาะ completed) เก็บไว้ในตัวแปร result (Series ที่มี 1 แถว)
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      merged = order_items.merge(orders, on='order_id').merge(products, on='product_id')
+      rev = merged[merged['status'] == 'completed'].assign(revenue=lambda d: d.quantity * d.unit_price)
+      result = rev.groupby('category')['revenue'].sum().sort_values(ascending=False).head(1)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - เหมือนตัวอย่าง x2 แต่เอาแค่อันดับ 1 ด้วย .head(1)
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      5 ลูกค้าเมือง Bangkok ที่ใช้จ่ายมากที่สุด (เฉพาะ completed) เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = customers.merge(orders, on='customer_id').merge(order_items, on='order_id')
+      bkk = merged[(merged['city'] == 'Bangkok') & (merged['status'] == 'completed')]
+      bkk = bkk.assign(revenue=lambda d: d.quantity * d.unit_price)
+      result = bkk.groupby('customer_id')['revenue'].sum().sort_values(ascending=False).head(5)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เชื่อม 3 ตารางเข้าด้วยกันก่อน แล้วค่อยกรองและ groupby
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยสั่งซื้อเลย แยกตามเมือง เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      nc = customers.merge(orders, on='customer_id', how='left')
+      nc = nc[nc['order_id'].isna()]
+      result = nc.groupby('city').size().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือน e3 แต่แยกตามเมืองด้วย groupby
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนคู่สินค้าในหมวดเดียวกันที่ราคาต่างกันไม่เกิน 10 บาท (self-merge, นับแต่ละคู่ครั้งเดียว)
+      เก็บไว้ในตัวแปร n_pairs
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_pairs = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      m = products.merge(products, on='category', suffixes=('_1', '_2'))
+      m = m[m['product_id_1'] < m['product_id_2']]
+      n_pairs = len(m[(m['price_1'] - m['price_2']).abs() <= 10])
+    check: |
+      check_value(n_pairs, _sol["n_pairs"], name="n_pairs")
+    hints:
+      - "merge ตารางกับตัวเอง (self-merge) ใช้ suffixes กันชื่อคอลัมน์ชนกัน"
+      - "`product_id_1 < product_id_2` กันไม่ให้นับคู่ซ้ำหรือคู่กับตัวเอง"
+
+quiz:
+  - id: q1
+    question: "how='inner' (ค่าเริ่มต้น) กับ how='left' ต่างกันยังไง"
+    choices:
+      - text: left เก็บทุกแถวจากตารางซ้ายไว้เสมอ (ใส่ NaN ถ้าหาคู่ไม่เจอ) inner ตัดแถวที่จับคู่ไม่ได้ทิ้ง
+        correct: true
+        why: นี่คือความต่างหลัก เหมือน LEFT JOIN/INNER JOIN ใน SQL ทุกประการ
+      - text: left เร็วกว่า inner เสมอ
+        why: ความเร็วขึ้นกับขนาดข้อมูล ไม่ใช่กติกาตายตัว
+      - text: ทั้งสองแบบให้ผลลัพธ์เหมือนกันทุกกรณี
+        why: ต่างกันชัดเจนเมื่อมีแถวที่จับคู่ไม่ได้ในตารางใดตารางหนึ่ง
+      - text: inner ใช้ได้กับ 2 ตารางเท่านั้น
+        why: merge กี่ตารางก็ได้ไม่ว่าจะใช้ how แบบไหน
+  - id: q2
+    question: ทำไม len(...) หลัง merge กับตารางลูก (order_items) ถึงมากกว่าจำนวนออเดอร์จริง
+    choices:
+      - text: เพราะออเดอร์ 1 ใบมีสินค้าได้หลายชิ้น การ merge จึงคูณแถวตามจำนวนสินค้า (fan-out)
+        correct: true
+        why: แก้ด้วย .nunique() บนคอลัมน์ที่ไม่อยากนับซ้ำ เหมือนที่เจอใน SQL JOIN
+      - text: merge มี bug ทำให้นับซ้ำโดยไม่ตั้งใจ
+        why: ไม่ใช่ bug เป็นพฤติกรรมปกติของ merge แบบ one-to-many
+      - text: ต้องใช้ how='left' แทน how='inner' ถึงจะนับถูก
+        why: ปัญหานี้เกิดกับ merge ทุกแบบเมื่อความสัมพันธ์เป็น one-to-many ไม่เกี่ยวกับ left/inner
+      - text: order_items มีข้อมูลผิดพลาดปนอยู่
+        why: ข้อมูลไม่ได้ผิด แค่ธรรมชาติของความสัมพันธ์ 1 ออเดอร์ต่อหลายสินค้า
+  - id: q3
+    question: จะหา "แถวที่ไม่มีคู่" ทำยังไง
+    choices:
+      - text: "merge(..., how='left') แล้วกรองคอลัมน์จากตารางขวาด้วย .isna()"
+        correct: true
+        why: how='left' ใส่ค่าว่างให้ตารางขวาเมื่อจับคู่ไม่ได้ กรองด้วย isna() จึงเจอเฉพาะแถวที่ไม่มีคู่
+      - text: "merge(..., how='inner') แล้วกรองด้วย .isna()"
+        why: inner ตัดแถวที่ไม่มีคู่ทิ้งไปแล้ว ไม่มีทางเจอค่าว่างเลย
+      - text: ใช้ groupby แทน merge
+        why: groupby ไม่ได้ช่วยหาแถวที่ไม่มีคู่ระหว่างสองตาราง
+      - text: ต้องเขียน loop วนเช็คทีละแถวเอง
+        why: merge + isna() ทำได้ในบรรทัดเดียว ไม่ต้องเขียน loop
+
+summary:
+  - "how='left' เก็บทุกแถวจากตารางซ้าย ใส่ NaN เมื่อหาคู่ในตารางขวาไม่เจอ how='inner' (ค่าเริ่มต้น) ตัดแถวที่ไม่มีคู่ทิ้ง"
+  - หา "แถวที่ไม่มีคู่" ด้วย merge(how='left') แล้วกรองคอลัมน์จากตารางขวาด้วย .isna()
+  - merge กับตารางแบบ one-to-many ทำให้แถวเบิ้ล (fan-out) ระวัง len(...) นับซ้ำ ใช้ .nunique() แทน
+
+interview:
+  - id: i1
+    q: pandas merge() กับ SQL JOIN เหมือนหรือต่างกันยังไง
+    a: |
+      แนวคิดเดียวกันทุกประการ (`how='inner'/'left'/'right'/'outer'` ตรงกับ SQL JOIN แต่ละแบบ)
+      ต่างกันแค่ syntax เท่านั้น ปัญหา fan-out และวิธีหา "แถวที่ไม่มีคู่" ก็เหมือนกันเป๊ะ
+      เพราะเป็นคุณสมบัติของความสัมพันธ์ระหว่างตาราง ไม่ใช่ของภาษาใดภาษาหนึ่งโดยเฉพาะ
+
+flashcards:
+  - id: c1
+    front: merge how='left' ต่างจาก how='inner' ยังไง
+    back: left เก็บทุกแถวจากตารางซ้าย ใส่ NaN เมื่อหาคู่ไม่เจอ inner ตัดแถวที่ไม่มีคู่ทิ้ง
+  - id: c2
+    front: fan-out หลัง merge แก้ยังไง
+    back: ใช้ .nunique() บนคอลัมน์ที่ไม่อยากนับซ้ำ แทน len(...) ตรงๆ

@@ -1,0 +1,302 @@
+goals:
+  - สรุปข้อมูลเป็นกลุ่มด้วย groupby() ร่วมกับ .size()/.agg()
+  - ตั้งชื่อคอลัมน์ผลลัพธ์ด้วย named aggregation (.agg(ชื่อ=('คอลัมน์', 'ฟังก์ชัน')))
+  - กรอง "กลุ่ม" หลังสรุปแล้วด้วยการกรอง Series/DataFrame ผลลัพธ์ต่อ (pandas ไม่มี HAVING)
+
+examples:
+  - id: x1
+    title: จำนวนลูกค้าต่อเมือง เรียงจากมากไปน้อย
+    lang: python
+    prompt: |
+      ทีมการตลาดอยากรู้ว่าเมืองไหนมีลูกค้าเยอะที่สุด
+    steps:
+      - text: |
+          `.groupby('city').size()` นับจำนวนแถวในแต่ละกลุ่ม
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          customers.groupby('city').size()
+      - text: |
+          ต่อด้วย `.sort_values(ascending=False)` เพื่อเรียงจากมากไปน้อย
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          customers.groupby('city').size().sort_values(ascending=False)
+    pitfall:
+      text: |
+        อยากกรองระหว่างจัดกลุ่มแบบ SQL's HAVING เช่น `customers.groupby('city').size() > 300`
+        โค้ดนี้รันได้แต่ได้ Series ของ True/False เท่านั้น ยังไม่ใช่ผลลัพธ์ที่กรองแล้ว ต้องเอา Series บูลีนนี้
+        ไปใส่ `[...]` ต่ออีกทีถึงจะกรองจริง (ดูตัวอย่างที่ถูกต้องในตัวอย่างถัดไป)
+      code: |
+        import pandas as pd
+
+        customers = pd.read_csv("data/customers.csv")
+        customers.groupby('city').size() > 300
+  - id: x2
+    title: เมืองไหนมีลูกค้ามากกว่า 300 คน (กรองผลลัพธ์หลังจัดกลุ่ม)
+    lang: python
+    prompt: |
+      ต่อจากตัวอย่างที่แล้ว อยากเห็นเฉพาะเมืองที่มีลูกค้าค่อนข้างเยอะ (มากกว่า 300 คน) เท่านั้น
+    steps:
+      - text: |
+          นับจำนวนลูกค้าต่อเมืองก่อนเหมือนเดิม เก็บผลไว้ในตัวแปร
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          counts = customers.groupby('city').size()
+          counts
+      - text: |
+          เอา Series ที่ได้ไปกรองต่อด้วย `[...]` จริงๆ (ไม่ใช่แค่เทียบเฉยๆ)
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          counts = customers.groupby('city').size()
+          counts[counts > 300]
+    pitfall:
+      text: |
+        ต่างจาก SQL ตรงที่ pandas ไม่มีคำสั่ง `HAVING` แยกต่างหาก การ "กรองหลังจัดกลุ่ม" ใน pandas
+        คือการกรอง Series/DataFrame ผลลัพธ์ต่อด้วย `[...]` เหมือนกรอง DataFrame ทั่วไปทุกประการ
+        ไม่มี syntax พิเศษให้เรียนรู้เพิ่ม
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของสินค้าแต่ละหมวด ปัดเป็นจำนวนเต็ม เรียงจากแพงไปถูก เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category')['price'].___().round(0).sort_values(ascending=___)
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category')['price'].mean().round(0).sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ฟังก์ชันหาค่าเฉลี่ยคือ mean
+      - "\"แพงไปถูก\" คือ ascending=False"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์แต่ละสถานะ เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders.groupby('status').size()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.groupby('status').size()` นับจำนวนแถวต่อกลุ่ม"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      ราคาต่ำสุดและสูงสุดของสินค้าแต่ละหมวด แสดงคอลัมน์ lo, hi เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category').agg(lo=('price', 'min'), hi=('price', 'max'))
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "ตั้งชื่อคอลัมน์เองด้วย .agg(ชื่อ=('คอลัมน์','ฟังก์ชัน'))"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่สมัครในแต่ละปี (ใช้ pd.to_datetime ดึงปีก่อน) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.assign(y=pd.to_datetime(customers['signup_date']).dt.year).groupby('y').size()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.assign(y=...)` เพิ่มคอลัมน์ใหม่โดยไม่แก้ DataFrame เดิม"
+      - "`pd.to_datetime(col).dt.year` ดึงปีออกจากวันที่"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์แต่ละวิธีจ่ายเงิน เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders.groupby('payment_method').size()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - เหมือน e1 แต่เปลี่ยนคอลัมน์ที่ groupby
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      หมวดสินค้าที่มีจำนวนสินค้าน้อยกว่า 20 ชิ้น (กรองผลลัพธ์หลังจัดกลุ่ม) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category').size().loc[lambda s: s < 20]
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.loc[lambda s: เงื่อนไข]` กรอง Series ผลลัพธ์ต่อได้ในบรรทัดเดียว"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      วิธีจ่ายเงินที่มีออเดอร์อย่างน้อย 1000 รายการ เรียงจากมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders.groupby('payment_method').size().loc[lambda s: s >= 1000].sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - กรองก่อนแล้วค่อยเรียง หรือเรียงก่อนแล้วค่อยกรองก็ได้ผลเหมือนกัน
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      ส่วนลดเฉลี่ย (ปัด 1 ตำแหน่ง) ของออเดอร์ที่มีส่วนลด แยกตามวิธีจ่ายเงิน เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders[orders['discount_pct'].notna()].groupby('payment_method')['discount_pct'].mean().round(1)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - กรองออเดอร์ที่ "มีส่วนลด" ด้วย notna() ก่อน แล้วค่อย groupby
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      เมืองที่สัดส่วนลูกค้าจากช่องทาง organic มากกว่า 46% (ปัด 1 ตำแหน่งเป็น %) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.groupby('city').apply(lambda g: (g['channel'] == 'organic').mean() * 100, include_groups=False).round(1)
+      result = result[result > 46].sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.apply(lambda g: ..., include_groups=False)` ให้เขียนสูตรที่คำนวณจากข้อมูลทั้งกลุ่มได้อย่างอิสระ"
+      - "`(เงื่อนไข).mean()` ของค่า True/False คือสัดส่วนของ True"
+
+quiz:
+  - id: q1
+    question: pandas มีคำสั่งเทียบเท่า HAVING ของ SQL ไหม
+    choices:
+      - text: ไม่มีคำสั่งเฉพาะ ใช้วิธีกรอง Series/DataFrame ผลลัพธ์ต่อหลังจัดกลุ่มแทน
+        correct: true
+        why: pandas ใช้หลักการเดียวกับกรอง DataFrame ทั่วไป ไม่มี syntax พิเศษแยกต่างหากแบบ HAVING
+      - text: มี ใช้คำสั่ง .having()
+        why: pandas ไม่มีเมธอด .having() ให้ใช้
+      - text: มี ใช้ .filter() เท่านั้น
+        why: ".filter() มีอยู่จริงแต่ทำงานคนละแบบ (กรองทั้งกลุ่มออกตามเงื่อนไข ไม่ใช่กรองผลสรุป) วิธีที่ใช้บ่อยกว่าคือกรองผลลัพธ์ด้วย [...] ตรงๆ"
+      - text: ไม่สามารถกรองหลังจัดกลุ่มได้เลย
+        why: ทำได้ปกติ แค่ไม่มีคำสั่งเฉพาะ ใช้ boolean indexing กับผลลัพธ์แทน
+  - id: q2
+    question: ".agg(ชื่อ=('col', 'func')) มีประโยชน์ยังไง"
+    choices:
+      - text: ตั้งชื่อคอลัมน์ผลลัพธ์ได้เองแทนที่จะใช้ชื่อ default ที่อ่านยาก
+        correct: true
+        why: named aggregation ทำให้ผลลัพธ์มีคอลัมน์ชื่อสื่อความหมาย อ่านและใช้งานต่อง่ายกว่า
+      - text: ทำให้คำนวณเร็วขึ้น
+        why: ไม่ได้เกี่ยวกับความเร็ว แค่ช่วยเรื่องการตั้งชื่อคอลัมน์
+      - text: ใช้ได้กับ groupby เท่านั้น ใช้กับ DataFrame ปกติไม่ได้
+        why: named aggregation ใช้กับ groupby().agg() โดยเฉพาะ แต่ไม่ได้จำกัดแค่นั้นเสมอไป
+      - text: จำเป็นต้องใช้เสมอ ไม่มีวิธีอื่น
+        why: ไม่ระบุชื่อก็ได้ (ใช้ default) แต่จะได้ชื่อคอลัมน์ที่อ่านยากกว่า
+  - id: q3
+    question: "`groupby('x').size() > 300` ได้ผลลัพธ์แบบไหน"
+    choices:
+      - text: Series ของ True/False (ยังไม่ใช่ผลลัพธ์ที่กรองแล้ว)
+        correct: true
+        why: ต้องเอา Series บูลีนนี้ไปใส่ [...] กับผลลัพธ์เดิมอีกทีถึงจะได้ผลลัพธ์ที่กรองแล้วจริงๆ
+      - text: DataFrame ที่กรองแล้วเรียบร้อย
+        why: ยังไม่กรอง แค่เทียบค่าได้ Series บูลีนออกมาเฉยๆ
+      - text: จำนวนกลุ่มที่มากกว่า 300
+        why: ไม่ใช่ตัวเลขนับจำนวน แต่เป็น Series ของ True/False ต่อกลุ่ม
+      - text: error เพราะเทียบ Series กับตัวเลขไม่ได้
+        why: เทียบได้ปกติ ได้ผลเป็น Series ของ True/False ไม่ error
+
+summary:
+  - groupby(col).agg(...)/.size() สรุปข้อมูลเป็นกลุ่ม ตั้งชื่อคอลัมน์เองได้ด้วย named aggregation
+  - pandas ไม่มีคำสั่งเทียบเท่า HAVING ต้องกรองผลลัพธ์ต่อด้วย [...] หลังจัดกลุ่มเสร็จแล้ว
+  - .assign() เพิ่มคอลัมน์ใหม่ชั่วคราวได้โดยไม่แก้ DataFrame เดิม มีประโยชน์มากก่อน groupby
+
+interview:
+  - id: i1
+    q: อธิบายวิธี "กรองหลังจัดกลุ่ม" ใน pandas เทียบกับ HAVING ใน SQL
+    a: |
+      SQL มี `HAVING` แยกจาก `WHERE` ชัดเจน (WHERE กรองก่อนจัดกลุ่ม, HAVING กรองหลังจัดกลุ่ม)
+      ส่วน pandas ไม่มีคำสั่งพิเศษสำหรับกรองหลังจัดกลุ่ม ใช้หลักการเดียวกับการกรอง DataFrame ทั่วไป
+      คือเอาผลลัพธ์จาก `groupby(...).agg(...)` หรือ `.size()` (ซึ่งเป็น Series/DataFrame ธรรมดา)
+      ไปกรองต่อด้วย boolean indexing (`result[result > ค่า]`) เหมือนกรองตารางทั่วไป ไม่มี syntax ใหม่ต้องเรียนรู้
+
+flashcards:
+  - id: c1
+    front: pandas มีคำสั่งเทียบเท่า HAVING ไหม
+    back: ไม่มี ใช้วิธีกรองผลลัพธ์จาก groupby ต่อด้วย boolean indexing แทน
+  - id: c2
+    front: .agg(n=('col','count')) ทำอะไร
+    back: จัดกลุ่มแล้วนับจำนวน ตั้งชื่อคอลัมน์ผลลัพธ์ว่า n

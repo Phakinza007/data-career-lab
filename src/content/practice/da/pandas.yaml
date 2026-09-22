@@ -1,0 +1,278 @@
+title: "ชุดฝึกท้าย module: pandas"
+exercises:
+  - id: p1
+    level: basic
+    lang: python
+    prompt: |
+      สินค้าหมวด Fashion ราคาต่ำกว่า 500 บาท แสดง product_name, price เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[(products['category'] == 'Fashion') & (products['price'] < 500)][['product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ทบทวนบทที่ 1 (boolean mask + &)
+  - id: p2
+    level: basic
+    lang: python
+    prompt: |
+      5 ออเดอร์แรกสุดที่ถูกยกเลิก (order_id น้อยไปมาก) แสดง order_id, order_date เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders[orders['status'] == 'cancelled'].sort_values('order_id').head(5)[['order_id', 'order_date']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - order_id เป็นคีย์หลัก เรียงได้ตรงๆ ไม่มีค่าซ้ำ
+  - id: p3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนสินค้าที่ราคามากกว่า 1000 บาท แยกตามหมวด เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[products['price'] > 1000].groupby('category').size()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - ทบทวนบทที่ 4 (groupby + size)
+  - id: p4
+    level: basic
+    lang: python
+    prompt: |
+      ช่องทางสมัคร (channel) ที่มีลูกค้ามากกว่า 500 คน เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.groupby('channel').size().loc[lambda s: s > 500]
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "\"pandas ไม่มี HAVING\" — กรองหลัง groupby ด้วย .loc[lambda s: ...]"
+  - id: p5
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ที่จ่ายด้วย bank_transfer และมีส่วนลด เก็บไว้ในตัวแปร n_orders
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = len(orders[(orders['payment_method'] == 'bank_transfer') & (orders['discount_pct'].notna())])
+    check: |
+      check_value(n_orders, _sol["n_orders"], name="n_orders")
+    hints:
+      - "\"มีส่วนลด\" คือ discount_pct ไม่ใช่ค่าว่าง — ใช้ .notna()"
+  - id: p6
+    level: applied
+    lang: python
+    prompt: |
+      5 ลูกค้าเมือง Chiang Mai ที่ใช้จ่ายมากที่สุด (เฉพาะออเดอร์ completed) เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      r = customers.merge(orders, on='customer_id').merge(order_items, on='order_id')
+      r = r[(r['city'] == 'Chiang Mai') & (r['status'] == 'completed')].assign(rev=lambda d: d.quantity * d.unit_price)
+      result = r.groupby('customer_id')['rev'].sum().sort_values(ascending=False).head(5)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - merge 3 ตารางก่อน (customers, orders, order_items) แล้วค่อยกรองและรวม
+  - id: p7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อสินค้าที่ราคาต่อชิ้นแพงกว่า 10000 บาท (นับไม่ซ้ำคน) เก็บไว้ในตัวแปร n_customers
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_customers = orders.merge(order_items, on='order_id').loc[lambda d: d['unit_price'] > 10000, 'customer_id'].nunique()
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+    hints:
+      - merge แล้วกรอง unit_price ก่อน ค่อย nunique บน customer_id
+  - id: p8
+    level: challenge
+    lang: python
+    prompt: |
+      หมวดสินค้าที่มีจำนวนสินค้าน้อยกว่าค่าเฉลี่ยจำนวนสินค้าต่อหมวด เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      c = products.groupby('category').size()
+      result = c[c < c.mean()]
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - หา c (จำนวนต่อหมวด) ก่อน แล้วเทียบกับ c.mean()
+  - id: p9
+    level: applied
+    lang: python
+    prompt: |
+      3 สินค้าราคาแพงที่สุดในหมวด Sports แสดง product_name, price เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[products['category'] == 'Sports'].nlargest(3, 'price')[['product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "`.nlargest(n, 'col')` เร็วกว่า sort_values().head(n) และอ่านง่ายกว่า"
+  - id: p10
+    level: challenge
+    lang: python
+    prompt: |
+      แต่ละเมืองมีสัดส่วนรายได้ (เฉพาะ completed) เท่าไรของรายได้รวมทั้งหมด (ปัด 1 ตำแหน่งเป็น %)
+      เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      r2 = customers.merge(orders, on='customer_id').merge(order_items, on='order_id')
+      r2 = r2[r2['status'] == 'completed'].assign(rev=lambda d: d.quantity * d.unit_price)
+      byc = r2.groupby('city')['rev'].sum()
+      result = (byc / byc.sum() * 100).round(1).sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - หารายได้ต่อเมืองก่อน แล้วหารด้วยผลรวมทั้งหมดคูณ 100
+  - id: p11
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ทั้งหมดในเดือนกุมภาพันธ์ (ทุกปีรวมกัน) เก็บไว้ในตัวแปร n_orders
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = len(orders[pd.to_datetime(orders['order_date']).dt.month == 2])
+    check: |
+      check_value(n_orders, _sol["n_orders"], name="n_orders")
+    hints:
+      - "`.dt.month` ใช้ได้กับทุกปีพร้อมกันเพราะไม่สนใจปี"
+  - id: p12
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่สมัครในไตรมาส 4 ปี 2024 (ต.ค.–ธ.ค.) เก็บไว้ในตัวแปร n_customers
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_customers = len(customers[(customers['signup_date'] >= '2024-10-01') & (customers['signup_date'] <= '2024-12-31')])
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+    hints:
+      - "signup_date ในตาราง customers เป็น ISO (YYYY-MM-DD) อยู่แล้ว เทียบเป็นสตริงตรงๆ ได้เลย"
+  - id: p13
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนแถวในข้อมูลลูกค้าดิบ (customers_raw) ที่ไม่มีอีเมล เก็บไว้ในตัวแปร n_missing
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      raw = pd.read_csv("data/raw/customers_raw.csv")
+      n_missing = int(raw['email'].isna().sum())
+    check: |
+      check_value(n_missing, _sol["n_missing"], name="n_missing")
+    hints:
+      - ช่อง CSV ที่ว่างถูกอ่านเป็น NaN ใช้ isna() ไม่ใช่ == ''
+  - id: p14
+    level: basic
+    lang: python
+    prompt: |
+      3 สินค้าที่ถูกสั่งซื้อมากที่สุด (นับจำนวนแถวใน order_items หลัง merge) เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = order_items.merge(products, on='product_id').groupby('product_name').size().sort_values(ascending=False).head(3)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - merge order_items กับ products ก่อน แล้วนับด้วย groupby+size
+  - id: p15
+    level: applied
+    lang: python
+    prompt: |
+      ลูกค้าเมือง Khon Kaen ใช้จ่ายรวมเท่าไร (เฉพาะ completed) ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร total
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      r3 = customers.merge(orders, on='customer_id').merge(order_items, on='order_id')
+      r3 = r3[(r3['city'] == 'Khon Kaen') & (r3['status'] == 'completed')]
+      total = round(float((r3['quantity'] * r3['unit_price']).sum()), 2)
+    check: |
+      check_value(total, _sol["total"], name="total")
+    hints:
+      - merge 3 ตาราง กรองเมืองและสถานะ แล้วรวม quantity คูณ unit_price
+  - id: p16
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนสินค้าที่ไม่เคยอยู่ในออเดอร์ที่ถูกยกเลิกเลย เก็บไว้ในตัวแปร n_products
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      cancelled_pids = order_items.merge(orders, on='order_id').loc[lambda d: d['status'] == 'cancelled', 'product_id'].unique()
+      n_products = len(products[~products['product_id'].isin(cancelled_pids)])
+    check: |
+      check_value(n_products, _sol["n_products"], name="n_products")
+    hints:
+      - หา product_id ที่เคยอยู่ในออเดอร์ยกเลิกก่อน แล้วกรองสินค้าที่ไม่อยู่ในลิสต์นั้น

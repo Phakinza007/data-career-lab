@@ -1,0 +1,303 @@
+goals:
+  - เข้าใจความต่างของ .loc (อ้างอิงด้วย label) กับ .iloc (อ้างอิงด้วยตำแหน่ง)
+  - เลือกทั้งแถวและคอลัมน์พร้อมกันด้วย .loc/.iloc
+  - รู้ว่าช่วงท้ายของ .loc รวมด้วย (inclusive) ต่างจาก .iloc/slice ปกติของ Python ที่ไม่รวม (exclusive)
+
+examples:
+  - id: x1
+    title: ดึงแถวและคอลัมน์ด้วยตำแหน่ง (.iloc)
+    lang: python
+    prompt: |
+      อยากดึงข้อมูลบางส่วนของตาราง products โดยอ้างอิงด้วย "ตำแหน่ง" ไม่ใช่ชื่อคอลัมน์หรือเงื่อนไข
+    steps:
+      - text: |
+          `.iloc[0]` ดึงแถวแรก (ตำแหน่ง 0) ทั้งแถว ได้ผลเป็น Series
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.iloc[0]
+      - text: |
+          ระบุทั้งแถวและคอลัมน์พร้อมกันได้ด้วย `.iloc[ช่วงแถว, ช่วงคอลัมน์]`
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.iloc[0:3, 0:2]
+    pitfall:
+      text: |
+        หลายคนเข้าใจผิดว่า `.iloc[0:3]` จะได้ถึงแถวตำแหน่ง 3 ด้วย (รวม 4 แถว) เหมือน `.loc`
+        แต่ `.iloc` ใช้กติกา slice แบบ Python ทั่วไปที่**ไม่รวม**ขอบท้าย ผลคือได้แค่ตำแหน่ง 0, 1, 2 (3 แถว) เท่านั้น
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        len(products.iloc[0:3])
+  - id: x2
+    title: ดึงข้อมูลด้วยเงื่อนไข พร้อมเลือกคอลัมน์ (.loc)
+    lang: python
+    prompt: |
+      อยากดูเฉพาะสินค้าหมวด Books และแสดงแค่บางคอลัมน์
+    steps:
+      - text: |
+          `.loc[เงื่อนไข]` กรองแถวด้วยเงื่อนไข boolean เหมือน `df[เงื่อนไข]` ทั่วไป
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.loc[products['category'] == 'Books']
+      - text: |
+          ใส่รายชื่อคอลัมน์ต่อจากเงื่อนไข เพื่อเลือกทั้งแถวและคอลัมน์ในคำสั่งเดียว
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.loc[products['category'] == 'Books', ['product_name', 'price']]
+    pitfall:
+      text: |
+        `.loc` รวมขอบท้ายของช่วง (inclusive) ต่างจาก `.iloc`/slice ปกติของ Python ที่ไม่รวม
+        ลองดูตัวอย่างนี้: หลังเรียงและ reset index แล้ว `.loc[0:2]` ได้ 3 แถว (ตำแหน่ง 0, 1, 2)
+        ไม่ใช่ 2 แถวแบบที่ `.iloc[0:2]` จะให้
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        len(products.sort_values('price').reset_index(drop=True).loc[0:2])
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      ดึงเฉพาะลูกค้าจากเมือง Phuket แสดงคอลัมน์ customer_id กับ signup_date เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.___[customers['city'] ___ 'Phuket', ['customer_id', 'signup_date']]
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.loc[customers['city'] == 'Phuket', ['customer_id', 'signup_date']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - เลือกทั้งแถวและคอลัมน์พร้อมกันด้วย .loc
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      แถวสุดท้ายของตาราง products (ใช้ .iloc) แสดง product_name กับ price เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.iloc[-1][['product_name', 'price']]
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "ตำแหน่ง -1 หมายถึงแถวสุดท้าย"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      ตำแหน่งที่ 5 ถึง 9 (นับจาก 0) ของ customers แสดง customer_id กับ city เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.iloc[5:10][['customer_id', 'city']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "`.iloc[5:10]` ไม่รวมตำแหน่ง 10"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่อยู่เมือง Bangkok (ใช้ .loc) เก็บไว้ในตัวแปร n_bangkok
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_bangkok = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_bangkok = len(customers.loc[customers['city'] == 'Bangkok'])
+    check: |
+      check_value(n_bangkok, _sol["n_bangkok"], name="n_bangkok")
+    hints:
+      - ".loc[เงื่อนไข] กรองแถวได้เหมือน df[เงื่อนไข]"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ต้นทุน (cost) ของสินค้าชิ้นแรกในตาราง (ใช้ .iloc ดึงค่าเดียว จากคอลัมน์สุดท้าย) เก็บไว้ในตัวแปร first_cost
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      first_cost = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      first_cost = float(products.iloc[0, -1])
+    check: |
+      check_value(first_cost, _sol["first_cost"], name="first_cost")
+    hints:
+      - "`.iloc[แถว, คอลัมน์]` ระบุตำแหน่งทั้งสองแกนพร้อมกัน คอลัมน์สุดท้ายคือตำแหน่ง -1"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      ลูกค้าจากช่องทาง promo (ใช้ .loc) แสดง customer_id กับ signup_date เอาแค่ 5 แถวแรกตามที่ปรากฏในตาราง
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.loc[customers['channel'] == 'promo', ['customer_id', 'signup_date']].head(5)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - ต่อ .head(5) หลัง .loc[...] เพื่อตัดเอาแค่ 5 แถวแรก
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ตั้ง order_id เป็น index แล้วดึงข้อมูลออเดอร์หมายเลข 1 แสดง customer_id กับ status
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders.set_index('order_id').loc[1, ['customer_id', 'status']]
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.set_index('order_id')` ทำให้ .loc[1] อ้างอิงถึง order_id=1 โดยตรง"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      สินค้าที่ราคามากกว่า 10000 บาท (ใช้ .loc) แสดงเฉพาะคอลัมน์ category เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.loc[products['price'] > 10000, 'category']
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - ระบุชื่อคอลัมน์เดียว (ไม่ใช่ list) หลังเครื่องหมายจุลภาคใน .loc จะได้ Series
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      เรียงสินค้าตามราคาจากถูกไปแพง รีเซ็ต index ก่อน แล้วใช้ .loc[0:2] ดึง 3 แถวแรก
+      (สังเกตว่า .loc รวมขอบท้าย) แสดง product_name, price เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.sort_values('price').reset_index(drop=True).loc[0:2][['product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - ต้อง reset_index(drop=True) ก่อน ไม่งั้น label เดิมจะไม่ใช่ 0,1,2 เรียงกัน
+      - .loc[0:2] ได้ 3 แถว (รวม label 2 ด้วย)
+
+quiz:
+  - id: q1
+    question: .loc กับ .iloc ต่างกันยังไง
+    choices:
+      - text: .loc อ้างอิงด้วย label (ชื่อ/ค่าดัชนี) ส่วน .iloc อ้างอิงด้วยตำแหน่ง (เลขลำดับ เริ่มจาก 0)
+        correct: true
+        why: นี่คือความต่างหลัก ถ้า index ไม่ใช่ตัวเลขเรียงต่อกัน .loc[5] กับ .iloc[5] อาจได้คนละแถวกันเลย
+      - text: .loc ใช้กับตัวเลขเท่านั้น .iloc ใช้กับข้อความเท่านั้น
+        why: ทั้งสองใช้ได้กับ index ชนิดไหนก็ได้ ความต่างอยู่ที่ label vs position
+      - text: ทั้งสองแบบให้ผลเหมือนกันทุกกรณี
+        why: ต่างกันชัดเจนเมื่อ index ไม่ใช่เลขเรียงต่อกันตั้งแต่ 0 หรือเมื่อใช้ช่วง (slice)
+      - text: .iloc เร็วกว่า .loc เสมอ
+        why: ความเร็วไม่ใช่ประเด็นหลักของบทนี้ ความต่างสำคัญคือวิธีอ้างอิง
+  - id: q2
+    question: .loc[0:2] กับ .iloc[0:2] ต่างกันยังไง
+    choices:
+      - text: ".loc[0:2] รวมขอบท้าย (ได้ 3 แถว: 0,1,2) ส่วน .iloc[0:2] ไม่รวม (ได้ 2 แถว: 0,1)"
+        correct: true
+        why: .loc ใช้กติกา label แบบรวมขอบท้าย ส่วน .iloc ใช้กติกา slice ของ Python ที่ไม่รวมขอบท้าย
+      - text: ทั้งสองแบบให้ 2 แถวเท่ากัน
+        why: .loc[0:2] ให้ 3 แถวเพราะรวมขอบท้าย ต่างจาก .iloc[0:2]
+      - text: ทั้งสองแบบให้ 3 แถวเท่ากัน
+        why: .iloc[0:2] ให้แค่ 2 แถว เพราะไม่รวมขอบท้ายแบบ .loc
+      - text: ขึ้นอยู่กับว่า DataFrame มีกี่แถว
+        why: ผลต่างนี้เกิดจากกติกาของ .loc/.iloc เอง ไม่ขึ้นกับขนาดของ DataFrame
+  - id: q3
+    question: จะเลือกทั้งแถวและคอลัมน์พร้อมกันต้องเขียนยังไง
+    choices:
+      - text: ".loc[เงื่อนไขแถว, รายชื่อคอลัมน์] หรือ .iloc[ช่วงแถว, ช่วงคอลัมน์]"
+        correct: true
+        why: ใส่ทั้งสองแกนในวงเล็บเดียวกัน คั่นด้วยจุลภาค
+      - text: "df[เงื่อนไข][คอลัมน์] เขียนต่อกันสองที"
+        why: วิธีนี้เป็น chained indexing ซึ่งอาจมีปัญหาตอนจะแก้ไขข้อมูล (อธิบายเต็มในบทที่ 7)
+      - text: ต้องเขียนแยกเป็นสองบรรทัดเสมอ
+        why: เขียนในบรรทัดเดียวด้วย .loc/.iloc ได้เลย
+      - text: ใช้ได้แค่กับ .iloc เท่านั้น
+        why: ทั้ง .loc และ .iloc รับสองแกนพร้อมกันได้เหมือนกัน
+
+summary:
+  - .loc อ้างอิงด้วย label ส่วน .iloc อ้างอิงด้วยตำแหน่ง (เลขลำดับ)
+  - .loc[a:b] รวมขอบท้าย (inclusive) ต่างจาก .iloc[a:b]/slice ปกติที่ไม่รวม (exclusive)
+  - เลือกทั้งแถวและคอลัมน์พร้อมกันด้วย .loc[แถว, คอลัมน์] หรือ .iloc[แถว, คอลัมน์] ในคำสั่งเดียว
+
+interview:
+  - id: i1
+    q: ทำไมควรใช้ .loc[เงื่อนไข, คอลัมน์] = ค่า แทนการเขียน df[เงื่อนไข][คอลัมน์] = ค่า เวลาจะแก้ไขข้อมูล
+    a: |
+      คำตอบสั้นๆ ในบทนี้ (อธิบายเต็มในบทที่ 7 เรื่อง cleaning): `df[เงื่อนไข]` อาจได้ DataFrame ใหม่ที่เป็นแค่สำเนา
+      ไม่ใช่ตัวข้อมูลจริง การแก้ไขต่อจากนั้น (`[คอลัมน์] = ค่า`) จึงอาจไม่มีผลอะไรเลยกับตารางต้นฉบับ
+      โดยไม่มี error หรือ warning เตือนด้วย ทางที่ปลอดภัยเสมอคือใช้ `.loc[เงื่อนไข, คอลัมน์] = ค่า` ในคำสั่งเดียว
+
+flashcards:
+  - id: c1
+    front: .loc ต่างจาก .iloc ยังไง
+    back: .loc อ้างอิงด้วย label (ชื่อ/ค่าดัชนี) .iloc อ้างอิงด้วยตำแหน่ง (เลขลำดับ)
+  - id: c2
+    front: .loc[0:2] ให้กี่แถว
+    back: 3 แถว (0,1,2) เพราะ .loc รวมขอบท้าย ต่างจาก .iloc ที่ไม่รวม

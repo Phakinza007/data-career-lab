@@ -1,0 +1,301 @@
+goals:
+  - อ่านข้อมูลด้วย read_csv และดูโครงสร้างเบื้องต้น (shape/columns/dtypes/head/describe)
+  - เลือกคอลัมน์เดียวหรือหลายคอลัมน์ และเรียงด้วย sort_values
+  - สำรวจคอลัมน์ข้อความด้วย value_counts/unique
+
+examples:
+  - id: x1
+    title: 5 สินค้าราคาแพงที่สุด เรียงจากแพงไปถูก
+    lang: python
+    prompt: |
+      ร้านอยากรู้ว่าสินค้าตัวไหนแพงที่สุด 5 อันดับแรก
+    steps:
+      - text: |
+          อ่านไฟล์ด้วย `read_csv` แล้วดูตัวอย่างข้อมูลด้วย `.head()`
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.head()
+      - text: |
+          เรียงด้วย `sort_values('price', ascending=False)` แล้วตัดเอา 5 แถวแรกด้วย `.head(5)`
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products.sort_values('price', ascending=False).head(5)[['product_name', 'price']]
+    pitfall:
+      text: |
+        ถ้าลืมใส่ `ascending=False` ค่าเริ่มต้นของ `sort_values` คือเรียงจากน้อยไปมาก
+        ผลที่ได้จะกลายเป็น 5 สินค้าที่**ถูกที่สุด** แทน — โค้ดรันได้ปกติไม่มี error แต่ตอบผิดคำถามไปเลย
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        products.sort_values('price').head(5)[['product_name', 'price']]
+  - id: x2
+    title: หมวดสินค้าไหนมีสินค้าเยอะที่สุด
+    lang: python
+    prompt: |
+      ทีมสินค้าอยากรู้ว่าหมวดไหนมีสินค้าในสต็อกเยอะที่สุด
+    steps:
+      - text: |
+          `.value_counts()` นับจำนวนแถวของแต่ละค่าที่ไม่ซ้ำในคอลัมน์ และเรียงจากมากไปน้อยให้อัตโนมัติ
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products['category'].value_counts()
+      - text: |
+          ตัดเอาแค่ 3 อันดับแรกด้วย `.head(3)` (สังเกตว่า Electronics, Home, Fashion เท่ากันที่ 25 พอดี)
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products['category'].value_counts().head(3)
+    pitfall:
+      text: |
+        ถ้าใช้ `.unique()` แทน `.value_counts()` โดยคิดว่าจะบอกได้ว่าหมวดไหนเยอะที่สุด จะได้แค่รายชื่อหมวดที่มีอยู่
+        เท่านั้น ไม่มีตัวเลขจำนวนติดมาด้วยเลย ตอบคำถามนี้ไม่ได้
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        products['category'].unique()
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      หา 5 สินค้าที่ราคาถูกที่สุด แสดงคอลัมน์ product_name กับ price เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.sort_values('price', ascending=___).___(5)[['product_name', 'price']]
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.sort_values('price', ascending=True).head(5)[['product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "\"ถูกที่สุด\" คือเรียงจากน้อยไปมาก (ascending=True)"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      ขนาดของตาราง orders (จำนวนแถว, จำนวนคอลัมน์) เก็บไว้ในตัวแปร orders_shape
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      orders_shape = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      orders_shape = orders.shape
+    check: |
+      check_value(orders_shape, _sol["orders_shape"], name="orders_shape")
+    hints:
+      - "`.shape` คืนค่าเป็น tuple (จำนวนแถว, จำนวนคอลัมน์)"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      วิธีจ่ายเงินทั้งหมดที่มีในระบบ (ไม่ซ้ำ) เรียงตามตัวอักษร เก็บเป็น list ไว้ในตัวแปร methods
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      methods = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      methods = sorted(orders['payment_method'].unique().tolist())
+    check: |
+      check_value(methods, _sol["methods"], name="methods")
+    hints:
+      - "`.unique()` คืนค่าเป็น array ใช้ `.tolist()` แปลงเป็น list แล้ว `sorted()` เรียงตัวอักษร"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      5 สินค้าที่มีต้นทุน (cost) ต่ำที่สุด แสดงคอลัมน์ product_name, cost เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.sort_values('cost').head(5)[['product_name', 'cost']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือน f1 แต่เปลี่ยนคอลัมน์ที่เรียงเป็น cost
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าทั้งหมดในระบบ เก็บไว้ในตัวแปร n_customers
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_customers = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_customers = len(customers)
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+    hints:
+      - "`len(df)` คืนจำนวนแถวของ DataFrame"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของสินค้าทั้งหมด ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร avg_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      avg_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      avg_price = round(products['price'].mean(), 2)
+    check: |
+      check_value(avg_price, _sol["avg_price"], name="avg_price")
+    hints:
+      - "`.mean()` หาค่าเฉลี่ยของคอลัมน์ตัวเลข"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      3 หมวดสินค้าที่มีจำนวนสินค้ามากที่สุด (ผลจาก value_counts) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products['category'].value_counts().head(3)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - เหมือนตัวอย่าง x2
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      เรียงสินค้าตามหมวดก่อน แล้วเรียงตามราคาในแต่ละหมวด (ถูกไปแพง) เอาแค่ 5 แถวแรก
+      แสดง category, product_name, price เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.sort_values(['category', 'price']).head(5)[['category', 'product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "`sort_values` รับ list ของคอลัมน์ได้ เรียงตามลำดับที่ระบุ"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของ 10 สินค้าที่แพงที่สุด ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร avg_top10
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      avg_top10 = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      avg_top10 = round(products.nlargest(10, 'price')['price'].mean(), 2)
+    check: |
+      check_value(avg_top10, _sol["avg_top10"], name="avg_top10")
+    hints:
+      - "`.nlargest(n, 'col')` เร็วกว่าและสื่อความหมายชัดกว่า sort_values().head(n)"
+
+quiz:
+  - id: q1
+    question: "`sort_values` ค่าเริ่มต้นเรียงจากน้อยไปมากหรือมากไปน้อย"
+    choices:
+      - text: น้อยไปมาก (ascending=True)
+        correct: true
+        why: ค่าเริ่มต้นของ ascending คือ True ถ้าอยากได้มากไปน้อยต้องใส่ ascending=False เอง
+      - text: มากไปน้อย (ascending=False)
+        why: ค่าเริ่มต้นคือ ascending=True (น้อยไปมาก) ต่างหาก
+      - text: ขึ้นอยู่กับชนิดข้อมูลของคอลัมน์
+        why: ค่าเริ่มต้นเหมือนกันทุกชนิดข้อมูล คือน้อยไปมาก
+      - text: ไม่มีค่าเริ่มต้น ต้องระบุทุกครั้ง
+        why: มีค่าเริ่มต้นอยู่แล้วคือ ascending=True
+  - id: q2
+    question: "`value_counts()` กับ `unique()` ต่างกันยังไง"
+    choices:
+      - text: "value_counts() นับจำนวนของแต่ละค่าด้วย ส่วน unique() ให้แค่รายชื่อค่าที่ไม่ซ้ำ ไม่มีตัวเลขจำนวน"
+        correct: true
+        why: นี่คือความต่างหลัก unique() ตอบได้แค่ "มีค่าอะไรบ้าง" ไม่ได้ตอบว่า "ค่าไหนเยอะที่สุด"
+      - text: ทั้งสองฟังก์ชันให้ผลเหมือนกันทุกประการ
+        why: ต่างกันชัดเจน value_counts() มีตัวเลขจำนวนกำกับ unique() ไม่มี
+      - text: unique() ใช้ได้เฉพาะกับตัวเลขเท่านั้น
+        why: unique() ใช้ได้กับคอลัมน์ชนิดไหนก็ได้ รวมถึงข้อความ
+      - text: value_counts() เรียงตามตัวอักษรเสมอ
+        why: value_counts() เรียงตามจำนวน (มากไปน้อย) ไม่ใช่ตามตัวอักษร
+  - id: q3
+    question: "`.head(5)` เทียบเท่ากับอะไร"
+    choices:
+      - text: "`.iloc[:5]`"
+        correct: true
+        why: ทั้งสองแบบให้ 5 แถวแรกของ DataFrame ตามตำแหน่งเหมือนกัน
+      - text: "`.loc[:5]`"
+        why: "`.loc[:5]` จะได้ 6 แถว เพราะ .loc รวมขอบท้ายด้วย (inclusive) ต่างจาก .head(5)"
+      - text: "`.sample(5)`"
+        why: "`.sample(5)` สุ่มเลือก 5 แถว ไม่ใช่ 5 แถวแรกเสมอ"
+      - text: "`.tail(5)`"
+        why: "`.tail(5)` ให้ 5 แถวสุดท้าย ไม่ใช่แถวแรก"
+
+summary:
+  - read_csv อ่านไฟล์เป็น DataFrame ดูโครงสร้างเบื้องต้นด้วย shape/columns/dtypes/head/describe
+  - sort_values เรียงข้อมูล ค่าเริ่มต้นคือน้อยไปมาก (ascending=True)
+  - value_counts() นับจำนวนของแต่ละค่า ต่างจาก unique() ที่ให้แค่รายชื่อค่าที่ไม่ซ้ำ
+
+interview:
+  - id: i1
+    q: ได้ไฟล์ข้อมูลใหม่มาครั้งแรก ควรดูอะไรก่อนเริ่มวิเคราะห์
+    a: |
+      เริ่มจากดูภาพรวมของโครงสร้างก่อน: `shape` (มีกี่แถวกี่คอลัมน์), `dtypes` (แต่ละคอลัมน์เป็นชนิดข้อมูลอะไร),
+      `head()` (ตัวอย่างข้อมูลจริง), และ `describe()` (สรุปสถิติของคอลัมน์ตัวเลข)
+
+      หลังจากนั้นควรเช็คคุณภาพข้อมูลคร่าวๆ ด้วย `isna().sum()` (มีค่าว่างไหม) และ `duplicated().sum()`
+      (มีแถวซ้ำไหม) ก่อนเริ่มวิเคราะห์จริง เพื่อรู้ล่วงหน้าว่าต้องทำความสะอาดอะไรบ้าง
+
+flashcards:
+  - id: c1
+    front: sort_values ค่าเริ่มต้นเรียงแบบไหน
+    back: น้อยไปมาก (ascending=True) ถ้าอยากได้มากไปน้อยต้องใส่ ascending=False
+  - id: c2
+    front: value_counts() ต่างจาก unique() ยังไง
+    back: value_counts() นับจำนวนของแต่ละค่าด้วย unique() ให้แค่รายชื่อค่าที่ไม่ซ้ำ ไม่มีตัวเลข

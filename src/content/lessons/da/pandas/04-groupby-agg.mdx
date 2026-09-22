@@ -1,0 +1,51 @@
+---
+track: da
+module: pandas
+order: 4
+title: groupby และ agg
+minutes: 25
+prereqs: [da/pandas/03-filter]
+---
+
+## สรุปข้อมูลเป็นกลุ่มด้วย groupby
+
+```python
+customers.groupby('city').size()
+```
+
+`.groupby('city')` จัดกลุ่มแถวตามค่าในคอลัมน์ `city` แล้ว `.size()` นับจำนวนแถวในแต่ละกลุ่ม
+ได้ผลเป็น Series ที่มี index เป็นชื่อเมือง
+
+## agg() และการตั้งชื่อคอลัมน์เอง
+
+```python
+products.groupby('category').agg(lo=('price', 'min'), hi=('price', 'max'))
+```
+
+`.agg(ชื่อ=('คอลัมน์', 'ฟังก์ชัน'))` (เรียกว่า **named aggregation**) ให้ตั้งชื่อคอลัมน์ผลลัพธ์เองได้
+อ่านง่ายกว่าการปล่อยให้ pandas ตั้งชื่อ default ให้ (ซึ่งมักจะยาวและอ่านยาก)
+
+## กรองหลังจัดกลุ่ม — pandas ไม่มี HAVING
+
+SQL มี `HAVING` แยกจาก `WHERE` ชัดเจน แต่ pandas ไม่มีคำสั่งพิเศษแบบนั้น — วิธี "กรองหลังจัดกลุ่ม" ใน pandas
+คือเอาผลลัพธ์จาก `groupby()` (ซึ่งเป็นแค่ Series/DataFrame ธรรมดา) ไปกรองต่อด้วย `[...]` เหมือนกรองตารางทั่วไป:
+
+```python
+counts = customers.groupby('city').size()
+counts[counts > 300]
+```
+
+หรือเขียนในบรรทัดเดียวด้วย `.loc[lambda s: เงื่อนไข]`:
+
+```python
+customers.groupby('city').size().loc[lambda s: s > 300]
+```
+
+## assign() — เพิ่มคอลัมน์ชั่วคราวก่อน groupby
+
+```python
+customers.assign(y=pd.to_datetime(customers['signup_date']).dt.year).groupby('y').size()
+```
+
+`.assign(ชื่อคอลัมน์=ค่า)` เพิ่มคอลัมน์ใหม่แล้วคืน DataFrame ใหม่ (ไม่แก้ตัวเดิม) มีประโยชน์มากตอนอยากสร้าง
+คอลัมน์ชั่วคราวไว้ใช้ `groupby` ต่อทันที โดยไม่ต้องแยกเขียนอีกบรรทัด

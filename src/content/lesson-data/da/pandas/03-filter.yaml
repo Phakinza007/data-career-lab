@@ -1,0 +1,290 @@
+goals:
+  - กรองแถวด้วยเงื่อนไขเปรียบเทียบและ &/|/~
+  - ใช้ isin() และ between() แทนเงื่อนไขยาวๆ
+  - กรองข้อความด้วย .str.contains()
+
+examples:
+  - id: x1
+    title: สินค้าหมวด Home ราคาไม่เกิน 1000 บาท (รวมสองเงื่อนไขด้วย &)
+    lang: python
+    prompt: |
+      อยากดูสินค้าหมวด Home ที่ราคาไม่แพงเกินไป (ไม่เกิน 1000 บาท)
+    steps:
+      - text: |
+          ลองกรองเงื่อนไขเดียวก่อน (แค่หมวด)
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products[products['category'] == 'Home']
+      - text: |
+          รวมสองเงื่อนไขด้วย `&` — **ต้องใส่วงเล็บรอบแต่ละเงื่อนไข** เสมอ
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products[(products['category'] == 'Home') & (products['price'] <= 1000)]
+    pitfall:
+      text: |
+        ถ้าลืมใส่วงเล็บรอบแต่ละเงื่อนไข เช่น `products[products['category'] == 'Home' & products['price'] <= 1000]`
+        จะ error (`TypeError`) เพราะ Python ให้ `&` มีความสำคัญสูงกว่า `==`/`<=` การเขียนแบบไม่มีวงเล็บ
+        ทำให้ Python พยายามตีความ `'Home' & products['price']` ก่อน ซึ่งไม่สมเหตุสมผล ต้องใส่วงเล็บรอบเงื่อนไขย่อย
+        แต่ละอันเสมอเมื่อใช้ `&`/`|`/`~`
+  - id: x2
+    title: ลูกค้าจากเมือง Phuket หรือ Hat Yai (ใช้ isin แทน | ยาวๆ)
+    lang: python
+    prompt: |
+      อยากดูลูกค้าจากสองเมืองนี้พร้อมกัน
+    steps:
+      - text: |
+          เขียนแบบยาวด้วย `|` (OR) ก่อน
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          customers[(customers['city'] == 'Phuket') | (customers['city'] == 'Hat Yai')]
+      - text: |
+          เขียนสั้นและอ่านง่ายกว่าด้วย `.isin([...])` ได้ผลเท่ากัน
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          customers[customers['city'].isin(['Phuket', 'Hat Yai'])]
+    pitfall:
+      text: |
+        ถ้าเผลอเขียน `customers['city'] == ['Phuket', 'Hat Yai']` (เทียบคอลัมน์กับ list ตรงๆ ด้วย `==`)
+        โดยคิดว่าจะได้ผลแบบ "หรือ" เหมือน `isin` จะไม่ได้ผลตามที่ตั้งใจเลย ต้องใช้ `.isin([...])` เท่านั้น
+        เมื่อต้องการเทียบกับหลายค่าพร้อมกัน
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      สินค้าราคาระหว่าง 500 ถึง 1000 บาท เก็บไว้ในตัวแปร result เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[products['price'].___(500, 1000)]
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[products['price'].between(500, 1000)]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ฟังก์ชันที่เช็คว่าค่าอยู่ในช่วงไหม คือ between
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      สินค้าหมวด Home ราคาไม่เกิน 1000 บาท แสดง product_name, price เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[(products['category'] == 'Home') & (products['price'] <= 1000)][['product_name', 'price']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ใส่วงเล็บรอบแต่ละเงื่อนไขเมื่อใช้ &
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ที่จ่ายด้วย promptpay หรือ cod เก็บไว้ในตัวแปร n_orders
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = len(orders[(orders['payment_method'] == 'promptpay') | (orders['payment_method'] == 'cod')])
+    check: |
+      check_value(n_orders, _sol["n_orders"], name="n_orders")
+    hints:
+      - ลองใช้ isin(['promptpay','cod']) แทนก็ได้เหมือนกัน
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ที่ไม่ใช่สถานะ cancelled (ใช้ ~) เก็บไว้ในตัวแปร n_not_cancelled
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_not_cancelled = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_not_cancelled = len(orders[~(orders['status'] == 'cancelled')])
+    check: |
+      check_value(n_not_cancelled, _sol["n_not_cancelled"], name="n_not_cancelled")
+    hints:
+      - "`~` กลับค่าความจริง (NOT) ของเงื่อนไข boolean"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่อยู่เมือง Chiang Mai หรือ Khon Kaen (ใช้ isin) เก็บไว้ในตัวแปร n_customers
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_customers = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      n_customers = len(customers[customers['city'].isin(['Chiang Mai', 'Khon Kaen'])])
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+    hints:
+      - เหมือนตัวอย่าง x2
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      สินค้าราคาระหว่าง 500-1000 บาท ในหมวด Home หรือ Sports เก็บไว้ในตัวแปร n_products
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_products = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_products = len(products[(products['price'].between(500, 1000)) & (products['category'].isin(['Home', 'Sports']))])
+    check: |
+      check_value(n_products, _sol["n_products"], name="n_products")
+    hints:
+      - รวม between กับ isin เข้าด้วยกันด้วย &
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ลูกค้าที่อีเมลมีคำว่า "00042" (ใช้ .str.contains) แสดง customer_id, email เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers[customers['email'].str.contains('00042')][['customer_id', 'email']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`.str.contains('...')` เช็คว่าคอลัมน์ข้อความมีคำนี้อยู่ไหม"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ที่มีส่วนลด หรือ ถูกยกเลิก (สองเงื่อนไขนี้ไม่ตัดกันหมด บางออเดอร์เข้าทั้งคู่) เก็บไว้ในตัวแปร n_orders
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = len(orders[(orders['discount_pct'].notna()) | (orders['status'] == 'cancelled')])
+    check: |
+      check_value(n_orders, _sol["n_orders"], name="n_orders")
+    hints:
+      - "`.notna()` เช็คว่าคอลัมน์นี้ไม่ใช่ค่าว่าง"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      สินค้าหมวด Electronics ราคาอยู่ระหว่าง 1000 ถึง 20000 บาท (ไม่รวม 20000 พอดี) เก็บไว้ในตัวแปร n_products
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_products = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_products = len(products[(products['category'] == 'Electronics') & (products['price'] > 1000) & (products['price'] < 20000)])
+    check: |
+      check_value(n_products, _sol["n_products"], name="n_products")
+    hints:
+      - รวม 3 เงื่อนไขด้วย & (ใส่วงเล็บรอบทุกเงื่อนไข)
+
+quiz:
+  - id: q1
+    question: "ทำไม `products['price'] > 500 & products['price'] < 1000` ถึง error"
+    choices:
+      - text: ต้องใส่วงเล็บรอบแต่ละเงื่อนไข เพราะ & มีความสำคัญสูงกว่า >/< ใน Python
+        correct: true
+        why: Python ตีความ & ก่อน จึงต้องใส่วงเล็บบังคับลำดับให้ตรงกับที่ตั้งใจ
+      - text: pandas ไม่รองรับ & เลย
+        why: pandas รองรับ & เต็มที่ แค่ต้องใส่วงเล็บให้ถูกลำดับ
+      - text: ต้องใช้ and แทน &
+        why: ใน pandas ต้องใช้ & (ไม่ใช่ and) สำหรับเปรียบเทียบทีละแถว
+      - text: ปัญหานี้เกิดกับ | เท่านั้น ไม่เกิดกับ &
+        why: ปัญหาลำดับความสำคัญเกิดกับทั้ง & และ | เหมือนกัน
+  - id: q2
+    question: "isin(['A', 'B']) เทียบเท่ากับอะไร"
+    choices:
+      - text: "(col == 'A') | (col == 'B')"
+        correct: true
+        why: isin ตรวจว่าค่าตรงกับตัวใดตัวหนึ่งในลิสต์ เขียนยาวได้ด้วย == เชื่อมด้วย |
+      - text: "(col == 'A') & (col == 'B')"
+        why: ใช้ & แปลว่าต้องตรงทั้งสองค่าพร้อมกัน ซึ่งเป็นไปไม่ได้สำหรับคอลัมน์เดียว
+      - text: "col.str.contains('A') & col.str.contains('B')"
+        why: str.contains เช็คสตริงย่อย ไม่ใช่การเทียบค่าทั้งหมดแบบ isin
+      - text: ไม่มีวิธีเขียนแทนแบบยาวได้
+        why: เขียนแทนได้ด้วยเงื่อนไข == เชื่อมด้วย |
+  - id: q3
+    question: "~ ทำหน้าที่อะไร"
+    choices:
+      - text: กลับค่าความจริง (NOT) ของเงื่อนไข boolean
+        correct: true
+        why: "~เงื่อนไข ทำให้ True กลายเป็น False และ False กลายเป็น True"
+      - text: รวมสองเงื่อนไขด้วย AND
+        why: "AND ใน pandas ใช้ & ไม่ใช่ ~"
+      - text: รวมสองเงื่อนไขด้วย OR
+        why: "OR ใน pandas ใช้ | ไม่ใช่ ~"
+      - text: ใช้ได้กับคอลัมน์ตัวเลขเท่านั้น
+        why: "~ ใช้กับเงื่อนไข boolean ได้ทุกชนิดข้อมูลต้นทาง"
+
+summary:
+  - รวมหลายเงื่อนไขด้วย &/|/~ ต้องใส่วงเล็บรอบแต่ละเงื่อนไขเสมอ เพราะ & และ | มีความสำคัญสูงกว่า ==/</>
+  - isin([...]) แทนเงื่อนไข == เชื่อมด้วย | หลายๆ อัน ได้สั้นและอ่านง่ายกว่า
+  - between(a, b) เช็คว่าค่าคอลัมน์อยู่ในช่วง a ถึง b (รวมขอบทั้งสองด้าน)
+
+interview:
+  - id: i1
+    q: จะกรองข้อมูลด้วยหลายเงื่อนไขใน pandas อย่างอ่านง่ายและไม่ error ทำยังไง
+    a: |
+      ใส่วงเล็บรอบแต่ละเงื่อนไขเสมอเมื่อใช้ `&`/`|`/`~` (เพราะ Python ให้ตัวดำเนินการเหล่านี้มีความสำคัญสูงกว่า
+      `==`/`<`/`>`) ใช้ `isin()` แทนเงื่อนไข `==` หลายอันที่เชื่อมด้วย `|` และใช้ `between()` แทนการเขียน
+      `(col >= a) & (col <= b)` เต็มรูปแบบ เมื่อเงื่อนไขซับซ้อนมากจริงๆ อาจพิจารณาใช้ `.query()` แทนเพื่อความอ่านง่าย
+
+flashcards:
+  - id: c1
+    front: ทำไมต้องใส่วงเล็บรอบเงื่อนไขเมื่อใช้ &/|
+    back: เพราะ & และ | มีความสำคัญสูงกว่า ==/</> ใน Python ถ้าไม่ใส่วงเล็บจะ error หรือได้ผลผิด
+  - id: c2
+    front: isin(['A','B']) เทียบเท่ากับอะไร
+    back: (col == 'A') | (col == 'B')
