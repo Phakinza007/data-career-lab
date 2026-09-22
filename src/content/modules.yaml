@@ -1,0 +1,43 @@
+- id: da/start
+  track: da
+  slug: start
+  order: 0
+  title: เริ่มต้น
+  description: DA ทำอะไร ขั้นตอนการวิเคราะห์ และวิธีใช้เว็บนี้
+  intro: true
+- id: da/sql
+  track: da
+  slug: sql
+  order: 1
+  title: SQL
+  description: ดึงและสรุปข้อมูลด้วย SQL ตั้งแต่ SELECT จนถึง window functions
+- id: da/pandas
+  track: da
+  slug: pandas
+  order: 2
+  title: pandas
+  description: จัดการ ทำความสะอาด และสรุปข้อมูลด้วย Python
+- id: da/stats
+  track: da
+  slug: stats
+  order: 3
+  title: สถิติสำหรับ DA
+  description: สถิติที่ใช้จริงในงาน ตั้งแต่ค่าเฉลี่ยจนถึง A/B testing
+- id: da/viz
+  track: da
+  slug: viz
+  order: 4
+  title: Visualization และ storytelling
+  description: เลือกกราฟให้ตรงคำถาม และเล่าผลให้คนอ่านเข้าใจ
+- id: da/metrics
+  track: da
+  slug: metrics
+  order: 5
+  title: Business metrics
+  description: KPI, funnel, cohort/retention และ RFM segmentation
+- id: da/capstone
+  track: da
+  slug: capstone
+  order: 6
+  title: Capstone
+  description: โปรเจกต์ portfolio แบบ end-to-end

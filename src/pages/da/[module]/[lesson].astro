@@ -1,0 +1,126 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import LessonNav from '../../../components/LessonNav';
+import TrackLesson from '../../../components/TrackLesson';
+import { getTrack } from '../../../lib/content/catalog';
+import { md, mdInline } from '../../../lib/content/markdown';
+import type { LessonRef, ModuleRef } from '../../../lib/content/refs';
+import type { LessonData } from '../../../lib/content/schema';
+import { url } from '../../../lib/url';
+import Exercise from '../../../components/Exercise';
+import Quiz from '../../../components/Quiz';
+import WorkedExample from '../../../components/WorkedExample';
+import { exampleView, quizView, taskView } from '../../../lib/content/views';
+import { LEVELS, LEVEL_LABELS } from '../../../lib/kinds';
+
+export async function getStaticPaths() {
+  const modules = await getTrack('da');
+  const entries = await getCollection('lessons');
+  const data = await getCollection('lessonData');
+  const flat = modules.flatMap((mod) => mod.lessons.map((ref) => ({ mod, ref })));
+  return flat.map(({ mod, ref }, i) => ({
+    params: { module: mod.slug, lesson: ref.slug },
+    props: {
+      mod,
+      ref,
+      entry: entries.find((e) => e.id === ref.id)!,
+      data: data.find((d) => d.id === ref.id)!.data,
+      prev: flat[i - 1]?.ref ?? null,
+      next: flat[i + 1]?.ref ?? null,
+    },
+  }));
+}
+
+interface Props {
+  mod: ModuleRef;
+  ref: LessonRef;
+  entry: CollectionEntry<'lessons'>;
+  data: LessonData;
+  prev: LessonRef | null;
+  next: LessonRef | null;
+}
+const { mod, ref, entry, data, prev, next } = Astro.props;
+const { Content } = await render(entry);
+const examples = data.examples.map((e) => exampleView(ref.id, e));
+const faded = data.faded.map((t) => taskView(ref.id, t, 'faded'));
+const exercises = data.exercises.map((t) => taskView(ref.id, t, 'exercise'));
+const quiz = data.quiz.map((q) => quizView(ref.id, q));
+---
+<Base title={entry.data.title}>
+  <div class="lesson-layout">
+    <aside class="lesson-aside">
+      <p class="muted">{mod.title}</p>
+      <LessonNav client:only="react" lessons={mod.lessons} currentId={ref.id} />
+    </aside>
+    <article class="lesson">
+      <p class="crumb"><a href={url('/da/')}>Data Analyst</a> › <a href={mod.url}>{mod.title}</a></p>
+      <h1>{entry.data.title}</h1>
+      <p class="muted">ประมาณ {entry.data.minutes} นาที</p>
+
+      <section class="card">
+        <h2>เป้าหมายของบท</h2>
+        <ul>{data.goals.map((g) => <li set:html={mdInline(g)} />)}</ul>
+      </section>
+
+      <div class="prose"><Content /></div>
+
+      {examples.length > 0 && (
+        <section>
+          <h2>ตัวอย่างแก้โจทย์</h2>
+          <p class="muted">กด "ขั้นต่อไป" ทีละขั้น ลองรันและแก้โค้ดในแต่ละขั้นได้</p>
+          {examples.map((ex) => <WorkedExample client:visible example={ex} />)}
+        </section>
+      )}
+      {faded.length > 0 && (
+        <section>
+          <h2>เติมช่องว่าง</h2>
+          <p class="muted">แทน <code>___</code> ด้วยโค้ดที่ถูกต้อง แล้วกดตรวจคำตอบ</p>
+          {faded.map((t) => <Exercise client:visible task={t} />)}
+        </section>
+      )}
+      <section>
+        <h2>แบบฝึกท้ายบท</h2>
+        <p class="muted">บทนี้จะนับว่าเสร็จเมื่อผ่านข้อพื้นฐานและประยุกต์ครบ ข้อท้าทายได้ดาวเพิ่ม</p>
+        {LEVELS.map((level) => {
+          const list = exercises.filter((t) => t.level === level);
+          return list.length > 0 && (
+            <div class="level-group">
+              <h3>{LEVEL_LABELS[level]}</h3>
+              {list.map((t) => <Exercise client:visible task={t} />)}
+            </div>
+          );
+        })}
+      </section>
+      {quiz.length > 0 && (
+        <section>
+          <h2>Quiz</h2>
+          <Quiz client:visible lessonId={ref.id} questions={quiz} />
+        </section>
+      )}
+
+      <section class="card">
+        <h2>สรุป</h2>
+        <ul>{data.summary.map((s) => <li set:html={mdInline(s)} />)}</ul>
+      </section>
+
+      {data.interview.length > 0 && (
+        <section>
+          <h2>คำถามสัมภาษณ์</h2>
+          {data.interview.map((it) => (
+            <details class="card interview">
+              <summary set:html={mdInline(it.q)} />
+              <div set:html={md(it.a)} />
+            </details>
+          ))}
+        </section>
+      )}
+
+      <nav class="pager">
+        {prev && <a href={prev.url}>← {prev.title}</a>}
+        {next && <a class="next" href={next.url}>{next.title} →</a>}
+      </nav>
+    </article>
+  </div>
+  <TrackLesson client:only="react" lessonId={ref.id} />
+</Base>

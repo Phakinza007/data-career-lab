@@ -1,0 +1,100 @@
+goals:
+  - อธิบายได้ว่า Data Analyst ทำอะไร และต่างจาก Data Scientist, Data Engineer, ML Engineer และ AI Engineer ยังไง
+  - รู้ว่าทักษะไหนที่ประกาศงาน DA ขอบ่อย และจะได้เรียนใน module ไหน
+  - รู้จัก 5 ตารางของร้านค้าออนไลน์ที่ใช้ตลอดสายนี้
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      ตาราง `customers` มีลูกค้ากี่คน? ตอบเป็นคอลัมน์เดียวชื่อ `n_customers`
+    starter: |
+      SELECT ___ AS n_customers
+      FROM customers
+    solution: |
+      SELECT COUNT(*) AS n_customers
+      FROM customers
+    hints:
+      - "`COUNT(*)` นับจำนวนแถวทั้งหมดในตาราง"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      อ่านไฟล์ `data/products.csv` ด้วย pandas เก็บไว้ในตัวแปร `products`
+      แล้วเก็บจำนวนสินค้า (จำนวนแถว) ไว้ในตัวแปร `n_products`
+    starter: |
+      import pandas as pd
+
+      products = ___
+      n_products = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      n_products = len(products)
+    check: |
+      check_value(n_products, _sol["n_products"], name="n_products")
+    hints:
+      - "`pd.read_csv(\"data/products.csv\")` อ่านไฟล์ CSV ออกมาเป็น DataFrame"
+      - "`len(df)` คืนจำนวนแถวของ DataFrame"
+
+quiz:
+  - id: q1
+    question: ข้อไหนเป็นงานหลักของ Data Analyst มากที่สุด
+    choices:
+      - text: เทรนโมเดล deep learning ด้วย GPU
+        why: ส่วนใหญ่เป็นงานของ Data Scientist หรือ ML Engineer
+      - text: ตอบคำถามธุรกิจจากข้อมูล แล้วสื่อสารผลให้ทีมใช้ตัดสินใจ
+        correct: true
+        why: ถูกต้อง ผลงานของ DA คือคำตอบที่ช่วยให้ทีมตัดสินใจได้ดีขึ้น
+      - text: ออกแบบ pipeline ย้ายข้อมูลหลายร้อย GB ทุกวัน
+        why: เป็นงานหลักของ Data Engineer
+      - text: สร้างแชตบอตที่ตอบคำถามจากเอกสารบริษัท
+        why: เป็นงานของ AI Engineer (ระบบแบบ RAG)
+  - id: q2
+    question: ทักษะไหนที่แทบทุกประกาศงาน DA ขอ
+    choices:
+      - text: SQL
+        correct: true
+        why: ใช้ดึงข้อมูลแทบทุกวัน และมักมีข้อสอบ SQL ตอนสัมภาษณ์
+      - text: Kubernetes
+        why: เป็นเครื่องมือจัดการ container ที่ใช้ในงาน infrastructure มากกว่า
+      - text: CUDA
+        why: ใช้เขียนโปรแกรมบน GPU ไม่เกี่ยวกับงาน DA ทั่วไป
+      - text: React
+        why: ใช้สร้างหน้าเว็บ เป็นงานของ frontend developer
+  - id: q3
+    question: ถ้าอยากรู้ว่าออเดอร์หนึ่งมีสินค้าอะไรบ้าง ต้องดูตารางไหน
+    choices:
+      - text: "`order_items`"
+        correct: true
+        why: เก็บสินค้าแต่ละรายการในออเดอร์ 1 แถวต่อ 1 รายการ
+      - text: "`orders`"
+        why: เก็บข้อมูลระดับออเดอร์ เช่น วันที่และสถานะ แต่ไม่ได้บอกว่ามีสินค้าอะไร
+      - text: "`products`"
+        why: บอกรายละเอียดสินค้า แต่ไม่รู้ว่าสินค้าอยู่ในออเดอร์ไหน
+      - text: "`events`"
+        why: เก็บพฤติกรรมบนเว็บ ไม่ใช่รายการสินค้าในออเดอร์
+
+summary:
+  - DA ตอบคำถามธุรกิจด้วยข้อมูล และผลงานคือคำตอบที่ช่วยให้ทีมตัดสินใจ
+  - งานส่วนใหญ่คือดึงข้อมูลและทำความสะอาด สายนี้จึงเริ่มจาก SQL และ pandas
+  - แต่ละบริษัทใช้ชื่อตำแหน่งในสาย Data ต่างกัน ให้อ่านรายละเอียดงานเป็นหลัก
+
+interview:
+  - id: i1
+    q: Data Analyst ต่างจาก Data Scientist ยังไง
+    a: |
+      DA เน้นตอบคำถามธุรกิจจากข้อมูลที่มีอยู่ เช่น ยอดขายตกเพราะอะไร หรือโปรโมชันได้ผลไหม แล้วสื่อสารผลให้ทีมตัดสินใจ
+      ส่วน Data Scientist เน้นสร้างโมเดลทำนายหรือออกแบบการทดลองที่ซับซ้อนกว่า ในหลายบริษัทสองตำแหน่งนี้มีงานทับกัน
+
+      ตอนตอบควรยกตัวอย่างงานจริงประกอบ และบอกว่าตัวเราอยากทำงานแบบไหน
+
+flashcards:
+  - id: c1
+    front: Data Analyst ทำอะไร
+    back: ตอบคำถามธุรกิจด้วยข้อมูล แล้วสื่อสารผลให้ทีมใช้ตัดสินใจ
+  - id: c2
+    front: ตาราง order_items ต่างจาก orders ยังไง
+    back: orders มี 1 แถวต่อ 1 ออเดอร์ ส่วน order_items มี 1 แถวต่อสินค้า 1 รายการในออเดอร์

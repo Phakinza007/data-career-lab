@@ -1,0 +1,24 @@
+---
+import LessonNav from '../../../components/LessonNav';
+import Base from '../../../layouts/Base.astro';
+import { getTrack } from '../../../lib/content/catalog';
+import type { ModuleRef } from '../../../lib/content/refs';
+import { url } from '../../../lib/url';
+
+export async function getStaticPaths() {
+  const modules = await getTrack('da');
+  return modules.map((m) => ({ params: { module: m.slug }, props: { mod: m } }));
+}
+const { mod } = Astro.props as { mod: ModuleRef };
+---
+<Base title={mod.title}>
+  <p class="crumb"><a href={url('/da/')}>Data Analyst</a> › Module {mod.order}</p>
+  <h1>{mod.title}</h1>
+  <p class="lead">{mod.description}</p>
+  {mod.lessons.length === 0 ? (
+    <p class="card">เนื้อหาส่วนนี้กำลังเขียน</p>
+  ) : (
+    <LessonNav client:only="react" lessons={mod.lessons} currentId={null} />
+  )}
+  {mod.practiceUrl && <a class="button primary" href={mod.practiceUrl}>ชุดฝึกท้าย module</a>}
+</Base>

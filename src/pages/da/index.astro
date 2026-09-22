@@ -1,0 +1,23 @@
+---
+import ModuleProgress from '../../components/ModuleProgress';
+import Base from '../../layouts/Base.astro';
+import { getTrack } from '../../lib/content/catalog';
+
+const modules = await getTrack('da');
+---
+<Base title="Data Analyst">
+  <h1>สาย Data Analyst</h1>
+  <p class="lead">เริ่มจาก SQL และ pandas ต่อด้วยสถิติ visualization และ business metrics แล้วจบด้วยโปรเจกต์ portfolio</p>
+  <ol class="module-list">
+    {modules.map((m) => (
+      <li class="card module-card">
+        <div>
+          <p class="step">Module {m.order}</p>
+          <h2><a href={m.url}>{m.title}</a></h2>
+          <p class="muted">{m.description}</p>
+        </div>
+        {m.lessons.length > 0 ? <ModuleProgress client:only="react" lessons={m.lessons} /> : <span class="badge">กำลังเขียน</span>}
+      </li>
+    ))}
+  </ol>
+</Base>

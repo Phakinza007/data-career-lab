@@ -1,0 +1,3301 @@
+customer_id,email,city,signup_date,channel
+1,customer00001@example.com,Phuket,2024-01-01,ads
+2,customer00002@example.com,Udon Thani,2024-01-01,ads
+3,customer00003@example.com,Bangkok,2024-01-01,organic
+4,customer00004@example.com,Chiang Mai,2024-01-02,organic
+5,customer00005@example.com,Khon Kaen,2024-01-02,organic
+6,customer00006@example.com,Bangkok,2024-01-03,referral
+7,customer00007@example.com,Udon Thani,2024-01-03,ads
+8,customer00008@example.com,Bangkok,2024-01-03,ads
+9,customer00009@example.com,Chon Buri,2024-01-03,ads
+10,customer00010@example.com,Bangkok,2024-01-04,organic
+11,customer00011@example.com,Hat Yai,2024-01-04,ads
+12,customer00012@example.com,Chiang Mai,2024-01-04,ads
+13,customer00013@example.com,Bangkok,2024-01-04,organic
+14,customer00014@example.com,Chon Buri,2024-01-05,referral
+15,customer00015@example.com,Hat Yai,2024-01-05,ads
+16,customer00016@example.com,Bangkok,2024-01-05,organic
+17,customer00017@example.com,Chiang Mai,2024-01-06,organic
+18,customer00018@example.com,Udon Thani,2024-01-06,organic
+19,customer00019@example.com,Bangkok,2024-01-07,referral
+20,customer00020@example.com,Bangkok,2024-01-07,organic
+21,customer00021@example.com,Bangkok,2024-01-07,organic
+22,customer00022@example.com,Bangkok,2024-01-07,ads
+23,customer00023@example.com,Bangkok,2024-01-07,ads
+24,customer00024@example.com,Bangkok,2024-01-07,organic
+25,customer00025@example.com,Khon Kaen,2024-01-08,organic
+26,customer00026@example.com,Udon Thani,2024-01-08,organic
+27,customer00027@example.com,Nakhon Ratchasima,2024-01-08,organic
+28,customer00028@example.com,Chiang Mai,2024-01-08,organic
+29,customer00029@example.com,Bangkok,2024-01-09,organic
+30,customer00030@example.com,Phuket,2024-01-09,organic
+31,customer00031@example.com,Bangkok,2024-01-09,organic
+32,customer00032@example.com,Bangkok,2024-01-10,organic
+33,customer00033@example.com,Bangkok,2024-01-10,organic
+34,customer00034@example.com,Khon Kaen,2024-01-10,ads
+35,customer00035@example.com,Bangkok,2024-01-10,organic
+36,customer00036@example.com,Chon Buri,2024-01-10,ads
+37,customer00037@example.com,Nakhon Ratchasima,2024-01-10,ads
+38,customer00038@example.com,Udon Thani,2024-01-11,ads
+39,customer00039@example.com,Bangkok,2024-01-12,organic
+40,customer00040@example.com,Bangkok,2024-01-12,organic
+41,customer00041@example.com,Bangkok,2024-01-12,ads
+42,customer00042@example.com,Udon Thani,2024-01-12,referral
+43,customer00043@example.com,Bangkok,2024-01-12,ads
+44,customer00044@example.com,Nakhon Ratchasima,2024-01-12,ads
+45,customer00045@example.com,Chiang Mai,2024-01-12,referral
+46,customer00046@example.com,Bangkok,2024-01-12,organic
+47,customer00047@example.com,Bangkok,2024-01-13,organic
+48,customer00048@example.com,Chon Buri,2024-01-13,ads
+49,customer00049@example.com,Nakhon Ratchasima,2024-01-13,ads
+50,customer00050@example.com,Khon Kaen,2024-01-13,organic
+51,customer00051@example.com,Nakhon Ratchasima,2024-01-13,organic
+52,customer00052@example.com,Chon Buri,2024-01-13,organic
+53,customer00053@example.com,Hat Yai,2024-01-14,organic
+54,customer00054@example.com,Bangkok,2024-01-14,ads
+55,customer00055@example.com,Khon Kaen,2024-01-14,organic
+56,customer00056@example.com,Khon Kaen,2024-01-14,organic
+57,customer00057@example.com,Bangkok,2024-01-15,organic
+58,customer00058@example.com,Bangkok,2024-01-16,organic
+59,customer00059@example.com,Chiang Mai,2024-01-16,ads
+60,customer00060@example.com,Bangkok,2024-01-16,ads
+61,customer00061@example.com,Bangkok,2024-01-16,ads
+62,customer00062@example.com,Bangkok,2024-01-16,organic
+63,customer00063@example.com,Bangkok,2024-01-16,organic
+64,customer00064@example.com,Bangkok,2024-01-16,organic
+65,customer00065@example.com,Bangkok,2024-01-17,organic
+66,customer00066@example.com,Udon Thani,2024-01-17,organic
+67,customer00067@example.com,Bangkok,2024-01-17,organic
+68,customer00068@example.com,Hat Yai,2024-01-17,organic
+69,customer00069@example.com,Hat Yai,2024-01-18,referral
+70,customer00070@example.com,Bangkok,2024-01-18,ads
+71,customer00071@example.com,Udon Thani,2024-01-19,ads
+72,customer00072@example.com,Chon Buri,2024-01-19,ads
+73,customer00073@example.com,Bangkok,2024-01-19,organic
+74,customer00074@example.com,Nakhon Ratchasima,2024-01-19,ads
+75,customer00075@example.com,Bangkok,2024-01-19,organic
+76,customer00076@example.com,Udon Thani,2024-01-20,referral
+77,customer00077@example.com,Khon Kaen,2024-01-20,referral
+78,customer00078@example.com,Bangkok,2024-01-21,ads
+79,customer00079@example.com,Bangkok,2024-01-21,ads
+80,customer00080@example.com,Chon Buri,2024-01-22,ads
+81,customer00081@example.com,Chon Buri,2024-01-22,organic
+82,customer00082@example.com,Chiang Mai,2024-01-23,ads
+83,customer00083@example.com,Bangkok,2024-01-23,organic
+84,customer00084@example.com,Bangkok,2024-01-23,ads
+85,customer00085@example.com,Chiang Mai,2024-01-23,organic
+86,customer00086@example.com,Bangkok,2024-01-24,ads
+87,customer00087@example.com,Chon Buri,2024-01-24,organic
+88,customer00088@example.com,Chiang Mai,2024-01-25,organic
+89,customer00089@example.com,Hat Yai,2024-01-25,referral
+90,customer00090@example.com,Bangkok,2024-01-26,organic
+91,customer00091@example.com,Bangkok,2024-01-26,organic
+92,customer00092@example.com,Khon Kaen,2024-01-26,ads
+93,customer00093@example.com,Chon Buri,2024-01-26,organic
+94,customer00094@example.com,Bangkok,2024-01-26,organic
+95,customer00095@example.com,Udon Thani,2024-01-26,ads
+96,customer00096@example.com,Chiang Mai,2024-01-26,organic
+97,customer00097@example.com,Khon Kaen,2024-01-28,referral
+98,customer00098@example.com,Bangkok,2024-01-28,organic
+99,customer00099@example.com,Udon Thani,2024-01-29,referral
+100,customer00100@example.com,Bangkok,2024-01-29,ads
+101,customer00101@example.com,Chon Buri,2024-01-29,organic
+102,customer00102@example.com,Udon Thani,2024-01-29,organic
+103,customer00103@example.com,Chiang Mai,2024-01-29,organic
+104,customer00104@example.com,Chiang Mai,2024-01-30,organic
+105,customer00105@example.com,Nakhon Ratchasima,2024-01-30,ads
+106,customer00106@example.com,Hat Yai,2024-01-30,ads
+107,customer00107@example.com,Chon Buri,2024-01-30,ads
+108,customer00108@example.com,Chiang Mai,2024-01-30,organic
+109,customer00109@example.com,Khon Kaen,2024-01-31,organic
+110,customer00110@example.com,Udon Thani,2024-01-31,organic
+111,customer00111@example.com,Khon Kaen,2024-01-31,organic
+112,customer00112@example.com,Bangkok,2024-01-31,ads
+113,customer00113@example.com,Chon Buri,2024-01-31,organic
+114,customer00114@example.com,Chon Buri,2024-02-01,organic
+115,customer00115@example.com,Bangkok,2024-02-01,organic
+116,customer00116@example.com,Hat Yai,2024-02-01,referral
+117,customer00117@example.com,Udon Thani,2024-02-02,ads
+118,customer00118@example.com,Nakhon Ratchasima,2024-02-02,ads
+119,customer00119@example.com,Hat Yai,2024-02-03,organic
+120,customer00120@example.com,Bangkok,2024-02-04,ads
+121,customer00121@example.com,Bangkok,2024-02-04,organic
+122,customer00122@example.com,Bangkok,2024-02-04,organic
+123,customer00123@example.com,Bangkok,2024-02-04,organic
+124,customer00124@example.com,Bangkok,2024-02-04,referral
+125,customer00125@example.com,Nakhon Ratchasima,2024-02-05,organic
+126,customer00126@example.com,Khon Kaen,2024-02-05,organic
+127,customer00127@example.com,Hat Yai,2024-02-05,organic
+128,customer00128@example.com,Phuket,2024-02-05,organic
+129,customer00129@example.com,Nakhon Ratchasima,2024-02-06,organic
+130,customer00130@example.com,Bangkok,2024-02-06,organic
+131,customer00131@example.com,Hat Yai,2024-02-06,organic
+132,customer00132@example.com,Bangkok,2024-02-06,organic
+133,customer00133@example.com,Chon Buri,2024-02-06,organic
+134,customer00134@example.com,Bangkok,2024-02-07,organic
+135,customer00135@example.com,Bangkok,2024-02-07,organic
+136,customer00136@example.com,Chiang Mai,2024-02-07,organic
+137,customer00137@example.com,Khon Kaen,2024-02-07,organic
+138,customer00138@example.com,Chiang Mai,2024-02-07,organic
+139,customer00139@example.com,Nakhon Ratchasima,2024-02-07,ads
+140,customer00140@example.com,Chiang Mai,2024-02-08,ads
+141,customer00141@example.com,Bangkok,2024-02-08,organic
+142,customer00142@example.com,Chon Buri,2024-02-08,referral
+143,customer00143@example.com,Nakhon Ratchasima,2024-02-08,organic
+144,customer00144@example.com,Nakhon Ratchasima,2024-02-09,ads
+145,customer00145@example.com,Khon Kaen,2024-02-09,organic
+146,customer00146@example.com,Bangkok,2024-02-09,ads
+147,customer00147@example.com,Nakhon Ratchasima,2024-02-09,organic
+148,customer00148@example.com,Bangkok,2024-02-09,organic
+149,customer00149@example.com,Chon Buri,2024-02-09,organic
+150,customer00150@example.com,Khon Kaen,2024-02-10,referral
+151,customer00151@example.com,Nakhon Ratchasima,2024-02-10,organic
+152,customer00152@example.com,Khon Kaen,2024-02-10,organic
+153,customer00153@example.com,Chon Buri,2024-02-10,ads
+154,customer00154@example.com,Bangkok,2024-02-10,organic
+155,customer00155@example.com,Bangkok,2024-02-11,organic
+156,customer00156@example.com,Bangkok,2024-02-11,ads
+157,customer00157@example.com,Bangkok,2024-02-11,referral
+158,customer00158@example.com,Bangkok,2024-02-12,organic
+159,customer00159@example.com,Nakhon Ratchasima,2024-02-12,organic
+160,customer00160@example.com,Nakhon Ratchasima,2024-02-12,ads
+161,customer00161@example.com,Chon Buri,2024-02-12,ads
+162,customer00162@example.com,Chon Buri,2024-02-12,ads
+163,customer00163@example.com,Bangkok,2024-02-12,ads
+164,customer00164@example.com,Bangkok,2024-02-12,organic
+165,customer00165@example.com,Phuket,2024-02-13,organic
+166,customer00166@example.com,Phuket,2024-02-13,organic
+167,customer00167@example.com,Hat Yai,2024-02-13,ads
+168,customer00168@example.com,Bangkok,2024-02-14,organic
+169,customer00169@example.com,Bangkok,2024-02-14,referral
+170,customer00170@example.com,Bangkok,2024-02-15,organic
+171,customer00171@example.com,Chon Buri,2024-02-15,organic
+172,customer00172@example.com,Udon Thani,2024-02-15,organic
+173,customer00173@example.com,Bangkok,2024-02-15,organic
+174,customer00174@example.com,Khon Kaen,2024-02-16,referral
+175,customer00175@example.com,Hat Yai,2024-02-16,ads
+176,customer00176@example.com,Khon Kaen,2024-02-16,referral
+177,customer00177@example.com,Chiang Mai,2024-02-16,organic
+178,customer00178@example.com,Chon Buri,2024-02-16,organic
+179,customer00179@example.com,Bangkok,2024-02-17,ads
+180,customer00180@example.com,Bangkok,2024-02-17,referral
+181,customer00181@example.com,Udon Thani,2024-02-18,organic
+182,customer00182@example.com,Bangkok,2024-02-19,ads
+183,customer00183@example.com,Bangkok,2024-02-19,organic
+184,customer00184@example.com,Udon Thani,2024-02-19,ads
+185,customer00185@example.com,Chiang Mai,2024-02-19,organic
+186,customer00186@example.com,Nakhon Ratchasima,2024-02-20,organic
+187,customer00187@example.com,Udon Thani,2024-02-20,organic
+188,customer00188@example.com,Nakhon Ratchasima,2024-02-21,organic
+189,customer00189@example.com,Chiang Mai,2024-02-21,referral
+190,customer00190@example.com,Hat Yai,2024-02-21,organic
+191,customer00191@example.com,Khon Kaen,2024-02-21,organic
+192,customer00192@example.com,Bangkok,2024-02-21,organic
+193,customer00193@example.com,Chon Buri,2024-02-21,ads
+194,customer00194@example.com,Nakhon Ratchasima,2024-02-21,ads
+195,customer00195@example.com,Bangkok,2024-02-21,organic
+196,customer00196@example.com,Bangkok,2024-02-21,organic
+197,customer00197@example.com,Chon Buri,2024-02-22,organic
+198,customer00198@example.com,Hat Yai,2024-02-22,organic
+199,customer00199@example.com,Nakhon Ratchasima,2024-02-22,organic
+200,customer00200@example.com,Bangkok,2024-02-22,ads
+201,customer00201@example.com,Nakhon Ratchasima,2024-02-23,ads
+202,customer00202@example.com,Khon Kaen,2024-02-23,organic
+203,customer00203@example.com,Bangkok,2024-02-23,organic
+204,customer00204@example.com,Bangkok,2024-02-24,organic
+205,customer00205@example.com,Nakhon Ratchasima,2024-02-24,organic
+206,customer00206@example.com,Udon Thani,2024-02-25,referral
+207,customer00207@example.com,Chon Buri,2024-02-25,referral
+208,customer00208@example.com,Bangkok,2024-02-25,ads
+209,customer00209@example.com,Chon Buri,2024-02-25,referral
+210,customer00210@example.com,Nakhon Ratchasima,2024-02-25,referral
+211,customer00211@example.com,Bangkok,2024-02-26,ads
+212,customer00212@example.com,Bangkok,2024-02-27,organic
+213,customer00213@example.com,Phuket,2024-02-27,organic
+214,customer00214@example.com,Bangkok,2024-02-27,organic
+215,customer00215@example.com,Chon Buri,2024-02-27,ads
+216,customer00216@example.com,Hat Yai,2024-02-28,organic
+217,customer00217@example.com,Bangkok,2024-02-28,ads
+218,customer00218@example.com,Khon Kaen,2024-02-29,ads
+219,customer00219@example.com,Chiang Mai,2024-02-29,ads
+220,customer00220@example.com,Chiang Mai,2024-02-29,ads
+221,customer00221@example.com,Bangkok,2024-02-29,referral
+222,customer00222@example.com,Bangkok,2024-03-01,organic
+223,customer00223@example.com,Chiang Mai,2024-03-01,organic
+224,customer00224@example.com,Bangkok,2024-03-02,ads
+225,customer00225@example.com,Hat Yai,2024-03-02,organic
+226,customer00226@example.com,Bangkok,2024-03-02,organic
+227,customer00227@example.com,Phuket,2024-03-02,organic
+228,customer00228@example.com,Udon Thani,2024-03-02,organic
+229,customer00229@example.com,Khon Kaen,2024-03-02,referral
+230,customer00230@example.com,Chon Buri,2024-03-03,organic
+231,customer00231@example.com,Chiang Mai,2024-03-03,ads
+232,customer00232@example.com,Bangkok,2024-03-03,referral
+233,customer00233@example.com,Phuket,2024-03-03,organic
+234,customer00234@example.com,Nakhon Ratchasima,2024-03-04,organic
+235,customer00235@example.com,Chiang Mai,2024-03-04,organic
+236,customer00236@example.com,Bangkok,2024-03-04,ads
+237,customer00237@example.com,Bangkok,2024-03-04,referral
+238,customer00238@example.com,Phuket,2024-03-05,organic
+239,customer00239@example.com,Bangkok,2024-03-05,ads
+240,customer00240@example.com,Chon Buri,2024-03-05,ads
+241,customer00241@example.com,Bangkok,2024-03-05,ads
+242,customer00242@example.com,Chon Buri,2024-03-05,organic
+243,customer00243@example.com,Bangkok,2024-03-06,organic
+244,customer00244@example.com,Nakhon Ratchasima,2024-03-06,ads
+245,customer00245@example.com,Udon Thani,2024-03-06,organic
+246,customer00246@example.com,Bangkok,2024-03-07,referral
+247,customer00247@example.com,Chiang Mai,2024-03-07,referral
+248,customer00248@example.com,Bangkok,2024-03-07,organic
+249,customer00249@example.com,Bangkok,2024-03-07,organic
+250,customer00250@example.com,Phuket,2024-03-08,referral
+251,customer00251@example.com,Udon Thani,2024-03-08,organic
+252,customer00252@example.com,Bangkok,2024-03-08,organic
+253,customer00253@example.com,Nakhon Ratchasima,2024-03-08,referral
+254,customer00254@example.com,Bangkok,2024-03-08,organic
+255,customer00255@example.com,Bangkok,2024-03-09,ads
+256,customer00256@example.com,Bangkok,2024-03-09,organic
+257,customer00257@example.com,Bangkok,2024-03-09,ads
+258,customer00258@example.com,Hat Yai,2024-03-10,ads
+259,customer00259@example.com,Bangkok,2024-03-10,organic
+260,customer00260@example.com,Hat Yai,2024-03-11,referral
+261,customer00261@example.com,Bangkok,2024-03-11,organic
+262,customer00262@example.com,Bangkok,2024-03-11,organic
+263,customer00263@example.com,Chiang Mai,2024-03-12,ads
+264,customer00264@example.com,Bangkok,2024-03-12,organic
+265,customer00265@example.com,Phuket,2024-03-12,organic
+266,customer00266@example.com,Phuket,2024-03-12,organic
+267,customer00267@example.com,Khon Kaen,2024-03-12,organic
+268,customer00268@example.com,Bangkok,2024-03-13,organic
+269,customer00269@example.com,Hat Yai,2024-03-13,organic
+270,customer00270@example.com,Nakhon Ratchasima,2024-03-13,organic
+271,customer00271@example.com,Hat Yai,2024-03-13,organic
+272,customer00272@example.com,Khon Kaen,2024-03-14,ads
+273,customer00273@example.com,Bangkok,2024-03-14,organic
+274,customer00274@example.com,Chiang Mai,2024-03-15,referral
+275,customer00275@example.com,Bangkok,2024-03-15,ads
+276,customer00276@example.com,Khon Kaen,2024-03-15,organic
+277,customer00277@example.com,Chiang Mai,2024-03-15,organic
+278,customer00278@example.com,Chiang Mai,2024-03-15,ads
+279,customer00279@example.com,Bangkok,2024-03-15,organic
+280,customer00280@example.com,Bangkok,2024-03-16,referral
+281,customer00281@example.com,Chon Buri,2024-03-16,ads
+282,customer00282@example.com,Hat Yai,2024-03-16,organic
+283,customer00283@example.com,Chiang Mai,2024-03-17,ads
+284,customer00284@example.com,Bangkok,2024-03-17,organic
+285,customer00285@example.com,Nakhon Ratchasima,2024-03-17,referral
+286,customer00286@example.com,Bangkok,2024-03-17,referral
+287,customer00287@example.com,Nakhon Ratchasima,2024-03-17,organic
+288,customer00288@example.com,Chon Buri,2024-03-17,ads
+289,customer00289@example.com,Chon Buri,2024-03-17,organic
+290,customer00290@example.com,Hat Yai,2024-03-17,organic
+291,customer00291@example.com,Bangkok,2024-03-18,ads
+292,customer00292@example.com,Nakhon Ratchasima,2024-03-18,organic
+293,customer00293@example.com,Bangkok,2024-03-18,organic
+294,customer00294@example.com,Khon Kaen,2024-03-18,organic
+295,customer00295@example.com,Bangkok,2024-03-18,organic
+296,customer00296@example.com,Bangkok,2024-03-18,organic
+297,customer00297@example.com,Phuket,2024-03-19,ads
+298,customer00298@example.com,Chon Buri,2024-03-19,organic
+299,customer00299@example.com,Bangkok,2024-03-19,organic
+300,customer00300@example.com,Bangkok,2024-03-19,organic
+301,customer00301@example.com,Bangkok,2024-03-19,organic
+302,customer00302@example.com,Nakhon Ratchasima,2024-03-19,organic
+303,customer00303@example.com,Nakhon Ratchasima,2024-03-19,ads
+304,customer00304@example.com,Khon Kaen,2024-03-20,ads
+305,customer00305@example.com,Nakhon Ratchasima,2024-03-20,ads
+306,customer00306@example.com,Bangkok,2024-03-20,organic
+307,customer00307@example.com,Bangkok,2024-03-20,organic
+308,customer00308@example.com,Nakhon Ratchasima,2024-03-20,organic
+309,customer00309@example.com,Nakhon Ratchasima,2024-03-21,organic
+310,customer00310@example.com,Hat Yai,2024-03-21,organic
+311,customer00311@example.com,Chon Buri,2024-03-21,organic
+312,customer00312@example.com,Khon Kaen,2024-03-21,ads
+313,customer00313@example.com,Chiang Mai,2024-03-21,organic
+314,customer00314@example.com,Chon Buri,2024-03-22,referral
+315,customer00315@example.com,Chon Buri,2024-03-22,ads
+316,customer00316@example.com,Bangkok,2024-03-23,organic
+317,customer00317@example.com,Chiang Mai,2024-03-23,ads
+318,customer00318@example.com,Bangkok,2024-03-23,ads
+319,customer00319@example.com,Bangkok,2024-03-24,organic
+320,customer00320@example.com,Chiang Mai,2024-03-24,ads
+321,customer00321@example.com,Udon Thani,2024-03-24,organic
+322,customer00322@example.com,Chiang Mai,2024-03-24,ads
+323,customer00323@example.com,Bangkok,2024-03-24,organic
+324,customer00324@example.com,Udon Thani,2024-03-24,organic
+325,customer00325@example.com,Chiang Mai,2024-03-25,organic
+326,customer00326@example.com,Chon Buri,2024-03-25,ads
+327,customer00327@example.com,Bangkok,2024-03-25,organic
+328,customer00328@example.com,Khon Kaen,2024-03-26,ads
+329,customer00329@example.com,Bangkok,2024-03-26,ads
+330,customer00330@example.com,Chiang Mai,2024-03-26,organic
+331,customer00331@example.com,Hat Yai,2024-03-26,organic
+332,customer00332@example.com,Phuket,2024-03-26,ads
+333,customer00333@example.com,Bangkok,2024-03-27,organic
+334,customer00334@example.com,Bangkok,2024-03-27,referral
+335,customer00335@example.com,Phuket,2024-03-27,ads
+336,customer00336@example.com,Hat Yai,2024-03-27,ads
+337,customer00337@example.com,Bangkok,2024-03-27,ads
+338,customer00338@example.com,Bangkok,2024-03-27,ads
+339,customer00339@example.com,Nakhon Ratchasima,2024-03-27,organic
+340,customer00340@example.com,Nakhon Ratchasima,2024-03-27,ads
+341,customer00341@example.com,Khon Kaen,2024-03-27,organic
+342,customer00342@example.com,Chiang Mai,2024-03-27,ads
+343,customer00343@example.com,Phuket,2024-03-28,referral
+344,customer00344@example.com,Chon Buri,2024-03-28,organic
+345,customer00345@example.com,Khon Kaen,2024-03-28,ads
+346,customer00346@example.com,Udon Thani,2024-03-28,organic
+347,customer00347@example.com,Bangkok,2024-03-29,organic
+348,customer00348@example.com,Chiang Mai,2024-03-29,referral
+349,customer00349@example.com,Udon Thani,2024-03-29,ads
+350,customer00350@example.com,Bangkok,2024-03-29,referral
+351,customer00351@example.com,Bangkok,2024-03-29,organic
+352,customer00352@example.com,Bangkok,2024-03-29,organic
+353,customer00353@example.com,Bangkok,2024-03-29,referral
+354,customer00354@example.com,Udon Thani,2024-03-29,organic
+355,customer00355@example.com,Udon Thani,2024-03-30,ads
+356,customer00356@example.com,Udon Thani,2024-03-30,ads
+357,customer00357@example.com,Khon Kaen,2024-03-30,ads
+358,customer00358@example.com,Nakhon Ratchasima,2024-03-30,referral
+359,customer00359@example.com,Bangkok,2024-03-31,organic
+360,customer00360@example.com,Bangkok,2024-03-31,organic
+361,customer00361@example.com,Bangkok,2024-03-31,organic
+362,customer00362@example.com,Phuket,2024-04-01,organic
+363,customer00363@example.com,Nakhon Ratchasima,2024-04-01,referral
+364,customer00364@example.com,Hat Yai,2024-04-01,ads
+365,customer00365@example.com,Bangkok,2024-04-01,organic
+366,customer00366@example.com,Phuket,2024-04-01,organic
+367,customer00367@example.com,Chon Buri,2024-04-01,organic
+368,customer00368@example.com,Bangkok,2024-04-01,organic
+369,customer00369@example.com,Bangkok,2024-04-02,referral
+370,customer00370@example.com,Bangkok,2024-04-02,ads
+371,customer00371@example.com,Khon Kaen,2024-04-02,ads
+372,customer00372@example.com,Bangkok,2024-04-02,organic
+373,customer00373@example.com,Chon Buri,2024-04-03,organic
+374,customer00374@example.com,Bangkok,2024-04-03,ads
+375,customer00375@example.com,Udon Thani,2024-04-03,organic
+376,customer00376@example.com,Khon Kaen,2024-04-03,referral
+377,customer00377@example.com,Nakhon Ratchasima,2024-04-05,ads
+378,customer00378@example.com,Chiang Mai,2024-04-05,organic
+379,customer00379@example.com,Bangkok,2024-04-05,ads
+380,customer00380@example.com,Bangkok,2024-04-05,organic
+381,customer00381@example.com,Udon Thani,2024-04-05,organic
+382,customer00382@example.com,Hat Yai,2024-04-06,ads
+383,customer00383@example.com,Chiang Mai,2024-04-07,ads
+384,customer00384@example.com,Nakhon Ratchasima,2024-04-07,organic
+385,customer00385@example.com,Khon Kaen,2024-04-07,organic
+386,customer00386@example.com,Bangkok,2024-04-08,organic
+387,customer00387@example.com,Udon Thani,2024-04-08,organic
+388,customer00388@example.com,Bangkok,2024-04-08,organic
+389,customer00389@example.com,Khon Kaen,2024-04-08,organic
+390,customer00390@example.com,Phuket,2024-04-09,ads
+391,customer00391@example.com,Bangkok,2024-04-09,organic
+392,customer00392@example.com,Bangkok,2024-04-10,organic
+393,customer00393@example.com,Chon Buri,2024-04-10,ads
+394,customer00394@example.com,Bangkok,2024-04-10,organic
+395,customer00395@example.com,Chon Buri,2024-04-10,organic
+396,customer00396@example.com,Nakhon Ratchasima,2024-04-10,ads
+397,customer00397@example.com,Phuket,2024-04-10,ads
+398,customer00398@example.com,Bangkok,2024-04-11,ads
+399,customer00399@example.com,Nakhon Ratchasima,2024-04-11,organic
+400,customer00400@example.com,Nakhon Ratchasima,2024-04-11,organic
+401,customer00401@example.com,Bangkok,2024-04-11,ads
+402,customer00402@example.com,Phuket,2024-04-11,organic
+403,customer00403@example.com,Khon Kaen,2024-04-11,ads
+404,customer00404@example.com,Bangkok,2024-04-11,ads
+405,customer00405@example.com,Phuket,2024-04-11,ads
+406,customer00406@example.com,Nakhon Ratchasima,2024-04-12,organic
+407,customer00407@example.com,Bangkok,2024-04-12,ads
+408,customer00408@example.com,Chon Buri,2024-04-12,organic
+409,customer00409@example.com,Bangkok,2024-04-12,organic
+410,customer00410@example.com,Chon Buri,2024-04-13,organic
+411,customer00411@example.com,Bangkok,2024-04-13,organic
+412,customer00412@example.com,Bangkok,2024-04-13,ads
+413,customer00413@example.com,Chon Buri,2024-04-13,ads
+414,customer00414@example.com,Hat Yai,2024-04-13,organic
+415,customer00415@example.com,Bangkok,2024-04-14,organic
+416,customer00416@example.com,Bangkok,2024-04-14,ads
+417,customer00417@example.com,Chon Buri,2024-04-14,ads
+418,customer00418@example.com,Nakhon Ratchasima,2024-04-14,referral
+419,customer00419@example.com,Udon Thani,2024-04-14,organic
+420,customer00420@example.com,Chiang Mai,2024-04-15,organic
+421,customer00421@example.com,Nakhon Ratchasima,2024-04-15,organic
+422,customer00422@example.com,Bangkok,2024-04-15,organic
+423,customer00423@example.com,Bangkok,2024-04-16,referral
+424,customer00424@example.com,Bangkok,2024-04-16,organic
+425,customer00425@example.com,Udon Thani,2024-04-16,referral
+426,customer00426@example.com,Bangkok,2024-04-16,ads
+427,customer00427@example.com,Nakhon Ratchasima,2024-04-17,referral
+428,customer00428@example.com,Bangkok,2024-04-17,organic
+429,customer00429@example.com,Udon Thani,2024-04-17,ads
+430,customer00430@example.com,Bangkok,2024-04-17,ads
+431,customer00431@example.com,Bangkok,2024-04-18,organic
+432,customer00432@example.com,Udon Thani,2024-04-18,referral
+433,customer00433@example.com,Bangkok,2024-04-18,referral
+434,customer00434@example.com,Nakhon Ratchasima,2024-04-18,organic
+435,customer00435@example.com,Bangkok,2024-04-18,ads
+436,customer00436@example.com,Phuket,2024-04-19,organic
+437,customer00437@example.com,Chiang Mai,2024-04-19,ads
+438,customer00438@example.com,Bangkok,2024-04-19,organic
+439,customer00439@example.com,Bangkok,2024-04-19,organic
+440,customer00440@example.com,Chon Buri,2024-04-20,organic
+441,customer00441@example.com,Bangkok,2024-04-20,ads
+442,customer00442@example.com,Phuket,2024-04-21,ads
+443,customer00443@example.com,Chon Buri,2024-04-21,referral
+444,customer00444@example.com,Bangkok,2024-04-21,organic
+445,customer00445@example.com,Bangkok,2024-04-21,ads
+446,customer00446@example.com,Udon Thani,2024-04-21,organic
+447,customer00447@example.com,Chiang Mai,2024-04-21,organic
+448,customer00448@example.com,Chon Buri,2024-04-21,ads
+449,customer00449@example.com,Bangkok,2024-04-21,organic
+450,customer00450@example.com,Hat Yai,2024-04-21,organic
+451,customer00451@example.com,Bangkok,2024-04-22,organic
+452,customer00452@example.com,Bangkok,2024-04-22,organic
+453,customer00453@example.com,Bangkok,2024-04-23,organic
+454,customer00454@example.com,Khon Kaen,2024-04-23,organic
+455,customer00455@example.com,Chon Buri,2024-04-23,ads
+456,customer00456@example.com,Phuket,2024-04-24,ads
+457,customer00457@example.com,Chon Buri,2024-04-24,organic
+458,customer00458@example.com,Bangkok,2024-04-24,ads
+459,customer00459@example.com,Nakhon Ratchasima,2024-04-24,organic
+460,customer00460@example.com,Bangkok,2024-04-24,organic
+461,customer00461@example.com,Bangkok,2024-04-24,organic
+462,customer00462@example.com,Chiang Mai,2024-04-24,ads
+463,customer00463@example.com,Chon Buri,2024-04-25,organic
+464,customer00464@example.com,Bangkok,2024-04-25,ads
+465,customer00465@example.com,Bangkok,2024-04-25,ads
+466,customer00466@example.com,Bangkok,2024-04-25,organic
+467,customer00467@example.com,Hat Yai,2024-04-25,ads
+468,customer00468@example.com,Bangkok,2024-04-25,ads
+469,customer00469@example.com,Chon Buri,2024-04-26,organic
+470,customer00470@example.com,Bangkok,2024-04-26,ads
+471,customer00471@example.com,Chon Buri,2024-04-26,organic
+472,customer00472@example.com,Bangkok,2024-04-26,ads
+473,customer00473@example.com,Bangkok,2024-04-26,referral
+474,customer00474@example.com,Bangkok,2024-04-26,ads
+475,customer00475@example.com,Nakhon Ratchasima,2024-04-26,organic
+476,customer00476@example.com,Nakhon Ratchasima,2024-04-27,referral
+477,customer00477@example.com,Chon Buri,2024-04-27,organic
+478,customer00478@example.com,Phuket,2024-04-27,organic
+479,customer00479@example.com,Chon Buri,2024-04-27,organic
+480,customer00480@example.com,Bangkok,2024-04-27,organic
+481,customer00481@example.com,Chiang Mai,2024-04-28,organic
+482,customer00482@example.com,Udon Thani,2024-04-28,ads
+483,customer00483@example.com,Chiang Mai,2024-04-28,organic
+484,customer00484@example.com,Nakhon Ratchasima,2024-04-28,ads
+485,customer00485@example.com,Bangkok,2024-04-28,organic
+486,customer00486@example.com,Chon Buri,2024-04-29,organic
+487,customer00487@example.com,Chiang Mai,2024-04-29,organic
+488,customer00488@example.com,Bangkok,2024-04-29,organic
+489,customer00489@example.com,Chiang Mai,2024-04-30,ads
+490,customer00490@example.com,Khon Kaen,2024-04-30,organic
+491,customer00491@example.com,Nakhon Ratchasima,2024-04-30,referral
+492,customer00492@example.com,Chiang Mai,2024-05-01,organic
+493,customer00493@example.com,Phuket,2024-05-01,organic
+494,customer00494@example.com,Chon Buri,2024-05-01,organic
+495,customer00495@example.com,Chiang Mai,2024-05-01,organic
+496,customer00496@example.com,Bangkok,2024-05-02,ads
+497,customer00497@example.com,Chon Buri,2024-05-02,ads
+498,customer00498@example.com,Udon Thani,2024-05-02,organic
+499,customer00499@example.com,Udon Thani,2024-05-02,organic
+500,customer00500@example.com,Khon Kaen,2024-05-02,organic
+501,customer00501@example.com,Nakhon Ratchasima,2024-05-03,organic
+502,customer00502@example.com,Phuket,2024-05-03,organic
+503,customer00503@example.com,Bangkok,2024-05-03,referral
+504,customer00504@example.com,Chiang Mai,2024-05-03,referral
+505,customer00505@example.com,Chon Buri,2024-05-03,organic
+506,customer00506@example.com,Chiang Mai,2024-05-03,referral
+507,customer00507@example.com,Bangkok,2024-05-04,referral
+508,customer00508@example.com,Udon Thani,2024-05-04,ads
+509,customer00509@example.com,Khon Kaen,2024-05-04,ads
+510,customer00510@example.com,Hat Yai,2024-05-05,ads
+511,customer00511@example.com,Bangkok,2024-05-05,ads
+512,customer00512@example.com,Bangkok,2024-05-05,ads
+513,customer00513@example.com,Udon Thani,2024-05-05,organic
+514,customer00514@example.com,Bangkok,2024-05-05,organic
+515,customer00515@example.com,Bangkok,2024-05-06,ads
+516,customer00516@example.com,Bangkok,2024-05-06,organic
+517,customer00517@example.com,Bangkok,2024-05-06,organic
+518,customer00518@example.com,Bangkok,2024-05-06,ads
+519,customer00519@example.com,Khon Kaen,2024-05-07,ads
+520,customer00520@example.com,Bangkok,2024-05-07,ads
+521,customer00521@example.com,Chiang Mai,2024-05-07,organic
+522,customer00522@example.com,Bangkok,2024-05-07,ads
+523,customer00523@example.com,Nakhon Ratchasima,2024-05-07,organic
+524,customer00524@example.com,Bangkok,2024-05-07,organic
+525,customer00525@example.com,Bangkok,2024-05-07,ads
+526,customer00526@example.com,Bangkok,2024-05-07,ads
+527,customer00527@example.com,Hat Yai,2024-05-08,referral
+528,customer00528@example.com,Chon Buri,2024-05-08,ads
+529,customer00529@example.com,Nakhon Ratchasima,2024-05-08,organic
+530,customer00530@example.com,Chiang Mai,2024-05-09,ads
+531,customer00531@example.com,Hat Yai,2024-05-09,referral
+532,customer00532@example.com,Chon Buri,2024-05-09,organic
+533,customer00533@example.com,Phuket,2024-05-09,referral
+534,customer00534@example.com,Nakhon Ratchasima,2024-05-09,organic
+535,customer00535@example.com,Chiang Mai,2024-05-09,ads
+536,customer00536@example.com,Udon Thani,2024-05-10,ads
+537,customer00537@example.com,Hat Yai,2024-05-10,organic
+538,customer00538@example.com,Chon Buri,2024-05-11,organic
+539,customer00539@example.com,Chon Buri,2024-05-11,ads
+540,customer00540@example.com,Udon Thani,2024-05-11,organic
+541,customer00541@example.com,Udon Thani,2024-05-13,organic
+542,customer00542@example.com,Bangkok,2024-05-13,ads
+543,customer00543@example.com,Chon Buri,2024-05-13,organic
+544,customer00544@example.com,Nakhon Ratchasima,2024-05-14,referral
+545,customer00545@example.com,Phuket,2024-05-14,organic
+546,customer00546@example.com,Phuket,2024-05-14,organic
+547,customer00547@example.com,Bangkok,2024-05-14,ads
+548,customer00548@example.com,Phuket,2024-05-14,ads
+549,customer00549@example.com,Bangkok,2024-05-14,organic
+550,customer00550@example.com,Chon Buri,2024-05-14,organic
+551,customer00551@example.com,Bangkok,2024-05-15,organic
+552,customer00552@example.com,Bangkok,2024-05-15,organic
+553,customer00553@example.com,Bangkok,2024-05-15,ads
+554,customer00554@example.com,Bangkok,2024-05-15,referral
+555,customer00555@example.com,Bangkok,2024-05-16,organic
+556,customer00556@example.com,Khon Kaen,2024-05-16,ads
+557,customer00557@example.com,Chiang Mai,2024-05-16,ads
+558,customer00558@example.com,Nakhon Ratchasima,2024-05-16,referral
+559,customer00559@example.com,Nakhon Ratchasima,2024-05-17,ads
+560,customer00560@example.com,Chiang Mai,2024-05-17,organic
+561,customer00561@example.com,Chon Buri,2024-05-18,ads
+562,customer00562@example.com,Bangkok,2024-05-18,ads
+563,customer00563@example.com,Bangkok,2024-05-18,ads
+564,customer00564@example.com,Khon Kaen,2024-05-18,organic
+565,customer00565@example.com,Khon Kaen,2024-05-18,organic
+566,customer00566@example.com,Nakhon Ratchasima,2024-05-18,ads
+567,customer00567@example.com,Chon Buri,2024-05-18,organic
+568,customer00568@example.com,Bangkok,2024-05-19,organic
+569,customer00569@example.com,Chiang Mai,2024-05-19,ads
+570,customer00570@example.com,Nakhon Ratchasima,2024-05-19,ads
+571,customer00571@example.com,Bangkok,2024-05-21,referral
+572,customer00572@example.com,Udon Thani,2024-05-21,organic
+573,customer00573@example.com,Chon Buri,2024-05-21,organic
+574,customer00574@example.com,Bangkok,2024-05-21,organic
+575,customer00575@example.com,Chon Buri,2024-05-21,organic
+576,customer00576@example.com,Nakhon Ratchasima,2024-05-22,organic
+577,customer00577@example.com,Phuket,2024-05-23,ads
+578,customer00578@example.com,Bangkok,2024-05-23,organic
+579,customer00579@example.com,Phuket,2024-05-23,ads
+580,customer00580@example.com,Bangkok,2024-05-23,ads
+581,customer00581@example.com,Chon Buri,2024-05-23,organic
+582,customer00582@example.com,Hat Yai,2024-05-24,organic
+583,customer00583@example.com,Chon Buri,2024-05-24,ads
+584,customer00584@example.com,Bangkok,2024-05-24,organic
+585,customer00585@example.com,Nakhon Ratchasima,2024-05-24,referral
+586,customer00586@example.com,Bangkok,2024-05-24,organic
+587,customer00587@example.com,Udon Thani,2024-05-25,organic
+588,customer00588@example.com,Bangkok,2024-05-25,ads
+589,customer00589@example.com,Hat Yai,2024-05-25,ads
+590,customer00590@example.com,Phuket,2024-05-25,ads
+591,customer00591@example.com,Chon Buri,2024-05-25,ads
+592,customer00592@example.com,Chon Buri,2024-05-26,ads
+593,customer00593@example.com,Chon Buri,2024-05-26,ads
+594,customer00594@example.com,Chon Buri,2024-05-26,referral
+595,customer00595@example.com,Phuket,2024-05-26,organic
+596,customer00596@example.com,Bangkok,2024-05-26,organic
+597,customer00597@example.com,Phuket,2024-05-26,ads
+598,customer00598@example.com,Hat Yai,2024-05-27,organic
+599,customer00599@example.com,Chon Buri,2024-05-27,ads
+600,customer00600@example.com,Bangkok,2024-05-27,organic
+601,customer00601@example.com,Bangkok,2024-05-27,referral
+602,customer00602@example.com,Chon Buri,2024-05-27,ads
+603,customer00603@example.com,Bangkok,2024-05-28,referral
+604,customer00604@example.com,Udon Thani,2024-05-28,organic
+605,customer00605@example.com,Khon Kaen,2024-05-28,organic
+606,customer00606@example.com,Khon Kaen,2024-05-28,ads
+607,customer00607@example.com,Bangkok,2024-05-28,organic
+608,customer00608@example.com,Nakhon Ratchasima,2024-05-29,organic
+609,customer00609@example.com,Hat Yai,2024-05-29,ads
+610,customer00610@example.com,Udon Thani,2024-05-29,organic
+611,customer00611@example.com,Nakhon Ratchasima,2024-05-29,ads
+612,customer00612@example.com,Chiang Mai,2024-05-29,organic
+613,customer00613@example.com,Chiang Mai,2024-05-30,ads
+614,customer00614@example.com,Nakhon Ratchasima,2024-05-30,ads
+615,customer00615@example.com,Bangkok,2024-05-30,organic
+616,customer00616@example.com,Khon Kaen,2024-05-30,ads
+617,customer00617@example.com,Bangkok,2024-05-31,organic
+618,customer00618@example.com,Chon Buri,2024-05-31,organic
+619,customer00619@example.com,Hat Yai,2024-05-31,organic
+620,customer00620@example.com,Bangkok,2024-05-31,ads
+621,customer00621@example.com,Phuket,2024-05-31,organic
+622,customer00622@example.com,Udon Thani,2024-05-31,ads
+623,customer00623@example.com,Chiang Mai,2024-05-31,ads
+624,customer00624@example.com,Bangkok,2024-05-31,organic
+625,customer00625@example.com,Chon Buri,2024-05-31,ads
+626,customer00626@example.com,Bangkok,2024-06-01,organic
+627,customer00627@example.com,Bangkok,2024-06-02,ads
+628,customer00628@example.com,Bangkok,2024-06-02,organic
+629,customer00629@example.com,Bangkok,2024-06-02,organic
+630,customer00630@example.com,Chon Buri,2024-06-03,ads
+631,customer00631@example.com,Chon Buri,2024-06-03,organic
+632,customer00632@example.com,Bangkok,2024-06-03,referral
+633,customer00633@example.com,Chiang Mai,2024-06-03,ads
+634,customer00634@example.com,Bangkok,2024-06-03,organic
+635,customer00635@example.com,Bangkok,2024-06-03,organic
+636,customer00636@example.com,Khon Kaen,2024-06-04,ads
+637,customer00637@example.com,Udon Thani,2024-06-04,organic
+638,customer00638@example.com,Nakhon Ratchasima,2024-06-04,organic
+639,customer00639@example.com,Chon Buri,2024-06-05,ads
+640,customer00640@example.com,Hat Yai,2024-06-05,referral
+641,customer00641@example.com,Bangkok,2024-06-05,organic
+642,customer00642@example.com,Phuket,2024-06-06,ads
+643,customer00643@example.com,Chon Buri,2024-06-06,organic
+644,customer00644@example.com,Bangkok,2024-06-06,organic
+645,customer00645@example.com,Udon Thani,2024-06-06,referral
+646,customer00646@example.com,Hat Yai,2024-06-06,ads
+647,customer00647@example.com,Bangkok,2024-06-06,ads
+648,customer00648@example.com,Hat Yai,2024-06-06,organic
+649,customer00649@example.com,Bangkok,2024-06-07,ads
+650,customer00650@example.com,Bangkok,2024-06-07,organic
+651,customer00651@example.com,Udon Thani,2024-06-07,organic
+652,customer00652@example.com,Bangkok,2024-06-07,ads
+653,customer00653@example.com,Khon Kaen,2024-06-07,organic
+654,customer00654@example.com,Khon Kaen,2024-06-08,organic
+655,customer00655@example.com,Chon Buri,2024-06-08,organic
+656,customer00656@example.com,Chiang Mai,2024-06-08,organic
+657,customer00657@example.com,Bangkok,2024-06-09,ads
+658,customer00658@example.com,Nakhon Ratchasima,2024-06-10,organic
+659,customer00659@example.com,Phuket,2024-06-10,organic
+660,customer00660@example.com,Bangkok,2024-06-10,referral
+661,customer00661@example.com,Chon Buri,2024-06-10,organic
+662,customer00662@example.com,Chon Buri,2024-06-10,ads
+663,customer00663@example.com,Phuket,2024-06-10,organic
+664,customer00664@example.com,Khon Kaen,2024-06-10,organic
+665,customer00665@example.com,Bangkok,2024-06-10,ads
+666,customer00666@example.com,Bangkok,2024-06-10,ads
+667,customer00667@example.com,Bangkok,2024-06-10,ads
+668,customer00668@example.com,Nakhon Ratchasima,2024-06-10,ads
+669,customer00669@example.com,Udon Thani,2024-06-10,organic
+670,customer00670@example.com,Udon Thani,2024-06-11,ads
+671,customer00671@example.com,Bangkok,2024-06-11,ads
+672,customer00672@example.com,Chiang Mai,2024-06-11,organic
+673,customer00673@example.com,Udon Thani,2024-06-11,organic
+674,customer00674@example.com,Udon Thani,2024-06-11,ads
+675,customer00675@example.com,Hat Yai,2024-06-12,ads
+676,customer00676@example.com,Udon Thani,2024-06-12,ads
+677,customer00677@example.com,Bangkok,2024-06-12,ads
+678,customer00678@example.com,Khon Kaen,2024-06-13,referral
+679,customer00679@example.com,Bangkok,2024-06-13,organic
+680,customer00680@example.com,Chiang Mai,2024-06-13,ads
+681,customer00681@example.com,Bangkok,2024-06-13,organic
+682,customer00682@example.com,Chon Buri,2024-06-14,organic
+683,customer00683@example.com,Phuket,2024-06-14,organic
+684,customer00684@example.com,Bangkok,2024-06-14,organic
+685,customer00685@example.com,Nakhon Ratchasima,2024-06-14,ads
+686,customer00686@example.com,Phuket,2024-06-14,referral
+687,customer00687@example.com,Chiang Mai,2024-06-14,organic
+688,customer00688@example.com,Chon Buri,2024-06-14,ads
+689,customer00689@example.com,Khon Kaen,2024-06-15,ads
+690,customer00690@example.com,Phuket,2024-06-15,referral
+691,customer00691@example.com,Bangkok,2024-06-15,ads
+692,customer00692@example.com,Bangkok,2024-06-15,ads
+693,customer00693@example.com,Bangkok,2024-06-15,ads
+694,customer00694@example.com,Chon Buri,2024-06-16,organic
+695,customer00695@example.com,Chiang Mai,2024-06-16,organic
+696,customer00696@example.com,Chon Buri,2024-06-17,ads
+697,customer00697@example.com,Bangkok,2024-06-17,referral
+698,customer00698@example.com,Hat Yai,2024-06-17,ads
+699,customer00699@example.com,Udon Thani,2024-06-17,ads
+700,customer00700@example.com,Bangkok,2024-06-17,referral
+701,customer00701@example.com,Bangkok,2024-06-18,ads
+702,customer00702@example.com,Chiang Mai,2024-06-18,ads
+703,customer00703@example.com,Bangkok,2024-06-19,organic
+704,customer00704@example.com,Bangkok,2024-06-19,organic
+705,customer00705@example.com,Udon Thani,2024-06-19,organic
+706,customer00706@example.com,Bangkok,2024-06-20,ads
+707,customer00707@example.com,Chon Buri,2024-06-20,organic
+708,customer00708@example.com,Chon Buri,2024-06-20,ads
+709,customer00709@example.com,Khon Kaen,2024-06-21,ads
+710,customer00710@example.com,Hat Yai,2024-06-21,ads
+711,customer00711@example.com,Bangkok,2024-06-21,referral
+712,customer00712@example.com,Chiang Mai,2024-06-21,organic
+713,customer00713@example.com,Bangkok,2024-06-21,referral
+714,customer00714@example.com,Bangkok,2024-06-22,organic
+715,customer00715@example.com,Udon Thani,2024-06-22,organic
+716,customer00716@example.com,Udon Thani,2024-06-22,referral
+717,customer00717@example.com,Nakhon Ratchasima,2024-06-22,organic
+718,customer00718@example.com,Phuket,2024-06-23,organic
+719,customer00719@example.com,Bangkok,2024-06-25,organic
+720,customer00720@example.com,Nakhon Ratchasima,2024-06-25,organic
+721,customer00721@example.com,Chon Buri,2024-06-25,organic
+722,customer00722@example.com,Udon Thani,2024-06-25,organic
+723,customer00723@example.com,Bangkok,2024-06-25,organic
+724,customer00724@example.com,Bangkok,2024-06-25,organic
+725,customer00725@example.com,Bangkok,2024-06-25,organic
+726,customer00726@example.com,Chon Buri,2024-06-25,organic
+727,customer00727@example.com,Bangkok,2024-06-25,ads
+728,customer00728@example.com,Bangkok,2024-06-26,ads
+729,customer00729@example.com,Hat Yai,2024-06-26,organic
+730,customer00730@example.com,Bangkok,2024-06-26,organic
+731,customer00731@example.com,Bangkok,2024-06-27,organic
+732,customer00732@example.com,Bangkok,2024-06-27,referral
+733,customer00733@example.com,Chon Buri,2024-06-27,referral
+734,customer00734@example.com,Hat Yai,2024-06-27,ads
+735,customer00735@example.com,Bangkok,2024-06-27,ads
+736,customer00736@example.com,Bangkok,2024-06-27,ads
+737,customer00737@example.com,Chon Buri,2024-06-27,ads
+738,customer00738@example.com,Bangkok,2024-06-28,ads
+739,customer00739@example.com,Phuket,2024-06-28,referral
+740,customer00740@example.com,Khon Kaen,2024-06-28,organic
+741,customer00741@example.com,Hat Yai,2024-06-28,ads
+742,customer00742@example.com,Bangkok,2024-06-28,organic
+743,customer00743@example.com,Chon Buri,2024-06-28,referral
+744,customer00744@example.com,Chon Buri,2024-06-28,organic
+745,customer00745@example.com,Nakhon Ratchasima,2024-06-28,ads
+746,customer00746@example.com,Bangkok,2024-06-28,ads
+747,customer00747@example.com,Nakhon Ratchasima,2024-06-29,organic
+748,customer00748@example.com,Bangkok,2024-06-29,ads
+749,customer00749@example.com,Bangkok,2024-06-29,organic
+750,customer00750@example.com,Chiang Mai,2024-06-29,ads
+751,customer00751@example.com,Phuket,2024-06-30,ads
+752,customer00752@example.com,Bangkok,2024-06-30,referral
+753,customer00753@example.com,Bangkok,2024-07-01,ads
+754,customer00754@example.com,Khon Kaen,2024-07-01,referral
+755,customer00755@example.com,Chiang Mai,2024-07-01,ads
+756,customer00756@example.com,Nakhon Ratchasima,2024-07-01,organic
+757,customer00757@example.com,Chon Buri,2024-07-02,organic
+758,customer00758@example.com,Udon Thani,2024-07-02,referral
+759,customer00759@example.com,Bangkok,2024-07-02,ads
+760,customer00760@example.com,Khon Kaen,2024-07-02,organic
+761,customer00761@example.com,Khon Kaen,2024-07-03,referral
+762,customer00762@example.com,Bangkok,2024-07-03,ads
+763,customer00763@example.com,Bangkok,2024-07-03,ads
+764,customer00764@example.com,Hat Yai,2024-07-04,organic
+765,customer00765@example.com,Bangkok,2024-07-04,organic
+766,customer00766@example.com,Hat Yai,2024-07-04,ads
+767,customer00767@example.com,Bangkok,2024-07-04,ads
+768,customer00768@example.com,Udon Thani,2024-07-05,organic
+769,customer00769@example.com,Bangkok,2024-07-05,organic
+770,customer00770@example.com,Bangkok,2024-07-06,organic
+771,customer00771@example.com,Bangkok,2024-07-06,organic
+772,customer00772@example.com,Bangkok,2024-07-06,organic
+773,customer00773@example.com,Bangkok,2024-07-06,organic
+774,customer00774@example.com,Khon Kaen,2024-07-07,referral
+775,customer00775@example.com,Khon Kaen,2024-07-07,organic
+776,customer00776@example.com,Khon Kaen,2024-07-07,ads
+777,customer00777@example.com,Bangkok,2024-07-07,organic
+778,customer00778@example.com,Khon Kaen,2024-07-07,organic
+779,customer00779@example.com,Bangkok,2024-07-07,organic
+780,customer00780@example.com,Hat Yai,2024-07-07,ads
+781,customer00781@example.com,Chon Buri,2024-07-08,organic
+782,customer00782@example.com,Chon Buri,2024-07-08,referral
+783,customer00783@example.com,Hat Yai,2024-07-08,organic
+784,customer00784@example.com,Khon Kaen,2024-07-09,ads
+785,customer00785@example.com,Bangkok,2024-07-09,ads
+786,customer00786@example.com,Bangkok,2024-07-09,referral
+787,customer00787@example.com,Nakhon Ratchasima,2024-07-10,referral
+788,customer00788@example.com,Nakhon Ratchasima,2024-07-10,ads
+789,customer00789@example.com,Bangkok,2024-07-10,ads
+790,customer00790@example.com,Khon Kaen,2024-07-11,organic
+791,customer00791@example.com,Hat Yai,2024-07-11,organic
+792,customer00792@example.com,Nakhon Ratchasima,2024-07-11,ads
+793,customer00793@example.com,Chiang Mai,2024-07-11,organic
+794,customer00794@example.com,Bangkok,2024-07-11,organic
+795,customer00795@example.com,Chiang Mai,2024-07-11,ads
+796,customer00796@example.com,Bangkok,2024-07-11,referral
+797,customer00797@example.com,Hat Yai,2024-07-12,referral
+798,customer00798@example.com,Udon Thani,2024-07-12,ads
+799,customer00799@example.com,Bangkok,2024-07-13,ads
+800,customer00800@example.com,Bangkok,2024-07-13,organic
+801,customer00801@example.com,Bangkok,2024-07-13,organic
+802,customer00802@example.com,Bangkok,2024-07-14,organic
+803,customer00803@example.com,Udon Thani,2024-07-15,organic
+804,customer00804@example.com,Hat Yai,2024-07-15,organic
+805,customer00805@example.com,Khon Kaen,2024-07-16,organic
+806,customer00806@example.com,Bangkok,2024-07-16,organic
+807,customer00807@example.com,Bangkok,2024-07-16,ads
+808,customer00808@example.com,Nakhon Ratchasima,2024-07-16,referral
+809,customer00809@example.com,Chon Buri,2024-07-16,organic
+810,customer00810@example.com,Udon Thani,2024-07-17,referral
+811,customer00811@example.com,Bangkok,2024-07-17,ads
+812,customer00812@example.com,Bangkok,2024-07-17,organic
+813,customer00813@example.com,Udon Thani,2024-07-17,ads
+814,customer00814@example.com,Bangkok,2024-07-18,ads
+815,customer00815@example.com,Chiang Mai,2024-07-18,ads
+816,customer00816@example.com,Bangkok,2024-07-18,organic
+817,customer00817@example.com,Phuket,2024-07-18,ads
+818,customer00818@example.com,Khon Kaen,2024-07-19,ads
+819,customer00819@example.com,Bangkok,2024-07-19,referral
+820,customer00820@example.com,Chiang Mai,2024-07-19,organic
+821,customer00821@example.com,Khon Kaen,2024-07-19,ads
+822,customer00822@example.com,Hat Yai,2024-07-19,organic
+823,customer00823@example.com,Bangkok,2024-07-19,referral
+824,customer00824@example.com,Bangkok,2024-07-20,ads
+825,customer00825@example.com,Bangkok,2024-07-20,ads
+826,customer00826@example.com,Bangkok,2024-07-20,organic
+827,customer00827@example.com,Chiang Mai,2024-07-20,organic
+828,customer00828@example.com,Chon Buri,2024-07-20,organic
+829,customer00829@example.com,Bangkok,2024-07-20,ads
+830,customer00830@example.com,Chiang Mai,2024-07-20,ads
+831,customer00831@example.com,Bangkok,2024-07-20,organic
+832,customer00832@example.com,Bangkok,2024-07-21,ads
+833,customer00833@example.com,Bangkok,2024-07-21,referral
+834,customer00834@example.com,Nakhon Ratchasima,2024-07-21,ads
+835,customer00835@example.com,Chon Buri,2024-07-21,ads
+836,customer00836@example.com,Hat Yai,2024-07-22,organic
+837,customer00837@example.com,Bangkok,2024-07-22,ads
+838,customer00838@example.com,Bangkok,2024-07-22,organic
+839,customer00839@example.com,Bangkok,2024-07-22,ads
+840,customer00840@example.com,Khon Kaen,2024-07-22,ads
+841,customer00841@example.com,Chon Buri,2024-07-22,ads
+842,customer00842@example.com,Bangkok,2024-07-22,organic
+843,customer00843@example.com,Bangkok,2024-07-23,referral
+844,customer00844@example.com,Chon Buri,2024-07-23,ads
+845,customer00845@example.com,Chiang Mai,2024-07-23,ads
+846,customer00846@example.com,Phuket,2024-07-23,ads
+847,customer00847@example.com,Nakhon Ratchasima,2024-07-24,ads
+848,customer00848@example.com,Hat Yai,2024-07-24,referral
+849,customer00849@example.com,Bangkok,2024-07-25,ads
+850,customer00850@example.com,Hat Yai,2024-07-26,organic
+851,customer00851@example.com,Phuket,2024-07-26,organic
+852,customer00852@example.com,Chon Buri,2024-07-26,ads
+853,customer00853@example.com,Hat Yai,2024-07-26,referral
+854,customer00854@example.com,Bangkok,2024-07-26,organic
+855,customer00855@example.com,Khon Kaen,2024-07-26,organic
+856,customer00856@example.com,Bangkok,2024-07-26,ads
+857,customer00857@example.com,Chiang Mai,2024-07-27,ads
+858,customer00858@example.com,Udon Thani,2024-07-27,organic
+859,customer00859@example.com,Nakhon Ratchasima,2024-07-27,ads
+860,customer00860@example.com,Bangkok,2024-07-27,referral
+861,customer00861@example.com,Khon Kaen,2024-07-28,ads
+862,customer00862@example.com,Bangkok,2024-07-28,organic
+863,customer00863@example.com,Udon Thani,2024-07-28,ads
+864,customer00864@example.com,Chon Buri,2024-07-28,ads
+865,customer00865@example.com,Khon Kaen,2024-07-28,ads
+866,customer00866@example.com,Hat Yai,2024-07-28,organic
+867,customer00867@example.com,Chiang Mai,2024-07-29,ads
+868,customer00868@example.com,Chiang Mai,2024-07-29,organic
+869,customer00869@example.com,Nakhon Ratchasima,2024-07-29,ads
+870,customer00870@example.com,Nakhon Ratchasima,2024-07-29,organic
+871,customer00871@example.com,Phuket,2024-07-30,referral
+872,customer00872@example.com,Bangkok,2024-07-30,ads
+873,customer00873@example.com,Bangkok,2024-07-30,organic
+874,customer00874@example.com,Bangkok,2024-07-30,organic
+875,customer00875@example.com,Udon Thani,2024-07-30,organic
+876,customer00876@example.com,Hat Yai,2024-07-30,ads
+877,customer00877@example.com,Bangkok,2024-07-31,ads
+878,customer00878@example.com,Nakhon Ratchasima,2024-08-01,organic
+879,customer00879@example.com,Bangkok,2024-08-01,organic
+880,customer00880@example.com,Phuket,2024-08-01,organic
+881,customer00881@example.com,Chiang Mai,2024-08-01,organic
+882,customer00882@example.com,Udon Thani,2024-08-01,referral
+883,customer00883@example.com,Bangkok,2024-08-01,organic
+884,customer00884@example.com,Phuket,2024-08-02,ads
+885,customer00885@example.com,Bangkok,2024-08-02,ads
+886,customer00886@example.com,Nakhon Ratchasima,2024-08-03,organic
+887,customer00887@example.com,Bangkok,2024-08-03,referral
+888,customer00888@example.com,Nakhon Ratchasima,2024-08-03,organic
+889,customer00889@example.com,Nakhon Ratchasima,2024-08-03,ads
+890,customer00890@example.com,Chon Buri,2024-08-04,ads
+891,customer00891@example.com,Nakhon Ratchasima,2024-08-04,ads
+892,customer00892@example.com,Bangkok,2024-08-04,ads
+893,customer00893@example.com,Chon Buri,2024-08-04,referral
+894,customer00894@example.com,Phuket,2024-08-04,organic
+895,customer00895@example.com,Bangkok,2024-08-04,organic
+896,customer00896@example.com,Bangkok,2024-08-05,referral
+897,customer00897@example.com,Bangkok,2024-08-05,organic
+898,customer00898@example.com,Bangkok,2024-08-05,organic
+899,customer00899@example.com,Bangkok,2024-08-05,ads
+900,customer00900@example.com,Phuket,2024-08-05,organic
+901,customer00901@example.com,Bangkok,2024-08-05,ads
+902,customer00902@example.com,Bangkok,2024-08-05,ads
+903,customer00903@example.com,Chon Buri,2024-08-06,ads
+904,customer00904@example.com,Bangkok,2024-08-06,referral
+905,customer00905@example.com,Bangkok,2024-08-06,organic
+906,customer00906@example.com,Chon Buri,2024-08-06,organic
+907,customer00907@example.com,Phuket,2024-08-06,ads
+908,customer00908@example.com,Bangkok,2024-08-06,ads
+909,customer00909@example.com,Chon Buri,2024-08-06,referral
+910,customer00910@example.com,Khon Kaen,2024-08-06,organic
+911,customer00911@example.com,Khon Kaen,2024-08-06,ads
+912,customer00912@example.com,Bangkok,2024-08-07,organic
+913,customer00913@example.com,Bangkok,2024-08-07,organic
+914,customer00914@example.com,Chiang Mai,2024-08-07,organic
+915,customer00915@example.com,Bangkok,2024-08-08,ads
+916,customer00916@example.com,Bangkok,2024-08-09,ads
+917,customer00917@example.com,Hat Yai,2024-08-09,organic
+918,customer00918@example.com,Udon Thani,2024-08-09,ads
+919,customer00919@example.com,Chon Buri,2024-08-09,ads
+920,customer00920@example.com,Bangkok,2024-08-09,ads
+921,customer00921@example.com,Hat Yai,2024-08-09,organic
+922,customer00922@example.com,Nakhon Ratchasima,2024-08-09,organic
+923,customer00923@example.com,Chiang Mai,2024-08-09,organic
+924,customer00924@example.com,Phuket,2024-08-10,organic
+925,customer00925@example.com,Chon Buri,2024-08-10,organic
+926,customer00926@example.com,Udon Thani,2024-08-10,referral
+927,customer00927@example.com,Chon Buri,2024-08-11,referral
+928,customer00928@example.com,Nakhon Ratchasima,2024-08-11,organic
+929,customer00929@example.com,Bangkok,2024-08-11,organic
+930,customer00930@example.com,Nakhon Ratchasima,2024-08-11,organic
+931,customer00931@example.com,Bangkok,2024-08-12,organic
+932,customer00932@example.com,Bangkok,2024-08-12,referral
+933,customer00933@example.com,Bangkok,2024-08-12,ads
+934,customer00934@example.com,Bangkok,2024-08-12,organic
+935,customer00935@example.com,Bangkok,2024-08-12,referral
+936,customer00936@example.com,Bangkok,2024-08-12,referral
+937,customer00937@example.com,Nakhon Ratchasima,2024-08-13,ads
+938,customer00938@example.com,Udon Thani,2024-08-13,ads
+939,customer00939@example.com,Nakhon Ratchasima,2024-08-13,ads
+940,customer00940@example.com,Hat Yai,2024-08-13,referral
+941,customer00941@example.com,Khon Kaen,2024-08-13,ads
+942,customer00942@example.com,Bangkok,2024-08-14,organic
+943,customer00943@example.com,Phuket,2024-08-14,ads
+944,customer00944@example.com,Bangkok,2024-08-14,organic
+945,customer00945@example.com,Bangkok,2024-08-14,organic
+946,customer00946@example.com,Chiang Mai,2024-08-14,organic
+947,customer00947@example.com,Nakhon Ratchasima,2024-08-15,organic
+948,customer00948@example.com,Chiang Mai,2024-08-15,ads
+949,customer00949@example.com,Khon Kaen,2024-08-15,ads
+950,customer00950@example.com,Bangkok,2024-08-15,organic
+951,customer00951@example.com,Bangkok,2024-08-16,referral
+952,customer00952@example.com,Bangkok,2024-08-17,ads
+953,customer00953@example.com,Nakhon Ratchasima,2024-08-17,ads
+954,customer00954@example.com,Bangkok,2024-08-18,referral
+955,customer00955@example.com,Nakhon Ratchasima,2024-08-18,organic
+956,customer00956@example.com,Chiang Mai,2024-08-18,ads
+957,customer00957@example.com,Bangkok,2024-08-18,ads
+958,customer00958@example.com,Nakhon Ratchasima,2024-08-18,ads
+959,customer00959@example.com,Bangkok,2024-08-19,organic
+960,customer00960@example.com,Khon Kaen,2024-08-19,organic
+961,customer00961@example.com,Bangkok,2024-08-19,organic
+962,customer00962@example.com,Nakhon Ratchasima,2024-08-19,referral
+963,customer00963@example.com,Hat Yai,2024-08-19,ads
+964,customer00964@example.com,Bangkok,2024-08-20,organic
+965,customer00965@example.com,Khon Kaen,2024-08-20,ads
+966,customer00966@example.com,Bangkok,2024-08-20,organic
+967,customer00967@example.com,Phuket,2024-08-20,ads
+968,customer00968@example.com,Bangkok,2024-08-20,organic
+969,customer00969@example.com,Chon Buri,2024-08-20,organic
+970,customer00970@example.com,Chon Buri,2024-08-20,organic
+971,customer00971@example.com,Bangkok,2024-08-20,organic
+972,customer00972@example.com,Chon Buri,2024-08-21,ads
+973,customer00973@example.com,Bangkok,2024-08-21,organic
+974,customer00974@example.com,Khon Kaen,2024-08-21,referral
+975,customer00975@example.com,Chiang Mai,2024-08-21,organic
+976,customer00976@example.com,Bangkok,2024-08-21,ads
+977,customer00977@example.com,Bangkok,2024-08-21,ads
+978,customer00978@example.com,Khon Kaen,2024-08-22,ads
+979,customer00979@example.com,Chon Buri,2024-08-22,organic
+980,customer00980@example.com,Chon Buri,2024-08-22,organic
+981,customer00981@example.com,Chon Buri,2024-08-22,ads
+982,customer00982@example.com,Bangkok,2024-08-22,organic
+983,customer00983@example.com,Hat Yai,2024-08-23,organic
+984,customer00984@example.com,Chiang Mai,2024-08-23,ads
+985,customer00985@example.com,Bangkok,2024-08-23,ads
+986,customer00986@example.com,Udon Thani,2024-08-23,organic
+987,customer00987@example.com,Bangkok,2024-08-23,organic
+988,customer00988@example.com,Nakhon Ratchasima,2024-08-24,ads
+989,customer00989@example.com,Bangkok,2024-08-24,organic
+990,customer00990@example.com,Bangkok,2024-08-24,organic
+991,customer00991@example.com,Bangkok,2024-08-24,organic
+992,customer00992@example.com,Udon Thani,2024-08-25,organic
+993,customer00993@example.com,Bangkok,2024-08-25,organic
+994,customer00994@example.com,Bangkok,2024-08-25,organic
+995,customer00995@example.com,Bangkok,2024-08-25,ads
+996,customer00996@example.com,Hat Yai,2024-08-25,organic
+997,customer00997@example.com,Bangkok,2024-08-25,organic
+998,customer00998@example.com,Phuket,2024-08-26,ads
+999,customer00999@example.com,Phuket,2024-08-26,organic
+1000,customer01000@example.com,Phuket,2024-08-26,organic
+1001,customer01001@example.com,Bangkok,2024-08-26,organic
+1002,customer01002@example.com,Bangkok,2024-08-26,organic
+1003,customer01003@example.com,Hat Yai,2024-08-27,ads
+1004,customer01004@example.com,Bangkok,2024-08-27,organic
+1005,customer01005@example.com,Khon Kaen,2024-08-27,organic
+1006,customer01006@example.com,Phuket,2024-08-27,ads
+1007,customer01007@example.com,Bangkok,2024-08-28,organic
+1008,customer01008@example.com,Nakhon Ratchasima,2024-08-28,organic
+1009,customer01009@example.com,Udon Thani,2024-08-29,organic
+1010,customer01010@example.com,Bangkok,2024-08-29,organic
+1011,customer01011@example.com,Udon Thani,2024-08-29,referral
+1012,customer01012@example.com,Chon Buri,2024-08-29,ads
+1013,customer01013@example.com,Bangkok,2024-08-29,ads
+1014,customer01014@example.com,Nakhon Ratchasima,2024-08-30,referral
+1015,customer01015@example.com,Nakhon Ratchasima,2024-08-30,referral
+1016,customer01016@example.com,Hat Yai,2024-08-30,organic
+1017,customer01017@example.com,Bangkok,2024-08-30,ads
+1018,customer01018@example.com,Bangkok,2024-08-31,organic
+1019,customer01019@example.com,Bangkok,2024-08-31,ads
+1020,customer01020@example.com,Chon Buri,2024-08-31,ads
+1021,customer01021@example.com,Bangkok,2024-08-31,referral
+1022,customer01022@example.com,Udon Thani,2024-08-31,organic
+1023,customer01023@example.com,Bangkok,2024-08-31,ads
+1024,customer01024@example.com,Bangkok,2024-09-01,ads
+1025,customer01025@example.com,Bangkok,2024-09-01,referral
+1026,customer01026@example.com,Hat Yai,2024-09-01,organic
+1027,customer01027@example.com,Chon Buri,2024-09-01,referral
+1028,customer01028@example.com,Khon Kaen,2024-09-01,ads
+1029,customer01029@example.com,Chon Buri,2024-09-01,organic
+1030,customer01030@example.com,Nakhon Ratchasima,2024-09-02,ads
+1031,customer01031@example.com,Bangkok,2024-09-02,organic
+1032,customer01032@example.com,Hat Yai,2024-09-02,ads
+1033,customer01033@example.com,Bangkok,2024-09-02,referral
+1034,customer01034@example.com,Bangkok,2024-09-02,organic
+1035,customer01035@example.com,Bangkok,2024-09-03,organic
+1036,customer01036@example.com,Nakhon Ratchasima,2024-09-03,organic
+1037,customer01037@example.com,Bangkok,2024-09-03,organic
+1038,customer01038@example.com,Khon Kaen,2024-09-04,organic
+1039,customer01039@example.com,Phuket,2024-09-04,organic
+1040,customer01040@example.com,Phuket,2024-09-04,ads
+1041,customer01041@example.com,Udon Thani,2024-09-05,ads
+1042,customer01042@example.com,Nakhon Ratchasima,2024-09-05,organic
+1043,customer01043@example.com,Phuket,2024-09-05,referral
+1044,customer01044@example.com,Chiang Mai,2024-09-05,ads
+1045,customer01045@example.com,Phuket,2024-09-05,organic
+1046,customer01046@example.com,Phuket,2024-09-06,ads
+1047,customer01047@example.com,Nakhon Ratchasima,2024-09-06,ads
+1048,customer01048@example.com,Bangkok,2024-09-06,organic
+1049,customer01049@example.com,Bangkok,2024-09-06,ads
+1050,customer01050@example.com,Chiang Mai,2024-09-06,organic
+1051,customer01051@example.com,Bangkok,2024-09-07,referral
+1052,customer01052@example.com,Bangkok,2024-09-08,organic
+1053,customer01053@example.com,Chiang Mai,2024-09-08,ads
+1054,customer01054@example.com,Bangkok,2024-09-08,organic
+1055,customer01055@example.com,Nakhon Ratchasima,2024-09-08,organic
+1056,customer01056@example.com,Chon Buri,2024-09-09,ads
+1057,customer01057@example.com,Bangkok,2024-09-09,ads
+1058,customer01058@example.com,Nakhon Ratchasima,2024-09-09,organic
+1059,customer01059@example.com,Bangkok,2024-09-09,ads
+1060,customer01060@example.com,Bangkok,2024-09-09,organic
+1061,customer01061@example.com,Hat Yai,2024-09-10,ads
+1062,customer01062@example.com,Bangkok,2024-09-10,ads
+1063,customer01063@example.com,Bangkok,2024-09-10,organic
+1064,customer01064@example.com,Chiang Mai,2024-09-10,organic
+1065,customer01065@example.com,Bangkok,2024-09-10,ads
+1066,customer01066@example.com,Bangkok,2024-09-11,organic
+1067,customer01067@example.com,Bangkok,2024-09-11,referral
+1068,customer01068@example.com,Bangkok,2024-09-11,organic
+1069,customer01069@example.com,Bangkok,2024-09-11,organic
+1070,customer01070@example.com,Udon Thani,2024-09-11,organic
+1071,customer01071@example.com,Bangkok,2024-09-11,ads
+1072,customer01072@example.com,Bangkok,2024-09-11,organic
+1073,customer01073@example.com,Bangkok,2024-09-12,organic
+1074,customer01074@example.com,Bangkok,2024-09-12,ads
+1075,customer01075@example.com,Bangkok,2024-09-12,referral
+1076,customer01076@example.com,Nakhon Ratchasima,2024-09-13,organic
+1077,customer01077@example.com,Bangkok,2024-09-13,organic
+1078,customer01078@example.com,Nakhon Ratchasima,2024-09-13,organic
+1079,customer01079@example.com,Bangkok,2024-09-13,ads
+1080,customer01080@example.com,Chon Buri,2024-09-13,organic
+1081,customer01081@example.com,Chon Buri,2024-09-13,ads
+1082,customer01082@example.com,Bangkok,2024-09-14,organic
+1083,customer01083@example.com,Bangkok,2024-09-14,organic
+1084,customer01084@example.com,Bangkok,2024-09-14,organic
+1085,customer01085@example.com,Bangkok,2024-09-14,organic
+1086,customer01086@example.com,Phuket,2024-09-14,ads
+1087,customer01087@example.com,Khon Kaen,2024-09-15,organic
+1088,customer01088@example.com,Chiang Mai,2024-09-15,organic
+1089,customer01089@example.com,Bangkok,2024-09-15,referral
+1090,customer01090@example.com,Nakhon Ratchasima,2024-09-15,organic
+1091,customer01091@example.com,Bangkok,2024-09-15,ads
+1092,customer01092@example.com,Udon Thani,2024-09-15,organic
+1093,customer01093@example.com,Phuket,2024-09-15,organic
+1094,customer01094@example.com,Chon Buri,2024-09-15,organic
+1095,customer01095@example.com,Bangkok,2024-09-16,organic
+1096,customer01096@example.com,Hat Yai,2024-09-16,ads
+1097,customer01097@example.com,Khon Kaen,2024-09-16,referral
+1098,customer01098@example.com,Bangkok,2024-09-16,organic
+1099,customer01099@example.com,Udon Thani,2024-09-16,ads
+1100,customer01100@example.com,Bangkok,2024-09-16,organic
+1101,customer01101@example.com,Nakhon Ratchasima,2024-09-16,organic
+1102,customer01102@example.com,Nakhon Ratchasima,2024-09-17,ads
+1103,customer01103@example.com,Bangkok,2024-09-17,ads
+1104,customer01104@example.com,Phuket,2024-09-17,organic
+1105,customer01105@example.com,Bangkok,2024-09-17,organic
+1106,customer01106@example.com,Bangkok,2024-09-17,referral
+1107,customer01107@example.com,Khon Kaen,2024-09-17,organic
+1108,customer01108@example.com,Phuket,2024-09-17,ads
+1109,customer01109@example.com,Bangkok,2024-09-17,referral
+1110,customer01110@example.com,Bangkok,2024-09-18,organic
+1111,customer01111@example.com,Chiang Mai,2024-09-18,referral
+1112,customer01112@example.com,Udon Thani,2024-09-18,ads
+1113,customer01113@example.com,Bangkok,2024-09-18,ads
+1114,customer01114@example.com,Bangkok,2024-09-19,ads
+1115,customer01115@example.com,Nakhon Ratchasima,2024-09-19,referral
+1116,customer01116@example.com,Khon Kaen,2024-09-20,organic
+1117,customer01117@example.com,Phuket,2024-09-20,ads
+1118,customer01118@example.com,Chon Buri,2024-09-20,organic
+1119,customer01119@example.com,Phuket,2024-09-20,ads
+1120,customer01120@example.com,Bangkok,2024-09-20,ads
+1121,customer01121@example.com,Nakhon Ratchasima,2024-09-20,ads
+1122,customer01122@example.com,Phuket,2024-09-20,ads
+1123,customer01123@example.com,Chiang Mai,2024-09-20,ads
+1124,customer01124@example.com,Chiang Mai,2024-09-21,organic
+1125,customer01125@example.com,Hat Yai,2024-09-22,ads
+1126,customer01126@example.com,Bangkok,2024-09-22,referral
+1127,customer01127@example.com,Phuket,2024-09-22,organic
+1128,customer01128@example.com,Nakhon Ratchasima,2024-09-23,organic
+1129,customer01129@example.com,Bangkok,2024-09-23,ads
+1130,customer01130@example.com,Bangkok,2024-09-24,organic
+1131,customer01131@example.com,Phuket,2024-09-24,organic
+1132,customer01132@example.com,Hat Yai,2024-09-24,organic
+1133,customer01133@example.com,Phuket,2024-09-24,referral
+1134,customer01134@example.com,Nakhon Ratchasima,2024-09-24,ads
+1135,customer01135@example.com,Chon Buri,2024-09-24,organic
+1136,customer01136@example.com,Nakhon Ratchasima,2024-09-25,organic
+1137,customer01137@example.com,Hat Yai,2024-09-25,ads
+1138,customer01138@example.com,Hat Yai,2024-09-25,ads
+1139,customer01139@example.com,Bangkok,2024-09-25,organic
+1140,customer01140@example.com,Chiang Mai,2024-09-25,organic
+1141,customer01141@example.com,Nakhon Ratchasima,2024-09-25,ads
+1142,customer01142@example.com,Udon Thani,2024-09-25,organic
+1143,customer01143@example.com,Bangkok,2024-09-25,ads
+1144,customer01144@example.com,Bangkok,2024-09-26,ads
+1145,customer01145@example.com,Bangkok,2024-09-26,referral
+1146,customer01146@example.com,Bangkok,2024-09-27,ads
+1147,customer01147@example.com,Phuket,2024-09-27,ads
+1148,customer01148@example.com,Hat Yai,2024-09-27,organic
+1149,customer01149@example.com,Chon Buri,2024-09-27,ads
+1150,customer01150@example.com,Bangkok,2024-09-28,ads
+1151,customer01151@example.com,Bangkok,2024-09-28,organic
+1152,customer01152@example.com,Bangkok,2024-09-28,organic
+1153,customer01153@example.com,Bangkok,2024-09-28,referral
+1154,customer01154@example.com,Nakhon Ratchasima,2024-09-28,organic
+1155,customer01155@example.com,Bangkok,2024-09-28,organic
+1156,customer01156@example.com,Phuket,2024-09-28,ads
+1157,customer01157@example.com,Chon Buri,2024-09-29,organic
+1158,customer01158@example.com,Bangkok,2024-09-29,organic
+1159,customer01159@example.com,Chon Buri,2024-09-30,organic
+1160,customer01160@example.com,Khon Kaen,2024-09-30,organic
+1161,customer01161@example.com,Udon Thani,2024-09-30,ads
+1162,customer01162@example.com,Phuket,2024-10-01,organic
+1163,customer01163@example.com,Khon Kaen,2024-10-01,ads
+1164,customer01164@example.com,Udon Thani,2024-10-01,organic
+1165,customer01165@example.com,Bangkok,2024-10-02,organic
+1166,customer01166@example.com,Bangkok,2024-10-02,ads
+1167,customer01167@example.com,Bangkok,2024-10-02,organic
+1168,customer01168@example.com,Bangkok,2024-10-03,referral
+1169,customer01169@example.com,Udon Thani,2024-10-03,organic
+1170,customer01170@example.com,Bangkok,2024-10-03,organic
+1171,customer01171@example.com,Hat Yai,2024-10-04,organic
+1172,customer01172@example.com,Nakhon Ratchasima,2024-10-04,ads
+1173,customer01173@example.com,Chon Buri,2024-10-04,ads
+1174,customer01174@example.com,Bangkok,2024-10-04,ads
+1175,customer01175@example.com,Bangkok,2024-10-05,referral
+1176,customer01176@example.com,Khon Kaen,2024-10-05,organic
+1177,customer01177@example.com,Nakhon Ratchasima,2024-10-05,referral
+1178,customer01178@example.com,Bangkok,2024-10-06,organic
+1179,customer01179@example.com,Chiang Mai,2024-10-06,organic
+1180,customer01180@example.com,Udon Thani,2024-10-07,ads
+1181,customer01181@example.com,Phuket,2024-10-07,ads
+1182,customer01182@example.com,Chon Buri,2024-10-07,organic
+1183,customer01183@example.com,Bangkok,2024-10-07,ads
+1184,customer01184@example.com,Phuket,2024-10-07,ads
+1185,customer01185@example.com,Bangkok,2024-10-08,referral
+1186,customer01186@example.com,Bangkok,2024-10-08,ads
+1187,customer01187@example.com,Chon Buri,2024-10-08,ads
+1188,customer01188@example.com,Phuket,2024-10-08,organic
+1189,customer01189@example.com,Chon Buri,2024-10-08,organic
+1190,customer01190@example.com,Chiang Mai,2024-10-08,organic
+1191,customer01191@example.com,Hat Yai,2024-10-09,organic
+1192,customer01192@example.com,Hat Yai,2024-10-09,organic
+1193,customer01193@example.com,Nakhon Ratchasima,2024-10-09,referral
+1194,customer01194@example.com,Bangkok,2024-10-10,organic
+1195,customer01195@example.com,Nakhon Ratchasima,2024-10-10,organic
+1196,customer01196@example.com,Hat Yai,2024-10-10,organic
+1197,customer01197@example.com,Bangkok,2024-10-10,referral
+1198,customer01198@example.com,Khon Kaen,2024-10-11,organic
+1199,customer01199@example.com,Chiang Mai,2024-10-11,referral
+1200,customer01200@example.com,Bangkok,2024-10-11,organic
+1201,customer01201@example.com,Bangkok,2024-10-11,ads
+1202,customer01202@example.com,Chon Buri,2024-10-11,organic
+1203,customer01203@example.com,Bangkok,2024-10-11,ads
+1204,customer01204@example.com,Bangkok,2024-10-12,organic
+1205,customer01205@example.com,Phuket,2024-10-12,referral
+1206,customer01206@example.com,Bangkok,2024-10-12,organic
+1207,customer01207@example.com,Chiang Mai,2024-10-13,referral
+1208,customer01208@example.com,Udon Thani,2024-10-13,organic
+1209,customer01209@example.com,Chiang Mai,2024-10-13,organic
+1210,customer01210@example.com,Bangkok,2024-10-13,referral
+1211,customer01211@example.com,Bangkok,2024-10-14,referral
+1212,customer01212@example.com,Chiang Mai,2024-10-14,organic
+1213,customer01213@example.com,Chon Buri,2024-10-14,organic
+1214,customer01214@example.com,Hat Yai,2024-10-14,ads
+1215,customer01215@example.com,Bangkok,2024-10-14,referral
+1216,customer01216@example.com,Nakhon Ratchasima,2024-10-14,ads
+1217,customer01217@example.com,Chiang Mai,2024-10-14,organic
+1218,customer01218@example.com,Khon Kaen,2024-10-15,organic
+1219,customer01219@example.com,Nakhon Ratchasima,2024-10-15,organic
+1220,customer01220@example.com,Udon Thani,2024-10-15,ads
+1221,customer01221@example.com,Hat Yai,2024-10-15,organic
+1222,customer01222@example.com,Udon Thani,2024-10-16,organic
+1223,customer01223@example.com,Chon Buri,2024-10-16,referral
+1224,customer01224@example.com,Chon Buri,2024-10-17,ads
+1225,customer01225@example.com,Chon Buri,2024-10-17,organic
+1226,customer01226@example.com,Khon Kaen,2024-10-17,ads
+1227,customer01227@example.com,Bangkok,2024-10-18,referral
+1228,customer01228@example.com,Chiang Mai,2024-10-18,ads
+1229,customer01229@example.com,Bangkok,2024-10-18,ads
+1230,customer01230@example.com,Chiang Mai,2024-10-18,ads
+1231,customer01231@example.com,Udon Thani,2024-10-19,organic
+1232,customer01232@example.com,Khon Kaen,2024-10-19,referral
+1233,customer01233@example.com,Bangkok,2024-10-19,ads
+1234,customer01234@example.com,Phuket,2024-10-20,ads
+1235,customer01235@example.com,Udon Thani,2024-10-20,ads
+1236,customer01236@example.com,Chiang Mai,2024-10-20,referral
+1237,customer01237@example.com,Bangkok,2024-10-21,organic
+1238,customer01238@example.com,Bangkok,2024-10-21,organic
+1239,customer01239@example.com,Bangkok,2024-10-21,organic
+1240,customer01240@example.com,Bangkok,2024-10-21,organic
+1241,customer01241@example.com,Phuket,2024-10-21,organic
+1242,customer01242@example.com,Bangkok,2024-10-21,ads
+1243,customer01243@example.com,Chon Buri,2024-10-21,ads
+1244,customer01244@example.com,Nakhon Ratchasima,2024-10-21,ads
+1245,customer01245@example.com,Phuket,2024-10-21,organic
+1246,customer01246@example.com,Udon Thani,2024-10-21,ads
+1247,customer01247@example.com,Chiang Mai,2024-10-21,referral
+1248,customer01248@example.com,Bangkok,2024-10-22,ads
+1249,customer01249@example.com,Hat Yai,2024-10-23,organic
+1250,customer01250@example.com,Chon Buri,2024-10-23,organic
+1251,customer01251@example.com,Nakhon Ratchasima,2024-10-23,organic
+1252,customer01252@example.com,Khon Kaen,2024-10-23,organic
+1253,customer01253@example.com,Phuket,2024-10-24,organic
+1254,customer01254@example.com,Chiang Mai,2024-10-24,organic
+1255,customer01255@example.com,Khon Kaen,2024-10-24,organic
+1256,customer01256@example.com,Udon Thani,2024-10-25,referral
+1257,customer01257@example.com,Khon Kaen,2024-10-25,referral
+1258,customer01258@example.com,Nakhon Ratchasima,2024-10-25,organic
+1259,customer01259@example.com,Udon Thani,2024-10-25,organic
+1260,customer01260@example.com,Bangkok,2024-10-25,organic
+1261,customer01261@example.com,Nakhon Ratchasima,2024-10-26,ads
+1262,customer01262@example.com,Bangkok,2024-10-26,referral
+1263,customer01263@example.com,Chiang Mai,2024-10-26,referral
+1264,customer01264@example.com,Udon Thani,2024-10-26,ads
+1265,customer01265@example.com,Chiang Mai,2024-10-26,organic
+1266,customer01266@example.com,Nakhon Ratchasima,2024-10-26,referral
+1267,customer01267@example.com,Bangkok,2024-10-26,organic
+1268,customer01268@example.com,Phuket,2024-10-26,organic
+1269,customer01269@example.com,Nakhon Ratchasima,2024-10-26,ads
+1270,customer01270@example.com,Chon Buri,2024-10-26,referral
+1271,customer01271@example.com,Bangkok,2024-10-26,ads
+1272,customer01272@example.com,Chiang Mai,2024-10-26,organic
+1273,customer01273@example.com,Bangkok,2024-10-26,ads
+1274,customer01274@example.com,Hat Yai,2024-10-26,organic
+1275,customer01275@example.com,Nakhon Ratchasima,2024-10-27,ads
+1276,customer01276@example.com,Udon Thani,2024-10-27,organic
+1277,customer01277@example.com,Nakhon Ratchasima,2024-10-27,referral
+1278,customer01278@example.com,Chiang Mai,2024-10-27,ads
+1279,customer01279@example.com,Phuket,2024-10-28,organic
+1280,customer01280@example.com,Nakhon Ratchasima,2024-10-28,organic
+1281,customer01281@example.com,Bangkok,2024-10-28,organic
+1282,customer01282@example.com,Bangkok,2024-10-28,organic
+1283,customer01283@example.com,Nakhon Ratchasima,2024-10-29,organic
+1284,customer01284@example.com,Bangkok,2024-10-29,organic
+1285,customer01285@example.com,Khon Kaen,2024-10-29,referral
+1286,customer01286@example.com,Chiang Mai,2024-10-30,ads
+1287,customer01287@example.com,Khon Kaen,2024-10-30,organic
+1288,customer01288@example.com,Udon Thani,2024-10-30,organic
+1289,customer01289@example.com,Bangkok,2024-10-30,ads
+1290,customer01290@example.com,Bangkok,2024-10-30,organic
+1291,customer01291@example.com,Chiang Mai,2024-10-30,ads
+1292,customer01292@example.com,Bangkok,2024-10-30,ads
+1293,customer01293@example.com,Chiang Mai,2024-10-31,ads
+1294,customer01294@example.com,Bangkok,2024-10-31,organic
+1295,customer01295@example.com,Bangkok,2024-10-31,organic
+1296,customer01296@example.com,Bangkok,2024-10-31,organic
+1297,customer01297@example.com,Bangkok,2024-10-31,organic
+1298,customer01298@example.com,Chon Buri,2024-10-31,organic
+1299,customer01299@example.com,Bangkok,2024-10-31,ads
+1300,customer01300@example.com,Phuket,2024-11-01,organic
+1301,customer01301@example.com,Bangkok,2024-11-01,ads
+1302,customer01302@example.com,Bangkok,2024-11-01,ads
+1303,customer01303@example.com,Chon Buri,2024-11-01,referral
+1304,customer01304@example.com,Phuket,2024-11-01,organic
+1305,customer01305@example.com,Phuket,2024-11-01,ads
+1306,customer01306@example.com,Khon Kaen,2024-11-02,ads
+1307,customer01307@example.com,Khon Kaen,2024-11-02,ads
+1308,customer01308@example.com,Khon Kaen,2024-11-02,organic
+1309,customer01309@example.com,Chiang Mai,2024-11-02,organic
+1310,customer01310@example.com,Bangkok,2024-11-02,organic
+1311,customer01311@example.com,Bangkok,2024-11-03,ads
+1312,customer01312@example.com,Bangkok,2024-11-03,ads
+1313,customer01313@example.com,Bangkok,2024-11-03,referral
+1314,customer01314@example.com,Khon Kaen,2024-11-03,organic
+1315,customer01315@example.com,Hat Yai,2024-11-03,ads
+1316,customer01316@example.com,Bangkok,2024-11-03,ads
+1317,customer01317@example.com,Nakhon Ratchasima,2024-11-04,organic
+1318,customer01318@example.com,Bangkok,2024-11-04,referral
+1319,customer01319@example.com,Bangkok,2024-11-04,organic
+1320,customer01320@example.com,Bangkok,2024-11-05,organic
+1321,customer01321@example.com,Bangkok,2024-11-05,organic
+1322,customer01322@example.com,Nakhon Ratchasima,2024-11-05,organic
+1323,customer01323@example.com,Chon Buri,2024-11-05,organic
+1324,customer01324@example.com,Bangkok,2024-11-06,ads
+1325,customer01325@example.com,Chiang Mai,2024-11-06,ads
+1326,customer01326@example.com,Bangkok,2024-11-06,ads
+1327,customer01327@example.com,Hat Yai,2024-11-07,organic
+1328,customer01328@example.com,Bangkok,2024-11-07,organic
+1329,customer01329@example.com,Bangkok,2024-11-07,ads
+1330,customer01330@example.com,Udon Thani,2024-11-07,organic
+1331,customer01331@example.com,Bangkok,2024-11-07,organic
+1332,customer01332@example.com,Bangkok,2024-11-07,organic
+1333,customer01333@example.com,Bangkok,2024-11-08,organic
+1334,customer01334@example.com,Udon Thani,2024-11-08,organic
+1335,customer01335@example.com,Bangkok,2024-11-08,organic
+1336,customer01336@example.com,Udon Thani,2024-11-09,organic
+1337,customer01337@example.com,Hat Yai,2024-11-09,referral
+1338,customer01338@example.com,Chiang Mai,2024-11-09,ads
+1339,customer01339@example.com,Nakhon Ratchasima,2024-11-09,organic
+1340,customer01340@example.com,Khon Kaen,2024-11-10,organic
+1341,customer01341@example.com,Chon Buri,2024-11-10,organic
+1342,customer01342@example.com,Bangkok,2024-11-10,ads
+1343,customer01343@example.com,Nakhon Ratchasima,2024-11-10,referral
+1344,customer01344@example.com,Chiang Mai,2024-11-10,ads
+1345,customer01345@example.com,Bangkok,2024-11-10,ads
+1346,customer01346@example.com,Bangkok,2024-11-10,referral
+1347,customer01347@example.com,Udon Thani,2024-11-10,ads
+1348,customer01348@example.com,Chiang Mai,2024-11-10,organic
+1349,customer01349@example.com,Phuket,2024-11-11,organic
+1350,customer01350@example.com,Khon Kaen,2024-11-11,organic
+1351,customer01351@example.com,Bangkok,2024-11-12,organic
+1352,customer01352@example.com,Chon Buri,2024-11-12,organic
+1353,customer01353@example.com,Nakhon Ratchasima,2024-11-12,organic
+1354,customer01354@example.com,Hat Yai,2024-11-12,organic
+1355,customer01355@example.com,Bangkok,2024-11-12,organic
+1356,customer01356@example.com,Bangkok,2024-11-12,referral
+1357,customer01357@example.com,Bangkok,2024-11-12,organic
+1358,customer01358@example.com,Udon Thani,2024-11-13,organic
+1359,customer01359@example.com,Chiang Mai,2024-11-13,organic
+1360,customer01360@example.com,Nakhon Ratchasima,2024-11-13,ads
+1361,customer01361@example.com,Bangkok,2024-11-13,ads
+1362,customer01362@example.com,Chon Buri,2024-11-14,ads
+1363,customer01363@example.com,Khon Kaen,2024-11-14,organic
+1364,customer01364@example.com,Udon Thani,2024-11-14,organic
+1365,customer01365@example.com,Bangkok,2024-11-14,organic
+1366,customer01366@example.com,Nakhon Ratchasima,2024-11-15,ads
+1367,customer01367@example.com,Nakhon Ratchasima,2024-11-15,ads
+1368,customer01368@example.com,Bangkok,2024-11-15,ads
+1369,customer01369@example.com,Chon Buri,2024-11-15,organic
+1370,customer01370@example.com,Bangkok,2024-11-16,organic
+1371,customer01371@example.com,Bangkok,2024-11-16,organic
+1372,customer01372@example.com,Phuket,2024-11-16,organic
+1373,customer01373@example.com,Nakhon Ratchasima,2024-11-16,referral
+1374,customer01374@example.com,Bangkok,2024-11-16,ads
+1375,customer01375@example.com,Phuket,2024-11-16,ads
+1376,customer01376@example.com,Nakhon Ratchasima,2024-11-17,referral
+1377,customer01377@example.com,Nakhon Ratchasima,2024-11-17,ads
+1378,customer01378@example.com,Nakhon Ratchasima,2024-11-18,organic
+1379,customer01379@example.com,Khon Kaen,2024-11-18,referral
+1380,customer01380@example.com,Bangkok,2024-11-18,organic
+1381,customer01381@example.com,Bangkok,2024-11-18,organic
+1382,customer01382@example.com,Hat Yai,2024-11-18,organic
+1383,customer01383@example.com,Bangkok,2024-11-18,organic
+1384,customer01384@example.com,Bangkok,2024-11-19,ads
+1385,customer01385@example.com,Nakhon Ratchasima,2024-11-19,organic
+1386,customer01386@example.com,Nakhon Ratchasima,2024-11-19,ads
+1387,customer01387@example.com,Chiang Mai,2024-11-19,organic
+1388,customer01388@example.com,Hat Yai,2024-11-19,organic
+1389,customer01389@example.com,Bangkok,2024-11-19,ads
+1390,customer01390@example.com,Chon Buri,2024-11-20,organic
+1391,customer01391@example.com,Chiang Mai,2024-11-20,organic
+1392,customer01392@example.com,Bangkok,2024-11-20,referral
+1393,customer01393@example.com,Nakhon Ratchasima,2024-11-20,organic
+1394,customer01394@example.com,Hat Yai,2024-11-20,organic
+1395,customer01395@example.com,Bangkok,2024-11-20,organic
+1396,customer01396@example.com,Bangkok,2024-11-21,ads
+1397,customer01397@example.com,Nakhon Ratchasima,2024-11-21,organic
+1398,customer01398@example.com,Bangkok,2024-11-21,organic
+1399,customer01399@example.com,Udon Thani,2024-11-21,organic
+1400,customer01400@example.com,Nakhon Ratchasima,2024-11-22,organic
+1401,customer01401@example.com,Bangkok,2024-11-22,referral
+1402,customer01402@example.com,Hat Yai,2024-11-22,organic
+1403,customer01403@example.com,Phuket,2024-11-22,ads
+1404,customer01404@example.com,Bangkok,2024-11-22,organic
+1405,customer01405@example.com,Bangkok,2024-11-22,organic
+1406,customer01406@example.com,Udon Thani,2024-11-23,ads
+1407,customer01407@example.com,Nakhon Ratchasima,2024-11-23,organic
+1408,customer01408@example.com,Bangkok,2024-11-23,organic
+1409,customer01409@example.com,Khon Kaen,2024-11-23,ads
+1410,customer01410@example.com,Bangkok,2024-11-23,organic
+1411,customer01411@example.com,Bangkok,2024-11-23,ads
+1412,customer01412@example.com,Nakhon Ratchasima,2024-11-23,referral
+1413,customer01413@example.com,Phuket,2024-11-24,ads
+1414,customer01414@example.com,Chon Buri,2024-11-24,organic
+1415,customer01415@example.com,Bangkok,2024-11-24,ads
+1416,customer01416@example.com,Chon Buri,2024-11-24,organic
+1417,customer01417@example.com,Chon Buri,2024-11-24,ads
+1418,customer01418@example.com,Bangkok,2024-11-25,organic
+1419,customer01419@example.com,Phuket,2024-11-26,ads
+1420,customer01420@example.com,Khon Kaen,2024-11-26,referral
+1421,customer01421@example.com,Bangkok,2024-11-27,referral
+1422,customer01422@example.com,Bangkok,2024-11-27,organic
+1423,customer01423@example.com,Hat Yai,2024-11-28,ads
+1424,customer01424@example.com,Bangkok,2024-11-28,ads
+1425,customer01425@example.com,Chiang Mai,2024-11-28,organic
+1426,customer01426@example.com,Bangkok,2024-11-28,ads
+1427,customer01427@example.com,Bangkok,2024-11-28,organic
+1428,customer01428@example.com,Chiang Mai,2024-11-28,organic
+1429,customer01429@example.com,Udon Thani,2024-11-28,organic
+1430,customer01430@example.com,Bangkok,2024-11-29,organic
+1431,customer01431@example.com,Bangkok,2024-11-29,ads
+1432,customer01432@example.com,Bangkok,2024-11-29,ads
+1433,customer01433@example.com,Bangkok,2024-11-30,ads
+1434,customer01434@example.com,Udon Thani,2024-11-30,organic
+1435,customer01435@example.com,Chiang Mai,2024-11-30,organic
+1436,customer01436@example.com,Chiang Mai,2024-11-30,referral
+1437,customer01437@example.com,Bangkok,2024-11-30,ads
+1438,customer01438@example.com,Phuket,2024-11-30,ads
+1439,customer01439@example.com,Chon Buri,2024-11-30,referral
+1440,customer01440@example.com,Hat Yai,2024-12-01,organic
+1441,customer01441@example.com,Chon Buri,2024-12-01,organic
+1442,customer01442@example.com,Hat Yai,2024-12-01,organic
+1443,customer01443@example.com,Bangkok,2024-12-01,organic
+1444,customer01444@example.com,Chiang Mai,2024-12-01,organic
+1445,customer01445@example.com,Phuket,2024-12-02,organic
+1446,customer01446@example.com,Udon Thani,2024-12-03,ads
+1447,customer01447@example.com,Bangkok,2024-12-03,ads
+1448,customer01448@example.com,Bangkok,2024-12-03,organic
+1449,customer01449@example.com,Bangkok,2024-12-03,organic
+1450,customer01450@example.com,Bangkok,2024-12-05,ads
+1451,customer01451@example.com,Bangkok,2024-12-05,referral
+1452,customer01452@example.com,Bangkok,2024-12-06,organic
+1453,customer01453@example.com,Phuket,2024-12-06,organic
+1454,customer01454@example.com,Bangkok,2024-12-06,ads
+1455,customer01455@example.com,Bangkok,2024-12-06,organic
+1456,customer01456@example.com,Bangkok,2024-12-06,ads
+1457,customer01457@example.com,Khon Kaen,2024-12-07,organic
+1458,customer01458@example.com,Bangkok,2024-12-07,organic
+1459,customer01459@example.com,Nakhon Ratchasima,2024-12-07,organic
+1460,customer01460@example.com,Nakhon Ratchasima,2024-12-07,ads
+1461,customer01461@example.com,Udon Thani,2024-12-07,organic
+1462,customer01462@example.com,Chon Buri,2024-12-07,organic
+1463,customer01463@example.com,Bangkok,2024-12-08,organic
+1464,customer01464@example.com,Phuket,2024-12-08,referral
+1465,customer01465@example.com,Chiang Mai,2024-12-08,organic
+1466,customer01466@example.com,Phuket,2024-12-08,ads
+1467,customer01467@example.com,Bangkok,2024-12-08,organic
+1468,customer01468@example.com,Bangkok,2024-12-08,organic
+1469,customer01469@example.com,Bangkok,2024-12-09,organic
+1470,customer01470@example.com,Hat Yai,2024-12-09,referral
+1471,customer01471@example.com,Chon Buri,2024-12-10,organic
+1472,customer01472@example.com,Khon Kaen,2024-12-10,organic
+1473,customer01473@example.com,Nakhon Ratchasima,2024-12-10,organic
+1474,customer01474@example.com,Chiang Mai,2024-12-10,organic
+1475,customer01475@example.com,Bangkok,2024-12-10,organic
+1476,customer01476@example.com,Bangkok,2024-12-11,organic
+1477,customer01477@example.com,Hat Yai,2024-12-11,organic
+1478,customer01478@example.com,Hat Yai,2024-12-11,referral
+1479,customer01479@example.com,Nakhon Ratchasima,2024-12-11,ads
+1480,customer01480@example.com,Nakhon Ratchasima,2024-12-11,ads
+1481,customer01481@example.com,Bangkok,2024-12-11,organic
+1482,customer01482@example.com,Bangkok,2024-12-12,ads
+1483,customer01483@example.com,Chiang Mai,2024-12-12,organic
+1484,customer01484@example.com,Nakhon Ratchasima,2024-12-13,ads
+1485,customer01485@example.com,Chon Buri,2024-12-13,ads
+1486,customer01486@example.com,Bangkok,2024-12-13,ads
+1487,customer01487@example.com,Khon Kaen,2024-12-13,ads
+1488,customer01488@example.com,Chon Buri,2024-12-14,organic
+1489,customer01489@example.com,Udon Thani,2024-12-14,organic
+1490,customer01490@example.com,Bangkok,2024-12-14,organic
+1491,customer01491@example.com,Chiang Mai,2024-12-15,organic
+1492,customer01492@example.com,Bangkok,2024-12-15,referral
+1493,customer01493@example.com,Bangkok,2024-12-15,organic
+1494,customer01494@example.com,Chon Buri,2024-12-15,organic
+1495,customer01495@example.com,Hat Yai,2024-12-15,referral
+1496,customer01496@example.com,Nakhon Ratchasima,2024-12-16,ads
+1497,customer01497@example.com,Nakhon Ratchasima,2024-12-16,ads
+1498,customer01498@example.com,Udon Thani,2024-12-16,ads
+1499,customer01499@example.com,Chiang Mai,2024-12-16,organic
+1500,customer01500@example.com,Bangkok,2024-12-16,organic
+1501,customer01501@example.com,Khon Kaen,2024-12-16,organic
+1502,customer01502@example.com,Udon Thani,2024-12-16,organic
+1503,customer01503@example.com,Chiang Mai,2024-12-16,ads
+1504,customer01504@example.com,Bangkok,2024-12-17,organic
+1505,customer01505@example.com,Bangkok,2024-12-17,referral
+1506,customer01506@example.com,Khon Kaen,2024-12-17,referral
+1507,customer01507@example.com,Khon Kaen,2024-12-17,organic
+1508,customer01508@example.com,Hat Yai,2024-12-18,organic
+1509,customer01509@example.com,Nakhon Ratchasima,2024-12-18,organic
+1510,customer01510@example.com,Bangkok,2024-12-18,organic
+1511,customer01511@example.com,Chiang Mai,2024-12-19,organic
+1512,customer01512@example.com,Chiang Mai,2024-12-19,organic
+1513,customer01513@example.com,Chiang Mai,2024-12-19,organic
+1514,customer01514@example.com,Bangkok,2024-12-19,ads
+1515,customer01515@example.com,Chon Buri,2024-12-19,ads
+1516,customer01516@example.com,Chiang Mai,2024-12-19,referral
+1517,customer01517@example.com,Hat Yai,2024-12-20,organic
+1518,customer01518@example.com,Bangkok,2024-12-20,organic
+1519,customer01519@example.com,Udon Thani,2024-12-20,referral
+1520,customer01520@example.com,Bangkok,2024-12-20,organic
+1521,customer01521@example.com,Bangkok,2024-12-20,ads
+1522,customer01522@example.com,Phuket,2024-12-20,referral
+1523,customer01523@example.com,Chon Buri,2024-12-21,organic
+1524,customer01524@example.com,Bangkok,2024-12-21,referral
+1525,customer01525@example.com,Chon Buri,2024-12-21,referral
+1526,customer01526@example.com,Bangkok,2024-12-21,ads
+1527,customer01527@example.com,Khon Kaen,2024-12-22,organic
+1528,customer01528@example.com,Bangkok,2024-12-22,organic
+1529,customer01529@example.com,Nakhon Ratchasima,2024-12-22,ads
+1530,customer01530@example.com,Bangkok,2024-12-22,ads
+1531,customer01531@example.com,Chon Buri,2024-12-23,organic
+1532,customer01532@example.com,Hat Yai,2024-12-24,ads
+1533,customer01533@example.com,Nakhon Ratchasima,2024-12-24,ads
+1534,customer01534@example.com,Bangkok,2024-12-24,ads
+1535,customer01535@example.com,Phuket,2024-12-25,ads
+1536,customer01536@example.com,Bangkok,2024-12-25,referral
+1537,customer01537@example.com,Phuket,2024-12-25,organic
+1538,customer01538@example.com,Phuket,2024-12-26,ads
+1539,customer01539@example.com,Bangkok,2024-12-26,ads
+1540,customer01540@example.com,Bangkok,2024-12-26,ads
+1541,customer01541@example.com,Udon Thani,2024-12-26,ads
+1542,customer01542@example.com,Bangkok,2024-12-26,organic
+1543,customer01543@example.com,Bangkok,2024-12-26,organic
+1544,customer01544@example.com,Khon Kaen,2024-12-26,organic
+1545,customer01545@example.com,Nakhon Ratchasima,2024-12-26,ads
+1546,customer01546@example.com,Bangkok,2024-12-27,ads
+1547,customer01547@example.com,Hat Yai,2024-12-27,referral
+1548,customer01548@example.com,Bangkok,2024-12-27,organic
+1549,customer01549@example.com,Nakhon Ratchasima,2024-12-27,organic
+1550,customer01550@example.com,Bangkok,2024-12-28,organic
+1551,customer01551@example.com,Khon Kaen,2024-12-28,ads
+1552,customer01552@example.com,Khon Kaen,2024-12-28,ads
+1553,customer01553@example.com,Bangkok,2024-12-28,organic
+1554,customer01554@example.com,Hat Yai,2024-12-28,organic
+1555,customer01555@example.com,Bangkok,2024-12-28,ads
+1556,customer01556@example.com,Khon Kaen,2024-12-29,organic
+1557,customer01557@example.com,Chiang Mai,2024-12-29,organic
+1558,customer01558@example.com,Chon Buri,2024-12-30,ads
+1559,customer01559@example.com,Phuket,2024-12-30,organic
+1560,customer01560@example.com,Udon Thani,2024-12-30,organic
+1561,customer01561@example.com,Bangkok,2024-12-30,ads
+1562,customer01562@example.com,Khon Kaen,2024-12-31,organic
+1563,customer01563@example.com,Khon Kaen,2024-12-31,organic
+1564,customer01564@example.com,Udon Thani,2024-12-31,organic
+1565,customer01565@example.com,Udon Thani,2024-12-31,ads
+1566,customer01566@example.com,Hat Yai,2024-12-31,ads
+1567,customer01567@example.com,Hat Yai,2024-12-31,organic
+1568,customer01568@example.com,Bangkok,2025-01-01,organic
+1569,customer01569@example.com,Udon Thani,2025-01-01,organic
+1570,customer01570@example.com,Bangkok,2025-01-01,organic
+1571,customer01571@example.com,Nakhon Ratchasima,2025-01-01,organic
+1572,customer01572@example.com,Chon Buri,2025-01-01,ads
+1573,customer01573@example.com,Hat Yai,2025-01-02,ads
+1574,customer01574@example.com,Chon Buri,2025-01-02,ads
+1575,customer01575@example.com,Bangkok,2025-01-03,organic
+1576,customer01576@example.com,Khon Kaen,2025-01-03,organic
+1577,customer01577@example.com,Khon Kaen,2025-01-04,referral
+1578,customer01578@example.com,Chon Buri,2025-01-04,ads
+1579,customer01579@example.com,Bangkok,2025-01-05,organic
+1580,customer01580@example.com,Bangkok,2025-01-05,referral
+1581,customer01581@example.com,Bangkok,2025-01-05,ads
+1582,customer01582@example.com,Udon Thani,2025-01-05,ads
+1583,customer01583@example.com,Bangkok,2025-01-05,organic
+1584,customer01584@example.com,Bangkok,2025-01-05,organic
+1585,customer01585@example.com,Bangkok,2025-01-06,ads
+1586,customer01586@example.com,Udon Thani,2025-01-06,ads
+1587,customer01587@example.com,Nakhon Ratchasima,2025-01-06,organic
+1588,customer01588@example.com,Udon Thani,2025-01-06,ads
+1589,customer01589@example.com,Bangkok,2025-01-06,organic
+1590,customer01590@example.com,Bangkok,2025-01-07,organic
+1591,customer01591@example.com,Bangkok,2025-01-07,referral
+1592,customer01592@example.com,Phuket,2025-01-07,ads
+1593,customer01593@example.com,Chon Buri,2025-01-07,referral
+1594,customer01594@example.com,Bangkok,2025-01-07,ads
+1595,customer01595@example.com,Hat Yai,2025-01-07,ads
+1596,customer01596@example.com,Chon Buri,2025-01-07,organic
+1597,customer01597@example.com,Bangkok,2025-01-07,referral
+1598,customer01598@example.com,Bangkok,2025-01-07,organic
+1599,customer01599@example.com,Chon Buri,2025-01-08,organic
+1600,customer01600@example.com,Bangkok,2025-01-08,organic
+1601,customer01601@example.com,Nakhon Ratchasima,2025-01-08,ads
+1602,customer01602@example.com,Nakhon Ratchasima,2025-01-08,ads
+1603,customer01603@example.com,Chon Buri,2025-01-09,referral
+1604,customer01604@example.com,Nakhon Ratchasima,2025-01-09,referral
+1605,customer01605@example.com,Bangkok,2025-01-09,referral
+1606,customer01606@example.com,Khon Kaen,2025-01-09,organic
+1607,customer01607@example.com,Phuket,2025-01-09,ads
+1608,customer01608@example.com,Chon Buri,2025-01-10,organic
+1609,customer01609@example.com,Phuket,2025-01-10,referral
+1610,customer01610@example.com,Udon Thani,2025-01-10,ads
+1611,customer01611@example.com,Bangkok,2025-01-10,organic
+1612,customer01612@example.com,Bangkok,2025-01-10,organic
+1613,customer01613@example.com,Hat Yai,2025-01-11,organic
+1614,customer01614@example.com,Bangkok,2025-01-12,ads
+1615,customer01615@example.com,Chiang Mai,2025-01-12,organic
+1616,customer01616@example.com,Phuket,2025-01-12,organic
+1617,customer01617@example.com,Hat Yai,2025-01-12,ads
+1618,customer01618@example.com,Khon Kaen,2025-01-12,organic
+1619,customer01619@example.com,Bangkok,2025-01-12,organic
+1620,customer01620@example.com,Hat Yai,2025-01-13,ads
+1621,customer01621@example.com,Udon Thani,2025-01-13,ads
+1622,customer01622@example.com,Phuket,2025-01-13,organic
+1623,customer01623@example.com,Bangkok,2025-01-13,organic
+1624,customer01624@example.com,Chon Buri,2025-01-13,ads
+1625,customer01625@example.com,Udon Thani,2025-01-14,organic
+1626,customer01626@example.com,Phuket,2025-01-14,organic
+1627,customer01627@example.com,Bangkok,2025-01-14,referral
+1628,customer01628@example.com,Hat Yai,2025-01-15,ads
+1629,customer01629@example.com,Udon Thani,2025-01-15,organic
+1630,customer01630@example.com,Bangkok,2025-01-15,ads
+1631,customer01631@example.com,Bangkok,2025-01-15,ads
+1632,customer01632@example.com,Chiang Mai,2025-01-15,ads
+1633,customer01633@example.com,Khon Kaen,2025-01-15,organic
+1634,customer01634@example.com,Bangkok,2025-01-16,ads
+1635,customer01635@example.com,Chiang Mai,2025-01-16,organic
+1636,customer01636@example.com,Chon Buri,2025-01-16,organic
+1637,customer01637@example.com,Bangkok,2025-01-16,organic
+1638,customer01638@example.com,Phuket,2025-01-16,referral
+1639,customer01639@example.com,Phuket,2025-01-17,ads
+1640,customer01640@example.com,Nakhon Ratchasima,2025-01-17,organic
+1641,customer01641@example.com,Bangkok,2025-01-17,ads
+1642,customer01642@example.com,Bangkok,2025-01-17,referral
+1643,customer01643@example.com,Bangkok,2025-01-17,organic
+1644,customer01644@example.com,Bangkok,2025-01-18,organic
+1645,customer01645@example.com,Chon Buri,2025-01-19,organic
+1646,customer01646@example.com,Chon Buri,2025-01-19,organic
+1647,customer01647@example.com,Bangkok,2025-01-19,organic
+1648,customer01648@example.com,Bangkok,2025-01-20,ads
+1649,customer01649@example.com,Bangkok,2025-01-20,referral
+1650,customer01650@example.com,Bangkok,2025-01-20,ads
+1651,customer01651@example.com,Hat Yai,2025-01-20,ads
+1652,customer01652@example.com,Bangkok,2025-01-21,organic
+1653,customer01653@example.com,Chon Buri,2025-01-21,ads
+1654,customer01654@example.com,Hat Yai,2025-01-21,ads
+1655,customer01655@example.com,Chon Buri,2025-01-21,organic
+1656,customer01656@example.com,Udon Thani,2025-01-21,ads
+1657,customer01657@example.com,Bangkok,2025-01-22,ads
+1658,customer01658@example.com,Chiang Mai,2025-01-22,organic
+1659,customer01659@example.com,Phuket,2025-01-22,organic
+1660,customer01660@example.com,Hat Yai,2025-01-23,ads
+1661,customer01661@example.com,Phuket,2025-01-23,organic
+1662,customer01662@example.com,Bangkok,2025-01-23,organic
+1663,customer01663@example.com,Bangkok,2025-01-23,ads
+1664,customer01664@example.com,Chiang Mai,2025-01-23,ads
+1665,customer01665@example.com,Bangkok,2025-01-23,ads
+1666,customer01666@example.com,Bangkok,2025-01-23,organic
+1667,customer01667@example.com,Bangkok,2025-01-23,ads
+1668,customer01668@example.com,Chon Buri,2025-01-24,ads
+1669,customer01669@example.com,Chiang Mai,2025-01-24,organic
+1670,customer01670@example.com,Bangkok,2025-01-24,organic
+1671,customer01671@example.com,Bangkok,2025-01-24,referral
+1672,customer01672@example.com,Bangkok,2025-01-26,organic
+1673,customer01673@example.com,Chiang Mai,2025-01-26,organic
+1674,customer01674@example.com,Udon Thani,2025-01-26,organic
+1675,customer01675@example.com,Bangkok,2025-01-26,organic
+1676,customer01676@example.com,Khon Kaen,2025-01-26,ads
+1677,customer01677@example.com,Bangkok,2025-01-26,organic
+1678,customer01678@example.com,Udon Thani,2025-01-26,organic
+1679,customer01679@example.com,Bangkok,2025-01-27,ads
+1680,customer01680@example.com,Chon Buri,2025-01-27,organic
+1681,customer01681@example.com,Phuket,2025-01-27,organic
+1682,customer01682@example.com,Phuket,2025-01-28,organic
+1683,customer01683@example.com,Bangkok,2025-01-29,organic
+1684,customer01684@example.com,Nakhon Ratchasima,2025-01-30,organic
+1685,customer01685@example.com,Bangkok,2025-01-30,organic
+1686,customer01686@example.com,Bangkok,2025-01-30,ads
+1687,customer01687@example.com,Chiang Mai,2025-01-30,ads
+1688,customer01688@example.com,Nakhon Ratchasima,2025-01-31,ads
+1689,customer01689@example.com,Khon Kaen,2025-01-31,organic
+1690,customer01690@example.com,Chiang Mai,2025-01-31,organic
+1691,customer01691@example.com,Bangkok,2025-02-01,ads
+1692,customer01692@example.com,Chiang Mai,2025-02-01,organic
+1693,customer01693@example.com,Bangkok,2025-02-01,referral
+1694,customer01694@example.com,Chiang Mai,2025-02-01,organic
+1695,customer01695@example.com,Bangkok,2025-02-01,ads
+1696,customer01696@example.com,Bangkok,2025-02-01,organic
+1697,customer01697@example.com,Bangkok,2025-02-01,ads
+1698,customer01698@example.com,Chiang Mai,2025-02-02,ads
+1699,customer01699@example.com,Nakhon Ratchasima,2025-02-02,ads
+1700,customer01700@example.com,Bangkok,2025-02-02,ads
+1701,customer01701@example.com,Chon Buri,2025-02-02,referral
+1702,customer01702@example.com,Bangkok,2025-02-03,organic
+1703,customer01703@example.com,Hat Yai,2025-02-03,ads
+1704,customer01704@example.com,Hat Yai,2025-02-03,ads
+1705,customer01705@example.com,Phuket,2025-02-03,organic
+1706,customer01706@example.com,Nakhon Ratchasima,2025-02-03,ads
+1707,customer01707@example.com,Phuket,2025-02-04,organic
+1708,customer01708@example.com,Bangkok,2025-02-04,ads
+1709,customer01709@example.com,Bangkok,2025-02-05,organic
+1710,customer01710@example.com,Bangkok,2025-02-05,referral
+1711,customer01711@example.com,Bangkok,2025-02-05,organic
+1712,customer01712@example.com,Bangkok,2025-02-05,organic
+1713,customer01713@example.com,Bangkok,2025-02-05,ads
+1714,customer01714@example.com,Bangkok,2025-02-06,referral
+1715,customer01715@example.com,Chiang Mai,2025-02-06,organic
+1716,customer01716@example.com,Khon Kaen,2025-02-06,organic
+1717,customer01717@example.com,Bangkok,2025-02-06,organic
+1718,customer01718@example.com,Khon Kaen,2025-02-06,organic
+1719,customer01719@example.com,Bangkok,2025-02-06,ads
+1720,customer01720@example.com,Chon Buri,2025-02-06,ads
+1721,customer01721@example.com,Khon Kaen,2025-02-06,organic
+1722,customer01722@example.com,Khon Kaen,2025-02-07,organic
+1723,customer01723@example.com,Bangkok,2025-02-07,organic
+1724,customer01724@example.com,Bangkok,2025-02-07,organic
+1725,customer01725@example.com,Udon Thani,2025-02-07,organic
+1726,customer01726@example.com,Bangkok,2025-02-07,organic
+1727,customer01727@example.com,Chiang Mai,2025-02-07,ads
+1728,customer01728@example.com,Bangkok,2025-02-07,ads
+1729,customer01729@example.com,Bangkok,2025-02-08,referral
+1730,customer01730@example.com,Khon Kaen,2025-02-08,referral
+1731,customer01731@example.com,Chiang Mai,2025-02-08,ads
+1732,customer01732@example.com,Nakhon Ratchasima,2025-02-08,organic
+1733,customer01733@example.com,Khon Kaen,2025-02-09,organic
+1734,customer01734@example.com,Bangkok,2025-02-09,ads
+1735,customer01735@example.com,Phuket,2025-02-10,ads
+1736,customer01736@example.com,Phuket,2025-02-10,referral
+1737,customer01737@example.com,Bangkok,2025-02-10,ads
+1738,customer01738@example.com,Phuket,2025-02-10,organic
+1739,customer01739@example.com,Phuket,2025-02-11,organic
+1740,customer01740@example.com,Bangkok,2025-02-11,organic
+1741,customer01741@example.com,Nakhon Ratchasima,2025-02-11,ads
+1742,customer01742@example.com,Nakhon Ratchasima,2025-02-12,organic
+1743,customer01743@example.com,Bangkok,2025-02-12,organic
+1744,customer01744@example.com,Bangkok,2025-02-12,organic
+1745,customer01745@example.com,Chiang Mai,2025-02-12,organic
+1746,customer01746@example.com,Chiang Mai,2025-02-12,referral
+1747,customer01747@example.com,Bangkok,2025-02-13,ads
+1748,customer01748@example.com,Bangkok,2025-02-13,organic
+1749,customer01749@example.com,Bangkok,2025-02-13,organic
+1750,customer01750@example.com,Bangkok,2025-02-14,ads
+1751,customer01751@example.com,Chiang Mai,2025-02-14,organic
+1752,customer01752@example.com,Bangkok,2025-02-14,referral
+1753,customer01753@example.com,Khon Kaen,2025-02-14,organic
+1754,customer01754@example.com,Bangkok,2025-02-14,organic
+1755,customer01755@example.com,Udon Thani,2025-02-14,referral
+1756,customer01756@example.com,Nakhon Ratchasima,2025-02-15,ads
+1757,customer01757@example.com,Bangkok,2025-02-15,organic
+1758,customer01758@example.com,Bangkok,2025-02-15,organic
+1759,customer01759@example.com,Bangkok,2025-02-15,ads
+1760,customer01760@example.com,Bangkok,2025-02-15,organic
+1761,customer01761@example.com,Bangkok,2025-02-16,organic
+1762,customer01762@example.com,Bangkok,2025-02-16,organic
+1763,customer01763@example.com,Phuket,2025-02-16,organic
+1764,customer01764@example.com,Nakhon Ratchasima,2025-02-16,organic
+1765,customer01765@example.com,Nakhon Ratchasima,2025-02-17,ads
+1766,customer01766@example.com,Bangkok,2025-02-17,ads
+1767,customer01767@example.com,Bangkok,2025-02-17,referral
+1768,customer01768@example.com,Bangkok,2025-02-17,ads
+1769,customer01769@example.com,Phuket,2025-02-18,ads
+1770,customer01770@example.com,Bangkok,2025-02-18,organic
+1771,customer01771@example.com,Chiang Mai,2025-02-18,referral
+1772,customer01772@example.com,Bangkok,2025-02-19,organic
+1773,customer01773@example.com,Chon Buri,2025-02-19,ads
+1774,customer01774@example.com,Phuket,2025-02-19,organic
+1775,customer01775@example.com,Khon Kaen,2025-02-19,ads
+1776,customer01776@example.com,Nakhon Ratchasima,2025-02-19,ads
+1777,customer01777@example.com,Bangkok,2025-02-20,referral
+1778,customer01778@example.com,Bangkok,2025-02-20,organic
+1779,customer01779@example.com,Bangkok,2025-02-21,organic
+1780,customer01780@example.com,Chiang Mai,2025-02-21,organic
+1781,customer01781@example.com,Chon Buri,2025-02-21,organic
+1782,customer01782@example.com,Chiang Mai,2025-02-22,ads
+1783,customer01783@example.com,Chon Buri,2025-02-22,organic
+1784,customer01784@example.com,Chon Buri,2025-02-22,ads
+1785,customer01785@example.com,Chiang Mai,2025-02-22,organic
+1786,customer01786@example.com,Khon Kaen,2025-02-23,ads
+1787,customer01787@example.com,Bangkok,2025-02-23,organic
+1788,customer01788@example.com,Phuket,2025-02-23,organic
+1789,customer01789@example.com,Chiang Mai,2025-02-23,organic
+1790,customer01790@example.com,Hat Yai,2025-02-23,organic
+1791,customer01791@example.com,Bangkok,2025-02-23,ads
+1792,customer01792@example.com,Chiang Mai,2025-02-24,organic
+1793,customer01793@example.com,Chiang Mai,2025-02-24,organic
+1794,customer01794@example.com,Chon Buri,2025-02-24,ads
+1795,customer01795@example.com,Nakhon Ratchasima,2025-02-24,ads
+1796,customer01796@example.com,Chon Buri,2025-02-24,organic
+1797,customer01797@example.com,Bangkok,2025-02-24,referral
+1798,customer01798@example.com,Bangkok,2025-02-24,organic
+1799,customer01799@example.com,Phuket,2025-02-25,organic
+1800,customer01800@example.com,Bangkok,2025-02-25,ads
+1801,customer01801@example.com,Bangkok,2025-02-25,ads
+1802,customer01802@example.com,Chon Buri,2025-02-25,referral
+1803,customer01803@example.com,Udon Thani,2025-02-25,referral
+1804,customer01804@example.com,Hat Yai,2025-02-25,ads
+1805,customer01805@example.com,Chiang Mai,2025-02-25,organic
+1806,customer01806@example.com,Nakhon Ratchasima,2025-02-26,organic
+1807,customer01807@example.com,Bangkok,2025-02-28,ads
+1808,customer01808@example.com,Bangkok,2025-02-28,organic
+1809,customer01809@example.com,Bangkok,2025-02-28,organic
+1810,customer01810@example.com,Udon Thani,2025-03-01,ads
+1811,customer01811@example.com,Chiang Mai,2025-03-01,ads
+1812,customer01812@example.com,Bangkok,2025-03-01,organic
+1813,customer01813@example.com,Bangkok,2025-03-02,ads
+1814,customer01814@example.com,Bangkok,2025-03-02,organic
+1815,customer01815@example.com,Nakhon Ratchasima,2025-03-03,organic
+1816,customer01816@example.com,Bangkok,2025-03-03,ads
+1817,customer01817@example.com,Bangkok,2025-03-03,ads
+1818,customer01818@example.com,Chon Buri,2025-03-04,organic
+1819,customer01819@example.com,Udon Thani,2025-03-04,organic
+1820,customer01820@example.com,Udon Thani,2025-03-04,referral
+1821,customer01821@example.com,Chon Buri,2025-03-04,ads
+1822,customer01822@example.com,Bangkok,2025-03-05,organic
+1823,customer01823@example.com,Phuket,2025-03-05,organic
+1824,customer01824@example.com,Nakhon Ratchasima,2025-03-05,organic
+1825,customer01825@example.com,Hat Yai,2025-03-05,ads
+1826,customer01826@example.com,Phuket,2025-03-05,ads
+1827,customer01827@example.com,Chiang Mai,2025-03-06,ads
+1828,customer01828@example.com,Udon Thani,2025-03-06,referral
+1829,customer01829@example.com,Bangkok,2025-03-07,organic
+1830,customer01830@example.com,Chiang Mai,2025-03-07,organic
+1831,customer01831@example.com,Chon Buri,2025-03-07,ads
+1832,customer01832@example.com,Bangkok,2025-03-07,organic
+1833,customer01833@example.com,Nakhon Ratchasima,2025-03-08,organic
+1834,customer01834@example.com,Bangkok,2025-03-08,organic
+1835,customer01835@example.com,Nakhon Ratchasima,2025-03-08,organic
+1836,customer01836@example.com,Phuket,2025-03-08,organic
+1837,customer01837@example.com,Bangkok,2025-03-08,referral
+1838,customer01838@example.com,Bangkok,2025-03-09,referral
+1839,customer01839@example.com,Khon Kaen,2025-03-09,organic
+1840,customer01840@example.com,Chiang Mai,2025-03-09,organic
+1841,customer01841@example.com,Chiang Mai,2025-03-09,ads
+1842,customer01842@example.com,Phuket,2025-03-09,referral
+1843,customer01843@example.com,Bangkok,2025-03-09,organic
+1844,customer01844@example.com,Bangkok,2025-03-11,organic
+1845,customer01845@example.com,Chon Buri,2025-03-11,organic
+1846,customer01846@example.com,Bangkok,2025-03-11,organic
+1847,customer01847@example.com,Hat Yai,2025-03-11,organic
+1848,customer01848@example.com,Khon Kaen,2025-03-11,organic
+1849,customer01849@example.com,Bangkok,2025-03-12,organic
+1850,customer01850@example.com,Hat Yai,2025-03-12,ads
+1851,customer01851@example.com,Udon Thani,2025-03-12,ads
+1852,customer01852@example.com,Chiang Mai,2025-03-13,organic
+1853,customer01853@example.com,Udon Thani,2025-03-13,organic
+1854,customer01854@example.com,Nakhon Ratchasima,2025-03-13,referral
+1855,customer01855@example.com,Udon Thani,2025-03-13,referral
+1856,customer01856@example.com,Nakhon Ratchasima,2025-03-13,referral
+1857,customer01857@example.com,Khon Kaen,2025-03-14,ads
+1858,customer01858@example.com,Chiang Mai,2025-03-14,organic
+1859,customer01859@example.com,Khon Kaen,2025-03-14,ads
+1860,customer01860@example.com,Chiang Mai,2025-03-14,ads
+1861,customer01861@example.com,Bangkok,2025-03-14,organic
+1862,customer01862@example.com,Nakhon Ratchasima,2025-03-14,referral
+1863,customer01863@example.com,Chiang Mai,2025-03-14,organic
+1864,customer01864@example.com,Khon Kaen,2025-03-15,ads
+1865,customer01865@example.com,Bangkok,2025-03-16,organic
+1866,customer01866@example.com,Hat Yai,2025-03-16,ads
+1867,customer01867@example.com,Bangkok,2025-03-16,referral
+1868,customer01868@example.com,Bangkok,2025-03-17,ads
+1869,customer01869@example.com,Khon Kaen,2025-03-17,ads
+1870,customer01870@example.com,Udon Thani,2025-03-17,organic
+1871,customer01871@example.com,Udon Thani,2025-03-17,ads
+1872,customer01872@example.com,Phuket,2025-03-17,organic
+1873,customer01873@example.com,Bangkok,2025-03-18,ads
+1874,customer01874@example.com,Bangkok,2025-03-18,organic
+1875,customer01875@example.com,Bangkok,2025-03-18,ads
+1876,customer01876@example.com,Udon Thani,2025-03-18,organic
+1877,customer01877@example.com,Bangkok,2025-03-18,referral
+1878,customer01878@example.com,Phuket,2025-03-18,ads
+1879,customer01879@example.com,Bangkok,2025-03-19,organic
+1880,customer01880@example.com,Khon Kaen,2025-03-19,ads
+1881,customer01881@example.com,Chon Buri,2025-03-19,ads
+1882,customer01882@example.com,Chon Buri,2025-03-19,referral
+1883,customer01883@example.com,Chon Buri,2025-03-20,organic
+1884,customer01884@example.com,Udon Thani,2025-03-20,organic
+1885,customer01885@example.com,Bangkok,2025-03-20,ads
+1886,customer01886@example.com,Bangkok,2025-03-20,referral
+1887,customer01887@example.com,Nakhon Ratchasima,2025-03-21,ads
+1888,customer01888@example.com,Nakhon Ratchasima,2025-03-21,ads
+1889,customer01889@example.com,Bangkok,2025-03-21,ads
+1890,customer01890@example.com,Nakhon Ratchasima,2025-03-22,organic
+1891,customer01891@example.com,Nakhon Ratchasima,2025-03-22,referral
+1892,customer01892@example.com,Chon Buri,2025-03-22,organic
+1893,customer01893@example.com,Bangkok,2025-03-23,referral
+1894,customer01894@example.com,Bangkok,2025-03-23,referral
+1895,customer01895@example.com,Nakhon Ratchasima,2025-03-23,organic
+1896,customer01896@example.com,Phuket,2025-03-24,referral
+1897,customer01897@example.com,Chon Buri,2025-03-24,ads
+1898,customer01898@example.com,Chon Buri,2025-03-24,organic
+1899,customer01899@example.com,Phuket,2025-03-24,organic
+1900,customer01900@example.com,Nakhon Ratchasima,2025-03-25,referral
+1901,customer01901@example.com,Bangkok,2025-03-26,referral
+1902,customer01902@example.com,Udon Thani,2025-03-26,ads
+1903,customer01903@example.com,Bangkok,2025-03-26,organic
+1904,customer01904@example.com,Hat Yai,2025-03-26,ads
+1905,customer01905@example.com,Chon Buri,2025-03-27,organic
+1906,customer01906@example.com,Udon Thani,2025-03-27,referral
+1907,customer01907@example.com,Chon Buri,2025-03-27,organic
+1908,customer01908@example.com,Nakhon Ratchasima,2025-03-27,ads
+1909,customer01909@example.com,Phuket,2025-03-27,organic
+1910,customer01910@example.com,Chiang Mai,2025-03-28,organic
+1911,customer01911@example.com,Hat Yai,2025-03-28,organic
+1912,customer01912@example.com,Chon Buri,2025-03-28,ads
+1913,customer01913@example.com,Bangkok,2025-03-28,ads
+1914,customer01914@example.com,Hat Yai,2025-03-29,organic
+1915,customer01915@example.com,Khon Kaen,2025-03-29,ads
+1916,customer01916@example.com,Bangkok,2025-03-29,organic
+1917,customer01917@example.com,Chiang Mai,2025-03-29,ads
+1918,customer01918@example.com,Chiang Mai,2025-03-29,organic
+1919,customer01919@example.com,Bangkok,2025-03-29,organic
+1920,customer01920@example.com,Chon Buri,2025-03-29,organic
+1921,customer01921@example.com,Chiang Mai,2025-03-29,ads
+1922,customer01922@example.com,Phuket,2025-03-29,organic
+1923,customer01923@example.com,Bangkok,2025-03-30,organic
+1924,customer01924@example.com,Bangkok,2025-03-30,organic
+1925,customer01925@example.com,Chiang Mai,2025-03-30,organic
+1926,customer01926@example.com,Chiang Mai,2025-03-30,organic
+1927,customer01927@example.com,Bangkok,2025-03-31,ads
+1928,customer01928@example.com,Chon Buri,2025-03-31,referral
+1929,customer01929@example.com,Khon Kaen,2025-03-31,organic
+1930,customer01930@example.com,Hat Yai,2025-03-31,ads
+1931,customer01931@example.com,Bangkok,2025-04-01,organic
+1932,customer01932@example.com,Nakhon Ratchasima,2025-04-01,organic
+1933,customer01933@example.com,Udon Thani,2025-04-01,ads
+1934,customer01934@example.com,Chon Buri,2025-04-01,organic
+1935,customer01935@example.com,Bangkok,2025-04-02,organic
+1936,customer01936@example.com,Bangkok,2025-04-02,referral
+1937,customer01937@example.com,Nakhon Ratchasima,2025-04-02,organic
+1938,customer01938@example.com,Bangkok,2025-04-02,ads
+1939,customer01939@example.com,Phuket,2025-04-02,organic
+1940,customer01940@example.com,Khon Kaen,2025-04-02,ads
+1941,customer01941@example.com,Nakhon Ratchasima,2025-04-02,organic
+1942,customer01942@example.com,Bangkok,2025-04-02,ads
+1943,customer01943@example.com,Udon Thani,2025-04-03,ads
+1944,customer01944@example.com,Chiang Mai,2025-04-03,referral
+1945,customer01945@example.com,Nakhon Ratchasima,2025-04-03,referral
+1946,customer01946@example.com,Chiang Mai,2025-04-03,referral
+1947,customer01947@example.com,Bangkok,2025-04-03,organic
+1948,customer01948@example.com,Phuket,2025-04-04,organic
+1949,customer01949@example.com,Bangkok,2025-04-04,ads
+1950,customer01950@example.com,Bangkok,2025-04-04,organic
+1951,customer01951@example.com,Udon Thani,2025-04-05,referral
+1952,customer01952@example.com,Chon Buri,2025-04-05,ads
+1953,customer01953@example.com,Bangkok,2025-04-06,organic
+1954,customer01954@example.com,Bangkok,2025-04-06,ads
+1955,customer01955@example.com,Bangkok,2025-04-06,organic
+1956,customer01956@example.com,Bangkok,2025-04-06,organic
+1957,customer01957@example.com,Bangkok,2025-04-06,ads
+1958,customer01958@example.com,Bangkok,2025-04-06,organic
+1959,customer01959@example.com,Khon Kaen,2025-04-07,ads
+1960,customer01960@example.com,Bangkok,2025-04-07,ads
+1961,customer01961@example.com,Khon Kaen,2025-04-08,referral
+1962,customer01962@example.com,Chon Buri,2025-04-08,referral
+1963,customer01963@example.com,Khon Kaen,2025-04-08,organic
+1964,customer01964@example.com,Chiang Mai,2025-04-08,ads
+1965,customer01965@example.com,Udon Thani,2025-04-09,organic
+1966,customer01966@example.com,Udon Thani,2025-04-09,referral
+1967,customer01967@example.com,Phuket,2025-04-09,ads
+1968,customer01968@example.com,Bangkok,2025-04-09,ads
+1969,customer01969@example.com,Bangkok,2025-04-09,ads
+1970,customer01970@example.com,Phuket,2025-04-10,referral
+1971,customer01971@example.com,Khon Kaen,2025-04-10,organic
+1972,customer01972@example.com,Bangkok,2025-04-10,organic
+1973,customer01973@example.com,Chiang Mai,2025-04-10,organic
+1974,customer01974@example.com,Phuket,2025-04-10,organic
+1975,customer01975@example.com,Chiang Mai,2025-04-10,organic
+1976,customer01976@example.com,Bangkok,2025-04-11,organic
+1977,customer01977@example.com,Bangkok,2025-04-11,ads
+1978,customer01978@example.com,Udon Thani,2025-04-11,organic
+1979,customer01979@example.com,Chon Buri,2025-04-11,ads
+1980,customer01980@example.com,Bangkok,2025-04-11,ads
+1981,customer01981@example.com,Nakhon Ratchasima,2025-04-11,organic
+1982,customer01982@example.com,Khon Kaen,2025-04-11,organic
+1983,customer01983@example.com,Hat Yai,2025-04-12,ads
+1984,customer01984@example.com,Chon Buri,2025-04-13,ads
+1985,customer01985@example.com,Bangkok,2025-04-13,organic
+1986,customer01986@example.com,Hat Yai,2025-04-13,referral
+1987,customer01987@example.com,Nakhon Ratchasima,2025-04-14,ads
+1988,customer01988@example.com,Phuket,2025-04-14,ads
+1989,customer01989@example.com,Khon Kaen,2025-04-14,ads
+1990,customer01990@example.com,Bangkok,2025-04-15,organic
+1991,customer01991@example.com,Bangkok,2025-04-15,referral
+1992,customer01992@example.com,Bangkok,2025-04-15,organic
+1993,customer01993@example.com,Bangkok,2025-04-16,referral
+1994,customer01994@example.com,Bangkok,2025-04-16,ads
+1995,customer01995@example.com,Chiang Mai,2025-04-16,organic
+1996,customer01996@example.com,Phuket,2025-04-16,ads
+1997,customer01997@example.com,Bangkok,2025-04-17,organic
+1998,customer01998@example.com,Bangkok,2025-04-18,referral
+1999,customer01999@example.com,Chon Buri,2025-04-18,ads
+2000,customer02000@example.com,Chiang Mai,2025-04-18,ads
+2001,customer02001@example.com,Hat Yai,2025-04-19,ads
+2002,customer02002@example.com,Chiang Mai,2025-04-19,organic
+2003,customer02003@example.com,Nakhon Ratchasima,2025-04-19,organic
+2004,customer02004@example.com,Hat Yai,2025-04-19,organic
+2005,customer02005@example.com,Khon Kaen,2025-04-20,referral
+2006,customer02006@example.com,Nakhon Ratchasima,2025-04-20,organic
+2007,customer02007@example.com,Nakhon Ratchasima,2025-04-20,referral
+2008,customer02008@example.com,Bangkok,2025-04-21,organic
+2009,customer02009@example.com,Bangkok,2025-04-21,ads
+2010,customer02010@example.com,Nakhon Ratchasima,2025-04-21,organic
+2011,customer02011@example.com,Phuket,2025-04-21,referral
+2012,customer02012@example.com,Chiang Mai,2025-04-21,ads
+2013,customer02013@example.com,Hat Yai,2025-04-21,referral
+2014,customer02014@example.com,Phuket,2025-04-22,organic
+2015,customer02015@example.com,Bangkok,2025-04-22,ads
+2016,customer02016@example.com,Bangkok,2025-04-22,organic
+2017,customer02017@example.com,Bangkok,2025-04-22,ads
+2018,customer02018@example.com,Udon Thani,2025-04-22,organic
+2019,customer02019@example.com,Nakhon Ratchasima,2025-04-22,organic
+2020,customer02020@example.com,Bangkok,2025-04-23,organic
+2021,customer02021@example.com,Bangkok,2025-04-23,referral
+2022,customer02022@example.com,Udon Thani,2025-04-24,organic
+2023,customer02023@example.com,Bangkok,2025-04-24,ads
+2024,customer02024@example.com,Udon Thani,2025-04-24,organic
+2025,customer02025@example.com,Udon Thani,2025-04-25,ads
+2026,customer02026@example.com,Chon Buri,2025-04-25,organic
+2027,customer02027@example.com,Nakhon Ratchasima,2025-04-25,ads
+2028,customer02028@example.com,Chiang Mai,2025-04-26,referral
+2029,customer02029@example.com,Udon Thani,2025-04-26,ads
+2030,customer02030@example.com,Khon Kaen,2025-04-26,organic
+2031,customer02031@example.com,Nakhon Ratchasima,2025-04-26,organic
+2032,customer02032@example.com,Khon Kaen,2025-04-26,referral
+2033,customer02033@example.com,Bangkok,2025-04-27,referral
+2034,customer02034@example.com,Khon Kaen,2025-04-27,organic
+2035,customer02035@example.com,Chiang Mai,2025-04-27,organic
+2036,customer02036@example.com,Bangkok,2025-04-27,organic
+2037,customer02037@example.com,Chiang Mai,2025-04-28,ads
+2038,customer02038@example.com,Bangkok,2025-04-28,organic
+2039,customer02039@example.com,Chiang Mai,2025-04-29,organic
+2040,customer02040@example.com,Khon Kaen,2025-04-29,referral
+2041,customer02041@example.com,Bangkok,2025-04-30,organic
+2042,customer02042@example.com,Udon Thani,2025-04-30,organic
+2043,customer02043@example.com,Udon Thani,2025-04-30,organic
+2044,customer02044@example.com,Khon Kaen,2025-04-30,organic
+2045,customer02045@example.com,Chon Buri,2025-04-30,organic
+2046,customer02046@example.com,Chon Buri,2025-04-30,organic
+2047,customer02047@example.com,Nakhon Ratchasima,2025-04-30,organic
+2048,customer02048@example.com,Khon Kaen,2025-05-01,referral
+2049,customer02049@example.com,Bangkok,2025-05-01,referral
+2050,customer02050@example.com,Chiang Mai,2025-05-01,ads
+2051,customer02051@example.com,Bangkok,2025-05-01,ads
+2052,customer02052@example.com,Chiang Mai,2025-05-01,ads
+2053,customer02053@example.com,Chon Buri,2025-05-02,organic
+2054,customer02054@example.com,Khon Kaen,2025-05-02,referral
+2055,customer02055@example.com,Bangkok,2025-05-03,ads
+2056,customer02056@example.com,Phuket,2025-05-03,organic
+2057,customer02057@example.com,Bangkok,2025-05-03,ads
+2058,customer02058@example.com,Nakhon Ratchasima,2025-05-03,referral
+2059,customer02059@example.com,Bangkok,2025-05-03,organic
+2060,customer02060@example.com,Bangkok,2025-05-03,referral
+2061,customer02061@example.com,Bangkok,2025-05-04,ads
+2062,customer02062@example.com,Bangkok,2025-05-04,ads
+2063,customer02063@example.com,Khon Kaen,2025-05-04,organic
+2064,customer02064@example.com,Bangkok,2025-05-04,ads
+2065,customer02065@example.com,Udon Thani,2025-05-05,ads
+2066,customer02066@example.com,Hat Yai,2025-05-05,referral
+2067,customer02067@example.com,Nakhon Ratchasima,2025-05-05,referral
+2068,customer02068@example.com,Nakhon Ratchasima,2025-05-05,ads
+2069,customer02069@example.com,Nakhon Ratchasima,2025-05-06,organic
+2070,customer02070@example.com,Chiang Mai,2025-05-06,organic
+2071,customer02071@example.com,Bangkok,2025-05-06,ads
+2072,customer02072@example.com,Nakhon Ratchasima,2025-05-06,ads
+2073,customer02073@example.com,Chon Buri,2025-05-06,organic
+2074,customer02074@example.com,Nakhon Ratchasima,2025-05-06,referral
+2075,customer02075@example.com,Khon Kaen,2025-05-07,organic
+2076,customer02076@example.com,Hat Yai,2025-05-07,referral
+2077,customer02077@example.com,Udon Thani,2025-05-07,organic
+2078,customer02078@example.com,Khon Kaen,2025-05-07,ads
+2079,customer02079@example.com,Khon Kaen,2025-05-08,organic
+2080,customer02080@example.com,Bangkok,2025-05-08,organic
+2081,customer02081@example.com,Nakhon Ratchasima,2025-05-08,ads
+2082,customer02082@example.com,Bangkok,2025-05-08,ads
+2083,customer02083@example.com,Bangkok,2025-05-08,organic
+2084,customer02084@example.com,Hat Yai,2025-05-09,organic
+2085,customer02085@example.com,Bangkok,2025-05-09,organic
+2086,customer02086@example.com,Chiang Mai,2025-05-09,organic
+2087,customer02087@example.com,Bangkok,2025-05-09,organic
+2088,customer02088@example.com,Bangkok,2025-05-09,referral
+2089,customer02089@example.com,Hat Yai,2025-05-09,referral
+2090,customer02090@example.com,Chiang Mai,2025-05-09,ads
+2091,customer02091@example.com,Bangkok,2025-05-09,organic
+2092,customer02092@example.com,Nakhon Ratchasima,2025-05-10,organic
+2093,customer02093@example.com,Udon Thani,2025-05-10,organic
+2094,customer02094@example.com,Bangkok,2025-05-10,organic
+2095,customer02095@example.com,Phuket,2025-05-10,ads
+2096,customer02096@example.com,Bangkok,2025-05-10,organic
+2097,customer02097@example.com,Bangkok,2025-05-10,referral
+2098,customer02098@example.com,Hat Yai,2025-05-11,referral
+2099,customer02099@example.com,Nakhon Ratchasima,2025-05-11,ads
+2100,customer02100@example.com,Nakhon Ratchasima,2025-05-11,referral
+2101,customer02101@example.com,Phuket,2025-05-11,organic
+2102,customer02102@example.com,Khon Kaen,2025-05-11,referral
+2103,customer02103@example.com,Nakhon Ratchasima,2025-05-11,organic
+2104,customer02104@example.com,Khon Kaen,2025-05-11,organic
+2105,customer02105@example.com,Chon Buri,2025-05-11,organic
+2106,customer02106@example.com,Chiang Mai,2025-05-12,ads
+2107,customer02107@example.com,Bangkok,2025-05-12,ads
+2108,customer02108@example.com,Phuket,2025-05-12,ads
+2109,customer02109@example.com,Bangkok,2025-05-12,ads
+2110,customer02110@example.com,Chon Buri,2025-05-12,ads
+2111,customer02111@example.com,Bangkok,2025-05-12,organic
+2112,customer02112@example.com,Phuket,2025-05-12,ads
+2113,customer02113@example.com,Udon Thani,2025-05-12,referral
+2114,customer02114@example.com,Udon Thani,2025-05-13,organic
+2115,customer02115@example.com,Bangkok,2025-05-13,referral
+2116,customer02116@example.com,Phuket,2025-05-13,ads
+2117,customer02117@example.com,Chiang Mai,2025-05-13,organic
+2118,customer02118@example.com,Nakhon Ratchasima,2025-05-13,organic
+2119,customer02119@example.com,Chon Buri,2025-05-13,organic
+2120,customer02120@example.com,Bangkok,2025-05-14,organic
+2121,customer02121@example.com,Khon Kaen,2025-05-14,ads
+2122,customer02122@example.com,Chon Buri,2025-05-14,organic
+2123,customer02123@example.com,Chon Buri,2025-05-14,organic
+2124,customer02124@example.com,Udon Thani,2025-05-14,organic
+2125,customer02125@example.com,Bangkok,2025-05-15,organic
+2126,customer02126@example.com,Hat Yai,2025-05-15,ads
+2127,customer02127@example.com,Phuket,2025-05-15,referral
+2128,customer02128@example.com,Nakhon Ratchasima,2025-05-16,organic
+2129,customer02129@example.com,Chiang Mai,2025-05-16,ads
+2130,customer02130@example.com,Udon Thani,2025-05-17,organic
+2131,customer02131@example.com,Bangkok,2025-05-17,organic
+2132,customer02132@example.com,Phuket,2025-05-17,organic
+2133,customer02133@example.com,Bangkok,2025-05-17,organic
+2134,customer02134@example.com,Chon Buri,2025-05-17,referral
+2135,customer02135@example.com,Chiang Mai,2025-05-17,ads
+2136,customer02136@example.com,Bangkok,2025-05-18,ads
+2137,customer02137@example.com,Chon Buri,2025-05-18,ads
+2138,customer02138@example.com,Nakhon Ratchasima,2025-05-19,organic
+2139,customer02139@example.com,Udon Thani,2025-05-19,ads
+2140,customer02140@example.com,Bangkok,2025-05-20,ads
+2141,customer02141@example.com,Udon Thani,2025-05-20,referral
+2142,customer02142@example.com,Chiang Mai,2025-05-20,ads
+2143,customer02143@example.com,Khon Kaen,2025-05-21,organic
+2144,customer02144@example.com,Udon Thani,2025-05-21,referral
+2145,customer02145@example.com,Bangkok,2025-05-21,ads
+2146,customer02146@example.com,Chon Buri,2025-05-21,organic
+2147,customer02147@example.com,Chiang Mai,2025-05-22,ads
+2148,customer02148@example.com,Phuket,2025-05-22,ads
+2149,customer02149@example.com,Nakhon Ratchasima,2025-05-23,ads
+2150,customer02150@example.com,Chon Buri,2025-05-23,ads
+2151,customer02151@example.com,Bangkok,2025-05-23,organic
+2152,customer02152@example.com,Nakhon Ratchasima,2025-05-23,ads
+2153,customer02153@example.com,Chon Buri,2025-05-24,ads
+2154,customer02154@example.com,Bangkok,2025-05-24,ads
+2155,customer02155@example.com,Bangkok,2025-05-24,organic
+2156,customer02156@example.com,Nakhon Ratchasima,2025-05-25,ads
+2157,customer02157@example.com,Phuket,2025-05-25,referral
+2158,customer02158@example.com,Udon Thani,2025-05-26,organic
+2159,customer02159@example.com,Udon Thani,2025-05-26,ads
+2160,customer02160@example.com,Chon Buri,2025-05-27,organic
+2161,customer02161@example.com,Udon Thani,2025-05-27,organic
+2162,customer02162@example.com,Khon Kaen,2025-05-27,ads
+2163,customer02163@example.com,Phuket,2025-05-27,organic
+2164,customer02164@example.com,Khon Kaen,2025-05-27,organic
+2165,customer02165@example.com,Hat Yai,2025-05-27,ads
+2166,customer02166@example.com,Phuket,2025-05-28,referral
+2167,customer02167@example.com,Bangkok,2025-05-28,organic
+2168,customer02168@example.com,Bangkok,2025-05-28,ads
+2169,customer02169@example.com,Bangkok,2025-05-28,referral
+2170,customer02170@example.com,Chiang Mai,2025-05-29,referral
+2171,customer02171@example.com,Bangkok,2025-05-29,ads
+2172,customer02172@example.com,Bangkok,2025-05-29,ads
+2173,customer02173@example.com,Bangkok,2025-05-29,organic
+2174,customer02174@example.com,Bangkok,2025-05-29,ads
+2175,customer02175@example.com,Phuket,2025-05-29,organic
+2176,customer02176@example.com,Hat Yai,2025-05-30,ads
+2177,customer02177@example.com,Phuket,2025-05-30,ads
+2178,customer02178@example.com,Khon Kaen,2025-05-30,ads
+2179,customer02179@example.com,Nakhon Ratchasima,2025-05-31,ads
+2180,customer02180@example.com,Bangkok,2025-05-31,referral
+2181,customer02181@example.com,Bangkok,2025-06-01,organic
+2182,customer02182@example.com,Phuket,2025-06-01,organic
+2183,customer02183@example.com,Khon Kaen,2025-06-01,organic
+2184,customer02184@example.com,Chon Buri,2025-06-01,ads
+2185,customer02185@example.com,Hat Yai,2025-06-01,organic
+2186,customer02186@example.com,Hat Yai,2025-06-01,promo
+2187,customer02187@example.com,Chiang Mai,2025-06-01,promo
+2188,customer02188@example.com,Khon Kaen,2025-06-01,promo
+2189,customer02189@example.com,Nakhon Ratchasima,2025-06-01,promo
+2190,customer02190@example.com,Chon Buri,2025-06-01,promo
+2191,customer02191@example.com,Bangkok,2025-06-01,promo
+2192,customer02192@example.com,Hat Yai,2025-06-02,ads
+2193,customer02193@example.com,Bangkok,2025-06-02,organic
+2194,customer02194@example.com,Phuket,2025-06-02,organic
+2195,customer02195@example.com,Bangkok,2025-06-02,organic
+2196,customer02196@example.com,Chiang Mai,2025-06-02,ads
+2197,customer02197@example.com,Chon Buri,2025-06-02,organic
+2198,customer02198@example.com,Chiang Mai,2025-06-02,promo
+2199,customer02199@example.com,Bangkok,2025-06-02,promo
+2200,customer02200@example.com,Hat Yai,2025-06-02,promo
+2201,customer02201@example.com,Nakhon Ratchasima,2025-06-02,promo
+2202,customer02202@example.com,Phuket,2025-06-02,promo
+2203,customer02203@example.com,Nakhon Ratchasima,2025-06-02,promo
+2204,customer02204@example.com,Hat Yai,2025-06-02,promo
+2205,customer02205@example.com,Chon Buri,2025-06-02,promo
+2206,customer02206@example.com,Nakhon Ratchasima,2025-06-02,promo
+2207,customer02207@example.com,Bangkok,2025-06-02,promo
+2208,customer02208@example.com,Phuket,2025-06-02,promo
+2209,customer02209@example.com,Nakhon Ratchasima,2025-06-03,organic
+2210,customer02210@example.com,Chon Buri,2025-06-03,ads
+2211,customer02211@example.com,Bangkok,2025-06-03,organic
+2212,customer02212@example.com,Phuket,2025-06-03,organic
+2213,customer02213@example.com,Bangkok,2025-06-03,ads
+2214,customer02214@example.com,Bangkok,2025-06-03,ads
+2215,customer02215@example.com,Bangkok,2025-06-03,promo
+2216,customer02216@example.com,Chon Buri,2025-06-03,promo
+2217,customer02217@example.com,Nakhon Ratchasima,2025-06-03,promo
+2218,customer02218@example.com,Chiang Mai,2025-06-03,promo
+2219,customer02219@example.com,Udon Thani,2025-06-03,promo
+2220,customer02220@example.com,Bangkok,2025-06-03,promo
+2221,customer02221@example.com,Bangkok,2025-06-03,promo
+2222,customer02222@example.com,Bangkok,2025-06-04,organic
+2223,customer02223@example.com,Udon Thani,2025-06-04,organic
+2224,customer02224@example.com,Chon Buri,2025-06-04,ads
+2225,customer02225@example.com,Chon Buri,2025-06-04,organic
+2226,customer02226@example.com,Udon Thani,2025-06-04,promo
+2227,customer02227@example.com,Phuket,2025-06-04,promo
+2228,customer02228@example.com,Udon Thani,2025-06-04,promo
+2229,customer02229@example.com,Phuket,2025-06-04,promo
+2230,customer02230@example.com,Chon Buri,2025-06-04,promo
+2231,customer02231@example.com,Bangkok,2025-06-04,promo
+2232,customer02232@example.com,Chiang Mai,2025-06-04,promo
+2233,customer02233@example.com,Khon Kaen,2025-06-04,promo
+2234,customer02234@example.com,Nakhon Ratchasima,2025-06-04,promo
+2235,customer02235@example.com,Bangkok,2025-06-04,promo
+2236,customer02236@example.com,Chiang Mai,2025-06-04,promo
+2237,customer02237@example.com,Khon Kaen,2025-06-04,promo
+2238,customer02238@example.com,Bangkok,2025-06-05,organic
+2239,customer02239@example.com,Chon Buri,2025-06-05,organic
+2240,customer02240@example.com,Bangkok,2025-06-05,ads
+2241,customer02241@example.com,Chiang Mai,2025-06-05,ads
+2242,customer02242@example.com,Udon Thani,2025-06-05,promo
+2243,customer02243@example.com,Chon Buri,2025-06-05,promo
+2244,customer02244@example.com,Hat Yai,2025-06-05,promo
+2245,customer02245@example.com,Chon Buri,2025-06-05,promo
+2246,customer02246@example.com,Bangkok,2025-06-05,promo
+2247,customer02247@example.com,Bangkok,2025-06-05,promo
+2248,customer02248@example.com,Chiang Mai,2025-06-05,promo
+2249,customer02249@example.com,Hat Yai,2025-06-05,promo
+2250,customer02250@example.com,Bangkok,2025-06-05,promo
+2251,customer02251@example.com,Udon Thani,2025-06-06,ads
+2252,customer02252@example.com,Nakhon Ratchasima,2025-06-06,ads
+2253,customer02253@example.com,Nakhon Ratchasima,2025-06-06,ads
+2254,customer02254@example.com,Hat Yai,2025-06-06,ads
+2255,customer02255@example.com,Bangkok,2025-06-06,promo
+2256,customer02256@example.com,Bangkok,2025-06-06,promo
+2257,customer02257@example.com,Phuket,2025-06-06,promo
+2258,customer02258@example.com,Nakhon Ratchasima,2025-06-06,promo
+2259,customer02259@example.com,Chon Buri,2025-06-06,promo
+2260,customer02260@example.com,Bangkok,2025-06-06,promo
+2261,customer02261@example.com,Khon Kaen,2025-06-06,promo
+2262,customer02262@example.com,Bangkok,2025-06-06,promo
+2263,customer02263@example.com,Bangkok,2025-06-06,promo
+2264,customer02264@example.com,Chon Buri,2025-06-06,promo
+2265,customer02265@example.com,Khon Kaen,2025-06-06,promo
+2266,customer02266@example.com,Bangkok,2025-06-06,promo
+2267,customer02267@example.com,Hat Yai,2025-06-07,referral
+2268,customer02268@example.com,Udon Thani,2025-06-07,ads
+2269,customer02269@example.com,Hat Yai,2025-06-07,ads
+2270,customer02270@example.com,Bangkok,2025-06-07,promo
+2271,customer02271@example.com,Hat Yai,2025-06-07,promo
+2272,customer02272@example.com,Chiang Mai,2025-06-07,promo
+2273,customer02273@example.com,Chiang Mai,2025-06-07,promo
+2274,customer02274@example.com,Phuket,2025-06-07,promo
+2275,customer02275@example.com,Phuket,2025-06-07,promo
+2276,customer02276@example.com,Chon Buri,2025-06-07,promo
+2277,customer02277@example.com,Nakhon Ratchasima,2025-06-08,ads
+2278,customer02278@example.com,Chon Buri,2025-06-08,ads
+2279,customer02279@example.com,Udon Thani,2025-06-08,organic
+2280,customer02280@example.com,Chiang Mai,2025-06-08,organic
+2281,customer02281@example.com,Bangkok,2025-06-08,organic
+2282,customer02282@example.com,Nakhon Ratchasima,2025-06-08,organic
+2283,customer02283@example.com,Chiang Mai,2025-06-08,promo
+2284,customer02284@example.com,Udon Thani,2025-06-08,promo
+2285,customer02285@example.com,Bangkok,2025-06-08,promo
+2286,customer02286@example.com,Nakhon Ratchasima,2025-06-08,promo
+2287,customer02287@example.com,Chon Buri,2025-06-08,promo
+2288,customer02288@example.com,Bangkok,2025-06-08,promo
+2289,customer02289@example.com,Chiang Mai,2025-06-08,promo
+2290,customer02290@example.com,Bangkok,2025-06-08,promo
+2291,customer02291@example.com,Bangkok,2025-06-08,promo
+2292,customer02292@example.com,Bangkok,2025-06-08,promo
+2293,customer02293@example.com,Khon Kaen,2025-06-08,promo
+2294,customer02294@example.com,Udon Thani,2025-06-08,promo
+2295,customer02295@example.com,Chiang Mai,2025-06-09,organic
+2296,customer02296@example.com,Bangkok,2025-06-09,referral
+2297,customer02297@example.com,Bangkok,2025-06-09,promo
+2298,customer02298@example.com,Udon Thani,2025-06-09,promo
+2299,customer02299@example.com,Udon Thani,2025-06-09,promo
+2300,customer02300@example.com,Phuket,2025-06-09,promo
+2301,customer02301@example.com,Bangkok,2025-06-09,promo
+2302,customer02302@example.com,Chiang Mai,2025-06-09,promo
+2303,customer02303@example.com,Udon Thani,2025-06-09,promo
+2304,customer02304@example.com,Phuket,2025-06-09,promo
+2305,customer02305@example.com,Bangkok,2025-06-10,ads
+2306,customer02306@example.com,Chon Buri,2025-06-10,ads
+2307,customer02307@example.com,Khon Kaen,2025-06-10,organic
+2308,customer02308@example.com,Bangkok,2025-06-10,ads
+2309,customer02309@example.com,Nakhon Ratchasima,2025-06-10,referral
+2310,customer02310@example.com,Bangkok,2025-06-10,promo
+2311,customer02311@example.com,Hat Yai,2025-06-10,promo
+2312,customer02312@example.com,Bangkok,2025-06-10,promo
+2313,customer02313@example.com,Bangkok,2025-06-10,promo
+2314,customer02314@example.com,Udon Thani,2025-06-10,promo
+2315,customer02315@example.com,Bangkok,2025-06-10,promo
+2316,customer02316@example.com,Nakhon Ratchasima,2025-06-11,ads
+2317,customer02317@example.com,Bangkok,2025-06-11,promo
+2318,customer02318@example.com,Phuket,2025-06-11,promo
+2319,customer02319@example.com,Udon Thani,2025-06-11,promo
+2320,customer02320@example.com,Bangkok,2025-06-11,promo
+2321,customer02321@example.com,Bangkok,2025-06-11,promo
+2322,customer02322@example.com,Bangkok,2025-06-11,promo
+2323,customer02323@example.com,Khon Kaen,2025-06-12,ads
+2324,customer02324@example.com,Bangkok,2025-06-12,organic
+2325,customer02325@example.com,Bangkok,2025-06-12,organic
+2326,customer02326@example.com,Nakhon Ratchasima,2025-06-12,organic
+2327,customer02327@example.com,Bangkok,2025-06-12,organic
+2328,customer02328@example.com,Chon Buri,2025-06-12,ads
+2329,customer02329@example.com,Nakhon Ratchasima,2025-06-12,organic
+2330,customer02330@example.com,Bangkok,2025-06-12,promo
+2331,customer02331@example.com,Chiang Mai,2025-06-12,promo
+2332,customer02332@example.com,Chiang Mai,2025-06-12,promo
+2333,customer02333@example.com,Bangkok,2025-06-12,promo
+2334,customer02334@example.com,Phuket,2025-06-12,promo
+2335,customer02335@example.com,Bangkok,2025-06-12,promo
+2336,customer02336@example.com,Bangkok,2025-06-12,promo
+2337,customer02337@example.com,Chon Buri,2025-06-13,referral
+2338,customer02338@example.com,Phuket,2025-06-13,organic
+2339,customer02339@example.com,Chiang Mai,2025-06-13,organic
+2340,customer02340@example.com,Hat Yai,2025-06-13,ads
+2341,customer02341@example.com,Nakhon Ratchasima,2025-06-13,ads
+2342,customer02342@example.com,Nakhon Ratchasima,2025-06-13,organic
+2343,customer02343@example.com,Bangkok,2025-06-13,organic
+2344,customer02344@example.com,Nakhon Ratchasima,2025-06-13,promo
+2345,customer02345@example.com,Nakhon Ratchasima,2025-06-13,promo
+2346,customer02346@example.com,Phuket,2025-06-13,promo
+2347,customer02347@example.com,Chiang Mai,2025-06-13,promo
+2348,customer02348@example.com,Bangkok,2025-06-13,promo
+2349,customer02349@example.com,Bangkok,2025-06-13,promo
+2350,customer02350@example.com,Nakhon Ratchasima,2025-06-13,promo
+2351,customer02351@example.com,Chon Buri,2025-06-13,promo
+2352,customer02352@example.com,Bangkok,2025-06-13,promo
+2353,customer02353@example.com,Bangkok,2025-06-13,promo
+2354,customer02354@example.com,Chiang Mai,2025-06-13,promo
+2355,customer02355@example.com,Bangkok,2025-06-14,ads
+2356,customer02356@example.com,Bangkok,2025-06-14,organic
+2357,customer02357@example.com,Bangkok,2025-06-14,referral
+2358,customer02358@example.com,Hat Yai,2025-06-14,promo
+2359,customer02359@example.com,Bangkok,2025-06-14,promo
+2360,customer02360@example.com,Bangkok,2025-06-14,promo
+2361,customer02361@example.com,Bangkok,2025-06-14,promo
+2362,customer02362@example.com,Bangkok,2025-06-14,promo
+2363,customer02363@example.com,Bangkok,2025-06-14,promo
+2364,customer02364@example.com,Bangkok,2025-06-14,promo
+2365,customer02365@example.com,Bangkok,2025-06-14,promo
+2366,customer02366@example.com,Chiang Mai,2025-06-14,promo
+2367,customer02367@example.com,Bangkok,2025-06-14,promo
+2368,customer02368@example.com,Bangkok,2025-06-15,ads
+2369,customer02369@example.com,Chon Buri,2025-06-15,ads
+2370,customer02370@example.com,Bangkok,2025-06-15,ads
+2371,customer02371@example.com,Nakhon Ratchasima,2025-06-15,ads
+2372,customer02372@example.com,Bangkok,2025-06-15,ads
+2373,customer02373@example.com,Khon Kaen,2025-06-15,promo
+2374,customer02374@example.com,Phuket,2025-06-15,promo
+2375,customer02375@example.com,Udon Thani,2025-06-15,promo
+2376,customer02376@example.com,Chiang Mai,2025-06-15,promo
+2377,customer02377@example.com,Hat Yai,2025-06-15,promo
+2378,customer02378@example.com,Udon Thani,2025-06-15,promo
+2379,customer02379@example.com,Bangkok,2025-06-15,promo
+2380,customer02380@example.com,Udon Thani,2025-06-15,promo
+2381,customer02381@example.com,Bangkok,2025-06-15,promo
+2382,customer02382@example.com,Bangkok,2025-06-15,promo
+2383,customer02383@example.com,Nakhon Ratchasima,2025-06-15,promo
+2384,customer02384@example.com,Bangkok,2025-06-15,promo
+2385,customer02385@example.com,Bangkok,2025-06-16,organic
+2386,customer02386@example.com,Chiang Mai,2025-06-16,organic
+2387,customer02387@example.com,Bangkok,2025-06-16,organic
+2388,customer02388@example.com,Chon Buri,2025-06-16,organic
+2389,customer02389@example.com,Chiang Mai,2025-06-16,organic
+2390,customer02390@example.com,Nakhon Ratchasima,2025-06-16,promo
+2391,customer02391@example.com,Chiang Mai,2025-06-16,promo
+2392,customer02392@example.com,Hat Yai,2025-06-16,promo
+2393,customer02393@example.com,Phuket,2025-06-16,promo
+2394,customer02394@example.com,Bangkok,2025-06-16,promo
+2395,customer02395@example.com,Bangkok,2025-06-16,promo
+2396,customer02396@example.com,Phuket,2025-06-16,promo
+2397,customer02397@example.com,Udon Thani,2025-06-16,promo
+2398,customer02398@example.com,Nakhon Ratchasima,2025-06-16,promo
+2399,customer02399@example.com,Chon Buri,2025-06-17,organic
+2400,customer02400@example.com,Nakhon Ratchasima,2025-06-17,ads
+2401,customer02401@example.com,Chon Buri,2025-06-17,ads
+2402,customer02402@example.com,Bangkok,2025-06-17,referral
+2403,customer02403@example.com,Nakhon Ratchasima,2025-06-17,organic
+2404,customer02404@example.com,Bangkok,2025-06-17,organic
+2405,customer02405@example.com,Phuket,2025-06-17,referral
+2406,customer02406@example.com,Bangkok,2025-06-17,organic
+2407,customer02407@example.com,Phuket,2025-06-17,promo
+2408,customer02408@example.com,Hat Yai,2025-06-17,promo
+2409,customer02409@example.com,Udon Thani,2025-06-17,promo
+2410,customer02410@example.com,Nakhon Ratchasima,2025-06-17,promo
+2411,customer02411@example.com,Nakhon Ratchasima,2025-06-17,promo
+2412,customer02412@example.com,Bangkok,2025-06-17,promo
+2413,customer02413@example.com,Bangkok,2025-06-17,promo
+2414,customer02414@example.com,Bangkok,2025-06-17,promo
+2415,customer02415@example.com,Bangkok,2025-06-17,promo
+2416,customer02416@example.com,Bangkok,2025-06-17,promo
+2417,customer02417@example.com,Nakhon Ratchasima,2025-06-17,promo
+2418,customer02418@example.com,Bangkok,2025-06-17,promo
+2419,customer02419@example.com,Nakhon Ratchasima,2025-06-17,promo
+2420,customer02420@example.com,Nakhon Ratchasima,2025-06-17,promo
+2421,customer02421@example.com,Bangkok,2025-06-18,ads
+2422,customer02422@example.com,Khon Kaen,2025-06-18,organic
+2423,customer02423@example.com,Bangkok,2025-06-18,organic
+2424,customer02424@example.com,Udon Thani,2025-06-18,ads
+2425,customer02425@example.com,Nakhon Ratchasima,2025-06-18,organic
+2426,customer02426@example.com,Chon Buri,2025-06-18,promo
+2427,customer02427@example.com,Udon Thani,2025-06-18,promo
+2428,customer02428@example.com,Phuket,2025-06-18,promo
+2429,customer02429@example.com,Bangkok,2025-06-18,promo
+2430,customer02430@example.com,Bangkok,2025-06-18,promo
+2431,customer02431@example.com,Bangkok,2025-06-18,promo
+2432,customer02432@example.com,Bangkok,2025-06-18,promo
+2433,customer02433@example.com,Bangkok,2025-06-18,promo
+2434,customer02434@example.com,Chon Buri,2025-06-18,promo
+2435,customer02435@example.com,Bangkok,2025-06-18,promo
+2436,customer02436@example.com,Bangkok,2025-06-19,organic
+2437,customer02437@example.com,Bangkok,2025-06-19,ads
+2438,customer02438@example.com,Chon Buri,2025-06-19,promo
+2439,customer02439@example.com,Bangkok,2025-06-19,promo
+2440,customer02440@example.com,Bangkok,2025-06-19,promo
+2441,customer02441@example.com,Nakhon Ratchasima,2025-06-19,promo
+2442,customer02442@example.com,Khon Kaen,2025-06-19,promo
+2443,customer02443@example.com,Chiang Mai,2025-06-19,promo
+2444,customer02444@example.com,Bangkok,2025-06-19,promo
+2445,customer02445@example.com,Phuket,2025-06-19,promo
+2446,customer02446@example.com,Bangkok,2025-06-19,promo
+2447,customer02447@example.com,Bangkok,2025-06-19,promo
+2448,customer02448@example.com,Chiang Mai,2025-06-19,promo
+2449,customer02449@example.com,Bangkok,2025-06-20,ads
+2450,customer02450@example.com,Phuket,2025-06-20,ads
+2451,customer02451@example.com,Chon Buri,2025-06-20,organic
+2452,customer02452@example.com,Nakhon Ratchasima,2025-06-20,promo
+2453,customer02453@example.com,Hat Yai,2025-06-20,promo
+2454,customer02454@example.com,Bangkok,2025-06-20,promo
+2455,customer02455@example.com,Khon Kaen,2025-06-20,promo
+2456,customer02456@example.com,Bangkok,2025-06-20,promo
+2457,customer02457@example.com,Hat Yai,2025-06-20,promo
+2458,customer02458@example.com,Chon Buri,2025-06-20,promo
+2459,customer02459@example.com,Chiang Mai,2025-06-20,promo
+2460,customer02460@example.com,Udon Thani,2025-06-20,promo
+2461,customer02461@example.com,Nakhon Ratchasima,2025-06-20,promo
+2462,customer02462@example.com,Bangkok,2025-06-20,promo
+2463,customer02463@example.com,Bangkok,2025-06-20,promo
+2464,customer02464@example.com,Chiang Mai,2025-06-20,promo
+2465,customer02465@example.com,Chiang Mai,2025-06-20,promo
+2466,customer02466@example.com,Udon Thani,2025-06-21,ads
+2467,customer02467@example.com,Chon Buri,2025-06-21,organic
+2468,customer02468@example.com,Nakhon Ratchasima,2025-06-21,organic
+2469,customer02469@example.com,Udon Thani,2025-06-21,ads
+2470,customer02470@example.com,Udon Thani,2025-06-21,promo
+2471,customer02471@example.com,Bangkok,2025-06-21,promo
+2472,customer02472@example.com,Bangkok,2025-06-21,promo
+2473,customer02473@example.com,Hat Yai,2025-06-21,promo
+2474,customer02474@example.com,Bangkok,2025-06-21,promo
+2475,customer02475@example.com,Hat Yai,2025-06-21,promo
+2476,customer02476@example.com,Chon Buri,2025-06-21,promo
+2477,customer02477@example.com,Khon Kaen,2025-06-21,promo
+2478,customer02478@example.com,Bangkok,2025-06-21,promo
+2479,customer02479@example.com,Nakhon Ratchasima,2025-06-21,promo
+2480,customer02480@example.com,Bangkok,2025-06-21,promo
+2481,customer02481@example.com,Chon Buri,2025-06-22,organic
+2482,customer02482@example.com,Bangkok,2025-06-22,promo
+2483,customer02483@example.com,Bangkok,2025-06-22,promo
+2484,customer02484@example.com,Udon Thani,2025-06-22,promo
+2485,customer02485@example.com,Bangkok,2025-06-22,promo
+2486,customer02486@example.com,Chon Buri,2025-06-22,promo
+2487,customer02487@example.com,Khon Kaen,2025-06-22,promo
+2488,customer02488@example.com,Hat Yai,2025-06-23,organic
+2489,customer02489@example.com,Chiang Mai,2025-06-23,organic
+2490,customer02490@example.com,Bangkok,2025-06-23,organic
+2491,customer02491@example.com,Khon Kaen,2025-06-23,ads
+2492,customer02492@example.com,Khon Kaen,2025-06-23,organic
+2493,customer02493@example.com,Bangkok,2025-06-23,ads
+2494,customer02494@example.com,Bangkok,2025-06-23,organic
+2495,customer02495@example.com,Chon Buri,2025-06-23,organic
+2496,customer02496@example.com,Bangkok,2025-06-23,referral
+2497,customer02497@example.com,Chon Buri,2025-06-23,promo
+2498,customer02498@example.com,Bangkok,2025-06-23,promo
+2499,customer02499@example.com,Phuket,2025-06-23,promo
+2500,customer02500@example.com,Nakhon Ratchasima,2025-06-23,promo
+2501,customer02501@example.com,Phuket,2025-06-23,promo
+2502,customer02502@example.com,Nakhon Ratchasima,2025-06-23,promo
+2503,customer02503@example.com,Udon Thani,2025-06-23,promo
+2504,customer02504@example.com,Bangkok,2025-06-23,promo
+2505,customer02505@example.com,Phuket,2025-06-23,promo
+2506,customer02506@example.com,Udon Thani,2025-06-23,promo
+2507,customer02507@example.com,Chon Buri,2025-06-24,organic
+2508,customer02508@example.com,Nakhon Ratchasima,2025-06-24,ads
+2509,customer02509@example.com,Phuket,2025-06-24,organic
+2510,customer02510@example.com,Nakhon Ratchasima,2025-06-24,organic
+2511,customer02511@example.com,Khon Kaen,2025-06-24,promo
+2512,customer02512@example.com,Bangkok,2025-06-24,promo
+2513,customer02513@example.com,Nakhon Ratchasima,2025-06-24,promo
+2514,customer02514@example.com,Bangkok,2025-06-24,promo
+2515,customer02515@example.com,Chiang Mai,2025-06-24,promo
+2516,customer02516@example.com,Bangkok,2025-06-24,promo
+2517,customer02517@example.com,Chon Buri,2025-06-24,promo
+2518,customer02518@example.com,Phuket,2025-06-24,promo
+2519,customer02519@example.com,Bangkok,2025-06-24,promo
+2520,customer02520@example.com,Bangkok,2025-06-24,promo
+2521,customer02521@example.com,Khon Kaen,2025-06-24,promo
+2522,customer02522@example.com,Phuket,2025-06-24,promo
+2523,customer02523@example.com,Chiang Mai,2025-06-24,promo
+2524,customer02524@example.com,Bangkok,2025-06-24,promo
+2525,customer02525@example.com,Hat Yai,2025-06-25,referral
+2526,customer02526@example.com,Hat Yai,2025-06-25,ads
+2527,customer02527@example.com,Bangkok,2025-06-25,ads
+2528,customer02528@example.com,Bangkok,2025-06-25,ads
+2529,customer02529@example.com,Bangkok,2025-06-25,promo
+2530,customer02530@example.com,Bangkok,2025-06-25,promo
+2531,customer02531@example.com,Nakhon Ratchasima,2025-06-25,promo
+2532,customer02532@example.com,Nakhon Ratchasima,2025-06-25,promo
+2533,customer02533@example.com,Bangkok,2025-06-25,promo
+2534,customer02534@example.com,Nakhon Ratchasima,2025-06-25,promo
+2535,customer02535@example.com,Bangkok,2025-06-25,promo
+2536,customer02536@example.com,Nakhon Ratchasima,2025-06-25,promo
+2537,customer02537@example.com,Bangkok,2025-06-25,promo
+2538,customer02538@example.com,Udon Thani,2025-06-25,promo
+2539,customer02539@example.com,Chon Buri,2025-06-25,promo
+2540,customer02540@example.com,Hat Yai,2025-06-25,promo
+2541,customer02541@example.com,Khon Kaen,2025-06-26,promo
+2542,customer02542@example.com,Phuket,2025-06-26,promo
+2543,customer02543@example.com,Nakhon Ratchasima,2025-06-26,promo
+2544,customer02544@example.com,Chon Buri,2025-06-26,promo
+2545,customer02545@example.com,Bangkok,2025-06-26,promo
+2546,customer02546@example.com,Bangkok,2025-06-26,promo
+2547,customer02547@example.com,Chon Buri,2025-06-26,promo
+2548,customer02548@example.com,Nakhon Ratchasima,2025-06-26,promo
+2549,customer02549@example.com,Udon Thani,2025-06-26,promo
+2550,customer02550@example.com,Hat Yai,2025-06-26,promo
+2551,customer02551@example.com,Hat Yai,2025-06-27,ads
+2552,customer02552@example.com,Chiang Mai,2025-06-27,organic
+2553,customer02553@example.com,Chiang Mai,2025-06-27,ads
+2554,customer02554@example.com,Bangkok,2025-06-27,organic
+2555,customer02555@example.com,Nakhon Ratchasima,2025-06-27,ads
+2556,customer02556@example.com,Chiang Mai,2025-06-27,promo
+2557,customer02557@example.com,Bangkok,2025-06-27,promo
+2558,customer02558@example.com,Chiang Mai,2025-06-27,promo
+2559,customer02559@example.com,Bangkok,2025-06-27,promo
+2560,customer02560@example.com,Chon Buri,2025-06-27,promo
+2561,customer02561@example.com,Nakhon Ratchasima,2025-06-27,promo
+2562,customer02562@example.com,Udon Thani,2025-06-27,promo
+2563,customer02563@example.com,Nakhon Ratchasima,2025-06-27,promo
+2564,customer02564@example.com,Chiang Mai,2025-06-27,promo
+2565,customer02565@example.com,Chon Buri,2025-06-27,promo
+2566,customer02566@example.com,Bangkok,2025-06-27,promo
+2567,customer02567@example.com,Chon Buri,2025-06-27,promo
+2568,customer02568@example.com,Phuket,2025-06-27,promo
+2569,customer02569@example.com,Bangkok,2025-06-27,promo
+2570,customer02570@example.com,Chiang Mai,2025-06-27,promo
+2571,customer02571@example.com,Bangkok,2025-06-27,promo
+2572,customer02572@example.com,Bangkok,2025-06-28,ads
+2573,customer02573@example.com,Bangkok,2025-06-28,organic
+2574,customer02574@example.com,Bangkok,2025-06-28,organic
+2575,customer02575@example.com,Khon Kaen,2025-06-28,referral
+2576,customer02576@example.com,Bangkok,2025-06-28,organic
+2577,customer02577@example.com,Hat Yai,2025-06-28,promo
+2578,customer02578@example.com,Bangkok,2025-06-28,promo
+2579,customer02579@example.com,Chiang Mai,2025-06-28,promo
+2580,customer02580@example.com,Bangkok,2025-06-28,promo
+2581,customer02581@example.com,Khon Kaen,2025-06-28,promo
+2582,customer02582@example.com,Nakhon Ratchasima,2025-06-28,promo
+2583,customer02583@example.com,Khon Kaen,2025-06-28,promo
+2584,customer02584@example.com,Chiang Mai,2025-06-28,promo
+2585,customer02585@example.com,Khon Kaen,2025-06-28,promo
+2586,customer02586@example.com,Phuket,2025-06-28,promo
+2587,customer02587@example.com,Phuket,2025-06-28,promo
+2588,customer02588@example.com,Chiang Mai,2025-06-28,promo
+2589,customer02589@example.com,Bangkok,2025-06-29,organic
+2590,customer02590@example.com,Udon Thani,2025-06-29,promo
+2591,customer02591@example.com,Bangkok,2025-06-29,promo
+2592,customer02592@example.com,Hat Yai,2025-06-29,promo
+2593,customer02593@example.com,Bangkok,2025-06-29,promo
+2594,customer02594@example.com,Chiang Mai,2025-06-29,promo
+2595,customer02595@example.com,Bangkok,2025-06-29,promo
+2596,customer02596@example.com,Nakhon Ratchasima,2025-06-30,referral
+2597,customer02597@example.com,Chiang Mai,2025-06-30,promo
+2598,customer02598@example.com,Chiang Mai,2025-06-30,promo
+2599,customer02599@example.com,Bangkok,2025-06-30,promo
+2600,customer02600@example.com,Hat Yai,2025-06-30,promo
+2601,customer02601@example.com,Bangkok,2025-06-30,promo
+2602,customer02602@example.com,Phuket,2025-06-30,promo
+2603,customer02603@example.com,Chiang Mai,2025-06-30,promo
+2604,customer02604@example.com,Chon Buri,2025-06-30,promo
+2605,customer02605@example.com,Bangkok,2025-06-30,promo
+2606,customer02606@example.com,Udon Thani,2025-07-01,organic
+2607,customer02607@example.com,Bangkok,2025-07-01,organic
+2608,customer02608@example.com,Udon Thani,2025-07-01,referral
+2609,customer02609@example.com,Hat Yai,2025-07-01,organic
+2610,customer02610@example.com,Udon Thani,2025-07-01,organic
+2611,customer02611@example.com,Hat Yai,2025-07-01,ads
+2612,customer02612@example.com,Bangkok,2025-07-02,ads
+2613,customer02613@example.com,Bangkok,2025-07-02,organic
+2614,customer02614@example.com,Bangkok,2025-07-02,referral
+2615,customer02615@example.com,Khon Kaen,2025-07-02,ads
+2616,customer02616@example.com,Nakhon Ratchasima,2025-07-02,ads
+2617,customer02617@example.com,Chiang Mai,2025-07-02,organic
+2618,customer02618@example.com,Udon Thani,2025-07-03,ads
+2619,customer02619@example.com,Nakhon Ratchasima,2025-07-03,organic
+2620,customer02620@example.com,Bangkok,2025-07-03,organic
+2621,customer02621@example.com,Udon Thani,2025-07-04,organic
+2622,customer02622@example.com,Bangkok,2025-07-04,organic
+2623,customer02623@example.com,Bangkok,2025-07-04,ads
+2624,customer02624@example.com,Bangkok,2025-07-04,organic
+2625,customer02625@example.com,Bangkok,2025-07-04,ads
+2626,customer02626@example.com,Nakhon Ratchasima,2025-07-05,organic
+2627,customer02627@example.com,Bangkok,2025-07-05,ads
+2628,customer02628@example.com,Bangkok,2025-07-05,organic
+2629,customer02629@example.com,Phuket,2025-07-05,organic
+2630,customer02630@example.com,Khon Kaen,2025-07-05,ads
+2631,customer02631@example.com,Phuket,2025-07-05,organic
+2632,customer02632@example.com,Nakhon Ratchasima,2025-07-05,referral
+2633,customer02633@example.com,Bangkok,2025-07-06,ads
+2634,customer02634@example.com,Chon Buri,2025-07-06,referral
+2635,customer02635@example.com,Phuket,2025-07-06,organic
+2636,customer02636@example.com,Chiang Mai,2025-07-06,ads
+2637,customer02637@example.com,Udon Thani,2025-07-07,organic
+2638,customer02638@example.com,Bangkok,2025-07-07,organic
+2639,customer02639@example.com,Phuket,2025-07-08,ads
+2640,customer02640@example.com,Bangkok,2025-07-08,organic
+2641,customer02641@example.com,Hat Yai,2025-07-08,organic
+2642,customer02642@example.com,Bangkok,2025-07-08,organic
+2643,customer02643@example.com,Bangkok,2025-07-08,organic
+2644,customer02644@example.com,Bangkok,2025-07-08,ads
+2645,customer02645@example.com,Udon Thani,2025-07-08,organic
+2646,customer02646@example.com,Nakhon Ratchasima,2025-07-09,organic
+2647,customer02647@example.com,Bangkok,2025-07-09,ads
+2648,customer02648@example.com,Chon Buri,2025-07-09,organic
+2649,customer02649@example.com,Chiang Mai,2025-07-10,organic
+2650,customer02650@example.com,Bangkok,2025-07-10,organic
+2651,customer02651@example.com,Bangkok,2025-07-10,organic
+2652,customer02652@example.com,Phuket,2025-07-11,organic
+2653,customer02653@example.com,Chiang Mai,2025-07-11,organic
+2654,customer02654@example.com,Chon Buri,2025-07-11,ads
+2655,customer02655@example.com,Bangkok,2025-07-12,organic
+2656,customer02656@example.com,Bangkok,2025-07-12,organic
+2657,customer02657@example.com,Phuket,2025-07-12,ads
+2658,customer02658@example.com,Udon Thani,2025-07-12,organic
+2659,customer02659@example.com,Khon Kaen,2025-07-12,organic
+2660,customer02660@example.com,Bangkok,2025-07-12,ads
+2661,customer02661@example.com,Bangkok,2025-07-13,organic
+2662,customer02662@example.com,Bangkok,2025-07-13,organic
+2663,customer02663@example.com,Nakhon Ratchasima,2025-07-13,referral
+2664,customer02664@example.com,Chon Buri,2025-07-14,organic
+2665,customer02665@example.com,Hat Yai,2025-07-14,organic
+2666,customer02666@example.com,Khon Kaen,2025-07-14,organic
+2667,customer02667@example.com,Phuket,2025-07-14,ads
+2668,customer02668@example.com,Nakhon Ratchasima,2025-07-15,organic
+2669,customer02669@example.com,Bangkok,2025-07-15,organic
+2670,customer02670@example.com,Chon Buri,2025-07-16,organic
+2671,customer02671@example.com,Phuket,2025-07-16,organic
+2672,customer02672@example.com,Phuket,2025-07-16,organic
+2673,customer02673@example.com,Bangkok,2025-07-16,organic
+2674,customer02674@example.com,Bangkok,2025-07-16,organic
+2675,customer02675@example.com,Chiang Mai,2025-07-16,organic
+2676,customer02676@example.com,Bangkok,2025-07-17,organic
+2677,customer02677@example.com,Bangkok,2025-07-17,ads
+2678,customer02678@example.com,Khon Kaen,2025-07-17,referral
+2679,customer02679@example.com,Bangkok,2025-07-17,organic
+2680,customer02680@example.com,Hat Yai,2025-07-17,ads
+2681,customer02681@example.com,Bangkok,2025-07-17,organic
+2682,customer02682@example.com,Chon Buri,2025-07-17,ads
+2683,customer02683@example.com,Chon Buri,2025-07-17,referral
+2684,customer02684@example.com,Bangkok,2025-07-17,ads
+2685,customer02685@example.com,Khon Kaen,2025-07-18,referral
+2686,customer02686@example.com,Bangkok,2025-07-18,ads
+2687,customer02687@example.com,Chon Buri,2025-07-18,organic
+2688,customer02688@example.com,Hat Yai,2025-07-18,organic
+2689,customer02689@example.com,Bangkok,2025-07-18,ads
+2690,customer02690@example.com,Phuket,2025-07-19,referral
+2691,customer02691@example.com,Udon Thani,2025-07-19,organic
+2692,customer02692@example.com,Khon Kaen,2025-07-20,referral
+2693,customer02693@example.com,Bangkok,2025-07-20,ads
+2694,customer02694@example.com,Khon Kaen,2025-07-20,referral
+2695,customer02695@example.com,Chon Buri,2025-07-20,referral
+2696,customer02696@example.com,Khon Kaen,2025-07-22,referral
+2697,customer02697@example.com,Udon Thani,2025-07-22,organic
+2698,customer02698@example.com,Bangkok,2025-07-22,ads
+2699,customer02699@example.com,Chon Buri,2025-07-22,ads
+2700,customer02700@example.com,Nakhon Ratchasima,2025-07-22,organic
+2701,customer02701@example.com,Bangkok,2025-07-22,ads
+2702,customer02702@example.com,Bangkok,2025-07-23,organic
+2703,customer02703@example.com,Bangkok,2025-07-23,organic
+2704,customer02704@example.com,Bangkok,2025-07-23,ads
+2705,customer02705@example.com,Phuket,2025-07-24,organic
+2706,customer02706@example.com,Bangkok,2025-07-25,ads
+2707,customer02707@example.com,Bangkok,2025-07-25,ads
+2708,customer02708@example.com,Bangkok,2025-07-25,ads
+2709,customer02709@example.com,Bangkok,2025-07-25,organic
+2710,customer02710@example.com,Nakhon Ratchasima,2025-07-26,referral
+2711,customer02711@example.com,Phuket,2025-07-26,organic
+2712,customer02712@example.com,Nakhon Ratchasima,2025-07-26,referral
+2713,customer02713@example.com,Chiang Mai,2025-07-26,organic
+2714,customer02714@example.com,Bangkok,2025-07-26,organic
+2715,customer02715@example.com,Hat Yai,2025-07-27,referral
+2716,customer02716@example.com,Bangkok,2025-07-27,organic
+2717,customer02717@example.com,Phuket,2025-07-28,ads
+2718,customer02718@example.com,Udon Thani,2025-07-28,organic
+2719,customer02719@example.com,Khon Kaen,2025-07-28,ads
+2720,customer02720@example.com,Chon Buri,2025-07-28,organic
+2721,customer02721@example.com,Chiang Mai,2025-07-28,organic
+2722,customer02722@example.com,Udon Thani,2025-07-28,referral
+2723,customer02723@example.com,Khon Kaen,2025-07-28,organic
+2724,customer02724@example.com,Khon Kaen,2025-07-29,referral
+2725,customer02725@example.com,Phuket,2025-07-29,ads
+2726,customer02726@example.com,Chon Buri,2025-07-29,referral
+2727,customer02727@example.com,Bangkok,2025-07-29,organic
+2728,customer02728@example.com,Chon Buri,2025-07-30,organic
+2729,customer02729@example.com,Phuket,2025-07-30,ads
+2730,customer02730@example.com,Udon Thani,2025-07-30,ads
+2731,customer02731@example.com,Bangkok,2025-07-30,ads
+2732,customer02732@example.com,Nakhon Ratchasima,2025-07-31,ads
+2733,customer02733@example.com,Chon Buri,2025-07-31,organic
+2734,customer02734@example.com,Phuket,2025-07-31,organic
+2735,customer02735@example.com,Khon Kaen,2025-08-02,ads
+2736,customer02736@example.com,Chiang Mai,2025-08-02,ads
+2737,customer02737@example.com,Nakhon Ratchasima,2025-08-03,referral
+2738,customer02738@example.com,Bangkok,2025-08-03,ads
+2739,customer02739@example.com,Chiang Mai,2025-08-03,ads
+2740,customer02740@example.com,Hat Yai,2025-08-03,organic
+2741,customer02741@example.com,Bangkok,2025-08-03,organic
+2742,customer02742@example.com,Bangkok,2025-08-03,referral
+2743,customer02743@example.com,Udon Thani,2025-08-04,ads
+2744,customer02744@example.com,Bangkok,2025-08-04,referral
+2745,customer02745@example.com,Bangkok,2025-08-04,ads
+2746,customer02746@example.com,Udon Thani,2025-08-04,organic
+2747,customer02747@example.com,Phuket,2025-08-04,ads
+2748,customer02748@example.com,Phuket,2025-08-04,ads
+2749,customer02749@example.com,Bangkok,2025-08-04,organic
+2750,customer02750@example.com,Bangkok,2025-08-04,ads
+2751,customer02751@example.com,Chiang Mai,2025-08-04,organic
+2752,customer02752@example.com,Bangkok,2025-08-04,ads
+2753,customer02753@example.com,Bangkok,2025-08-05,referral
+2754,customer02754@example.com,Chon Buri,2025-08-05,ads
+2755,customer02755@example.com,Chon Buri,2025-08-06,referral
+2756,customer02756@example.com,Phuket,2025-08-06,organic
+2757,customer02757@example.com,Hat Yai,2025-08-06,ads
+2758,customer02758@example.com,Bangkok,2025-08-07,referral
+2759,customer02759@example.com,Udon Thani,2025-08-07,organic
+2760,customer02760@example.com,Bangkok,2025-08-07,ads
+2761,customer02761@example.com,Nakhon Ratchasima,2025-08-08,ads
+2762,customer02762@example.com,Chiang Mai,2025-08-08,ads
+2763,customer02763@example.com,Chon Buri,2025-08-08,ads
+2764,customer02764@example.com,Hat Yai,2025-08-09,organic
+2765,customer02765@example.com,Chiang Mai,2025-08-09,organic
+2766,customer02766@example.com,Hat Yai,2025-08-09,referral
+2767,customer02767@example.com,Bangkok,2025-08-09,organic
+2768,customer02768@example.com,Bangkok,2025-08-10,organic
+2769,customer02769@example.com,Chon Buri,2025-08-10,organic
+2770,customer02770@example.com,Bangkok,2025-08-10,ads
+2771,customer02771@example.com,Bangkok,2025-08-11,referral
+2772,customer02772@example.com,Phuket,2025-08-11,ads
+2773,customer02773@example.com,Nakhon Ratchasima,2025-08-11,organic
+2774,customer02774@example.com,Bangkok,2025-08-11,ads
+2775,customer02775@example.com,Nakhon Ratchasima,2025-08-11,organic
+2776,customer02776@example.com,Bangkok,2025-08-11,organic
+2777,customer02777@example.com,Chiang Mai,2025-08-11,ads
+2778,customer02778@example.com,Bangkok,2025-08-11,ads
+2779,customer02779@example.com,Bangkok,2025-08-11,referral
+2780,customer02780@example.com,Chiang Mai,2025-08-11,ads
+2781,customer02781@example.com,Udon Thani,2025-08-12,ads
+2782,customer02782@example.com,Chiang Mai,2025-08-12,organic
+2783,customer02783@example.com,Chon Buri,2025-08-12,ads
+2784,customer02784@example.com,Bangkok,2025-08-12,ads
+2785,customer02785@example.com,Bangkok,2025-08-12,referral
+2786,customer02786@example.com,Chiang Mai,2025-08-12,ads
+2787,customer02787@example.com,Bangkok,2025-08-12,organic
+2788,customer02788@example.com,Bangkok,2025-08-13,ads
+2789,customer02789@example.com,Bangkok,2025-08-13,ads
+2790,customer02790@example.com,Nakhon Ratchasima,2025-08-13,ads
+2791,customer02791@example.com,Phuket,2025-08-13,organic
+2792,customer02792@example.com,Hat Yai,2025-08-13,ads
+2793,customer02793@example.com,Chiang Mai,2025-08-13,organic
+2794,customer02794@example.com,Chon Buri,2025-08-14,ads
+2795,customer02795@example.com,Hat Yai,2025-08-14,organic
+2796,customer02796@example.com,Chiang Mai,2025-08-14,ads
+2797,customer02797@example.com,Chon Buri,2025-08-14,organic
+2798,customer02798@example.com,Udon Thani,2025-08-14,organic
+2799,customer02799@example.com,Chiang Mai,2025-08-14,organic
+2800,customer02800@example.com,Chon Buri,2025-08-14,referral
+2801,customer02801@example.com,Bangkok,2025-08-14,ads
+2802,customer02802@example.com,Chiang Mai,2025-08-15,organic
+2803,customer02803@example.com,Bangkok,2025-08-15,organic
+2804,customer02804@example.com,Bangkok,2025-08-15,organic
+2805,customer02805@example.com,Phuket,2025-08-15,organic
+2806,customer02806@example.com,Bangkok,2025-08-16,ads
+2807,customer02807@example.com,Chon Buri,2025-08-16,ads
+2808,customer02808@example.com,Bangkok,2025-08-16,ads
+2809,customer02809@example.com,Phuket,2025-08-16,ads
+2810,customer02810@example.com,Udon Thani,2025-08-16,organic
+2811,customer02811@example.com,Bangkok,2025-08-17,ads
+2812,customer02812@example.com,Khon Kaen,2025-08-17,ads
+2813,customer02813@example.com,Bangkok,2025-08-18,ads
+2814,customer02814@example.com,Bangkok,2025-08-18,organic
+2815,customer02815@example.com,Udon Thani,2025-08-19,organic
+2816,customer02816@example.com,Chon Buri,2025-08-19,ads
+2817,customer02817@example.com,Nakhon Ratchasima,2025-08-19,ads
+2818,customer02818@example.com,Nakhon Ratchasima,2025-08-19,organic
+2819,customer02819@example.com,Bangkok,2025-08-19,ads
+2820,customer02820@example.com,Bangkok,2025-08-19,organic
+2821,customer02821@example.com,Khon Kaen,2025-08-19,ads
+2822,customer02822@example.com,Hat Yai,2025-08-19,ads
+2823,customer02823@example.com,Bangkok,2025-08-20,ads
+2824,customer02824@example.com,Udon Thani,2025-08-20,organic
+2825,customer02825@example.com,Bangkok,2025-08-20,ads
+2826,customer02826@example.com,Bangkok,2025-08-20,organic
+2827,customer02827@example.com,Chon Buri,2025-08-20,ads
+2828,customer02828@example.com,Chiang Mai,2025-08-20,organic
+2829,customer02829@example.com,Chiang Mai,2025-08-20,organic
+2830,customer02830@example.com,Bangkok,2025-08-20,organic
+2831,customer02831@example.com,Bangkok,2025-08-20,ads
+2832,customer02832@example.com,Chon Buri,2025-08-21,organic
+2833,customer02833@example.com,Khon Kaen,2025-08-21,ads
+2834,customer02834@example.com,Bangkok,2025-08-21,organic
+2835,customer02835@example.com,Chon Buri,2025-08-21,ads
+2836,customer02836@example.com,Bangkok,2025-08-22,ads
+2837,customer02837@example.com,Nakhon Ratchasima,2025-08-22,referral
+2838,customer02838@example.com,Nakhon Ratchasima,2025-08-22,organic
+2839,customer02839@example.com,Phuket,2025-08-22,ads
+2840,customer02840@example.com,Udon Thani,2025-08-22,organic
+2841,customer02841@example.com,Nakhon Ratchasima,2025-08-22,organic
+2842,customer02842@example.com,Chiang Mai,2025-08-22,organic
+2843,customer02843@example.com,Bangkok,2025-08-23,organic
+2844,customer02844@example.com,Nakhon Ratchasima,2025-08-23,ads
+2845,customer02845@example.com,Bangkok,2025-08-23,organic
+2846,customer02846@example.com,Udon Thani,2025-08-24,ads
+2847,customer02847@example.com,Chiang Mai,2025-08-24,referral
+2848,customer02848@example.com,Chon Buri,2025-08-24,referral
+2849,customer02849@example.com,Bangkok,2025-08-24,ads
+2850,customer02850@example.com,Chon Buri,2025-08-24,organic
+2851,customer02851@example.com,Chon Buri,2025-08-24,organic
+2852,customer02852@example.com,Nakhon Ratchasima,2025-08-24,ads
+2853,customer02853@example.com,Bangkok,2025-08-24,organic
+2854,customer02854@example.com,Bangkok,2025-08-25,referral
+2855,customer02855@example.com,Bangkok,2025-08-25,organic
+2856,customer02856@example.com,Chon Buri,2025-08-25,organic
+2857,customer02857@example.com,Chon Buri,2025-08-26,referral
+2858,customer02858@example.com,Chon Buri,2025-08-26,organic
+2859,customer02859@example.com,Khon Kaen,2025-08-26,organic
+2860,customer02860@example.com,Udon Thani,2025-08-27,referral
+2861,customer02861@example.com,Phuket,2025-08-27,referral
+2862,customer02862@example.com,Chiang Mai,2025-08-27,organic
+2863,customer02863@example.com,Udon Thani,2025-08-28,organic
+2864,customer02864@example.com,Hat Yai,2025-08-28,referral
+2865,customer02865@example.com,Phuket,2025-08-28,referral
+2866,customer02866@example.com,Phuket,2025-08-28,ads
+2867,customer02867@example.com,Nakhon Ratchasima,2025-08-28,organic
+2868,customer02868@example.com,Udon Thani,2025-08-29,organic
+2869,customer02869@example.com,Nakhon Ratchasima,2025-08-30,organic
+2870,customer02870@example.com,Nakhon Ratchasima,2025-08-30,organic
+2871,customer02871@example.com,Hat Yai,2025-08-30,ads
+2872,customer02872@example.com,Phuket,2025-08-31,referral
+2873,customer02873@example.com,Hat Yai,2025-08-31,referral
+2874,customer02874@example.com,Bangkok,2025-08-31,organic
+2875,customer02875@example.com,Khon Kaen,2025-08-31,ads
+2876,customer02876@example.com,Nakhon Ratchasima,2025-08-31,organic
+2877,customer02877@example.com,Hat Yai,2025-08-31,referral
+2878,customer02878@example.com,Bangkok,2025-08-31,organic
+2879,customer02879@example.com,Bangkok,2025-09-01,ads
+2880,customer02880@example.com,Phuket,2025-09-01,organic
+2881,customer02881@example.com,Bangkok,2025-09-01,organic
+2882,customer02882@example.com,Bangkok,2025-09-01,organic
+2883,customer02883@example.com,Bangkok,2025-09-02,referral
+2884,customer02884@example.com,Bangkok,2025-09-02,ads
+2885,customer02885@example.com,Nakhon Ratchasima,2025-09-03,organic
+2886,customer02886@example.com,Nakhon Ratchasima,2025-09-03,organic
+2887,customer02887@example.com,Nakhon Ratchasima,2025-09-03,ads
+2888,customer02888@example.com,Chiang Mai,2025-09-04,organic
+2889,customer02889@example.com,Nakhon Ratchasima,2025-09-04,organic
+2890,customer02890@example.com,Chon Buri,2025-09-04,organic
+2891,customer02891@example.com,Bangkok,2025-09-04,organic
+2892,customer02892@example.com,Chon Buri,2025-09-05,referral
+2893,customer02893@example.com,Nakhon Ratchasima,2025-09-06,ads
+2894,customer02894@example.com,Chiang Mai,2025-09-07,ads
+2895,customer02895@example.com,Bangkok,2025-09-07,organic
+2896,customer02896@example.com,Chon Buri,2025-09-07,referral
+2897,customer02897@example.com,Hat Yai,2025-09-07,organic
+2898,customer02898@example.com,Bangkok,2025-09-07,organic
+2899,customer02899@example.com,Bangkok,2025-09-07,referral
+2900,customer02900@example.com,Bangkok,2025-09-08,organic
+2901,customer02901@example.com,Hat Yai,2025-09-08,referral
+2902,customer02902@example.com,Phuket,2025-09-08,organic
+2903,customer02903@example.com,Bangkok,2025-09-08,referral
+2904,customer02904@example.com,Bangkok,2025-09-09,organic
+2905,customer02905@example.com,Bangkok,2025-09-09,organic
+2906,customer02906@example.com,Nakhon Ratchasima,2025-09-09,ads
+2907,customer02907@example.com,Bangkok,2025-09-10,organic
+2908,customer02908@example.com,Khon Kaen,2025-09-10,organic
+2909,customer02909@example.com,Hat Yai,2025-09-10,referral
+2910,customer02910@example.com,Udon Thani,2025-09-10,ads
+2911,customer02911@example.com,Phuket,2025-09-10,organic
+2912,customer02912@example.com,Bangkok,2025-09-10,ads
+2913,customer02913@example.com,Phuket,2025-09-11,ads
+2914,customer02914@example.com,Chiang Mai,2025-09-11,organic
+2915,customer02915@example.com,Udon Thani,2025-09-11,referral
+2916,customer02916@example.com,Bangkok,2025-09-11,referral
+2917,customer02917@example.com,Hat Yai,2025-09-12,referral
+2918,customer02918@example.com,Hat Yai,2025-09-12,referral
+2919,customer02919@example.com,Bangkok,2025-09-12,ads
+2920,customer02920@example.com,Bangkok,2025-09-12,organic
+2921,customer02921@example.com,Nakhon Ratchasima,2025-09-12,ads
+2922,customer02922@example.com,Bangkok,2025-09-12,ads
+2923,customer02923@example.com,Udon Thani,2025-09-12,organic
+2924,customer02924@example.com,Bangkok,2025-09-13,organic
+2925,customer02925@example.com,Chon Buri,2025-09-14,referral
+2926,customer02926@example.com,Phuket,2025-09-14,ads
+2927,customer02927@example.com,Bangkok,2025-09-14,referral
+2928,customer02928@example.com,Khon Kaen,2025-09-14,organic
+2929,customer02929@example.com,Bangkok,2025-09-14,organic
+2930,customer02930@example.com,Bangkok,2025-09-15,ads
+2931,customer02931@example.com,Chiang Mai,2025-09-15,ads
+2932,customer02932@example.com,Khon Kaen,2025-09-15,ads
+2933,customer02933@example.com,Chiang Mai,2025-09-15,ads
+2934,customer02934@example.com,Udon Thani,2025-09-16,ads
+2935,customer02935@example.com,Khon Kaen,2025-09-17,ads
+2936,customer02936@example.com,Chiang Mai,2025-09-17,ads
+2937,customer02937@example.com,Bangkok,2025-09-17,ads
+2938,customer02938@example.com,Bangkok,2025-09-17,organic
+2939,customer02939@example.com,Nakhon Ratchasima,2025-09-18,ads
+2940,customer02940@example.com,Udon Thani,2025-09-18,organic
+2941,customer02941@example.com,Hat Yai,2025-09-18,ads
+2942,customer02942@example.com,Bangkok,2025-09-18,referral
+2943,customer02943@example.com,Bangkok,2025-09-19,ads
+2944,customer02944@example.com,Bangkok,2025-09-19,referral
+2945,customer02945@example.com,Chon Buri,2025-09-19,referral
+2946,customer02946@example.com,Phuket,2025-09-19,referral
+2947,customer02947@example.com,Bangkok,2025-09-19,referral
+2948,customer02948@example.com,Chiang Mai,2025-09-19,organic
+2949,customer02949@example.com,Khon Kaen,2025-09-19,organic
+2950,customer02950@example.com,Bangkok,2025-09-19,organic
+2951,customer02951@example.com,Nakhon Ratchasima,2025-09-20,organic
+2952,customer02952@example.com,Bangkok,2025-09-20,organic
+2953,customer02953@example.com,Hat Yai,2025-09-20,organic
+2954,customer02954@example.com,Phuket,2025-09-20,organic
+2955,customer02955@example.com,Bangkok,2025-09-20,organic
+2956,customer02956@example.com,Chon Buri,2025-09-20,ads
+2957,customer02957@example.com,Bangkok,2025-09-20,organic
+2958,customer02958@example.com,Udon Thani,2025-09-21,organic
+2959,customer02959@example.com,Nakhon Ratchasima,2025-09-21,ads
+2960,customer02960@example.com,Bangkok,2025-09-21,organic
+2961,customer02961@example.com,Khon Kaen,2025-09-21,ads
+2962,customer02962@example.com,Khon Kaen,2025-09-21,ads
+2963,customer02963@example.com,Chiang Mai,2025-09-22,ads
+2964,customer02964@example.com,Bangkok,2025-09-22,referral
+2965,customer02965@example.com,Hat Yai,2025-09-22,ads
+2966,customer02966@example.com,Bangkok,2025-09-23,ads
+2967,customer02967@example.com,Bangkok,2025-09-23,organic
+2968,customer02968@example.com,Chiang Mai,2025-09-23,referral
+2969,customer02969@example.com,Khon Kaen,2025-09-23,organic
+2970,customer02970@example.com,Bangkok,2025-09-23,referral
+2971,customer02971@example.com,Udon Thani,2025-09-23,referral
+2972,customer02972@example.com,Chiang Mai,2025-09-23,referral
+2973,customer02973@example.com,Bangkok,2025-09-24,ads
+2974,customer02974@example.com,Khon Kaen,2025-09-24,ads
+2975,customer02975@example.com,Chon Buri,2025-09-24,organic
+2976,customer02976@example.com,Bangkok,2025-09-25,organic
+2977,customer02977@example.com,Nakhon Ratchasima,2025-09-25,ads
+2978,customer02978@example.com,Chiang Mai,2025-09-25,organic
+2979,customer02979@example.com,Phuket,2025-09-25,organic
+2980,customer02980@example.com,Chon Buri,2025-09-25,organic
+2981,customer02981@example.com,Chiang Mai,2025-09-26,ads
+2982,customer02982@example.com,Khon Kaen,2025-09-26,referral
+2983,customer02983@example.com,Bangkok,2025-09-26,ads
+2984,customer02984@example.com,Khon Kaen,2025-09-27,referral
+2985,customer02985@example.com,Chiang Mai,2025-09-27,ads
+2986,customer02986@example.com,Chiang Mai,2025-09-27,organic
+2987,customer02987@example.com,Bangkok,2025-09-28,organic
+2988,customer02988@example.com,Bangkok,2025-09-28,organic
+2989,customer02989@example.com,Bangkok,2025-09-28,organic
+2990,customer02990@example.com,Chiang Mai,2025-09-28,ads
+2991,customer02991@example.com,Chon Buri,2025-09-28,organic
+2992,customer02992@example.com,Khon Kaen,2025-09-28,organic
+2993,customer02993@example.com,Bangkok,2025-09-29,ads
+2994,customer02994@example.com,Khon Kaen,2025-09-29,referral
+2995,customer02995@example.com,Bangkok,2025-09-29,ads
+2996,customer02996@example.com,Chon Buri,2025-09-29,ads
+2997,customer02997@example.com,Chiang Mai,2025-09-29,organic
+2998,customer02998@example.com,Bangkok,2025-09-30,referral
+2999,customer02999@example.com,Chon Buri,2025-09-30,organic
+3000,customer03000@example.com,Bangkok,2025-09-30,referral
+3001,customer03001@example.com,Khon Kaen,2025-09-30,organic
+3002,customer03002@example.com,Hat Yai,2025-10-01,referral
+3003,customer03003@example.com,Bangkok,2025-10-01,ads
+3004,customer03004@example.com,Chon Buri,2025-10-01,ads
+3005,customer03005@example.com,Udon Thani,2025-10-01,referral
+3006,customer03006@example.com,Bangkok,2025-10-01,referral
+3007,customer03007@example.com,Bangkok,2025-10-01,ads
+3008,customer03008@example.com,Hat Yai,2025-10-01,ads
+3009,customer03009@example.com,Udon Thani,2025-10-02,referral
+3010,customer03010@example.com,Bangkok,2025-10-02,referral
+3011,customer03011@example.com,Bangkok,2025-10-02,ads
+3012,customer03012@example.com,Bangkok,2025-10-03,organic
+3013,customer03013@example.com,Khon Kaen,2025-10-04,organic
+3014,customer03014@example.com,Bangkok,2025-10-04,ads
+3015,customer03015@example.com,Phuket,2025-10-05,ads
+3016,customer03016@example.com,Hat Yai,2025-10-06,organic
+3017,customer03017@example.com,Udon Thani,2025-10-07,organic
+3018,customer03018@example.com,Nakhon Ratchasima,2025-10-07,organic
+3019,customer03019@example.com,Phuket,2025-10-07,referral
+3020,customer03020@example.com,Hat Yai,2025-10-07,ads
+3021,customer03021@example.com,Bangkok,2025-10-07,referral
+3022,customer03022@example.com,Bangkok,2025-10-07,organic
+3023,customer03023@example.com,Chiang Mai,2025-10-08,referral
+3024,customer03024@example.com,Nakhon Ratchasima,2025-10-08,organic
+3025,customer03025@example.com,Chiang Mai,2025-10-09,referral
+3026,customer03026@example.com,Khon Kaen,2025-10-09,referral
+3027,customer03027@example.com,Udon Thani,2025-10-09,organic
+3028,customer03028@example.com,Bangkok,2025-10-10,ads
+3029,customer03029@example.com,Chiang Mai,2025-10-10,ads
+3030,customer03030@example.com,Nakhon Ratchasima,2025-10-11,organic
+3031,customer03031@example.com,Chiang Mai,2025-10-11,organic
+3032,customer03032@example.com,Khon Kaen,2025-10-11,ads
+3033,customer03033@example.com,Bangkok,2025-10-11,organic
+3034,customer03034@example.com,Bangkok,2025-10-11,ads
+3035,customer03035@example.com,Khon Kaen,2025-10-11,organic
+3036,customer03036@example.com,Bangkok,2025-10-12,referral
+3037,customer03037@example.com,Chiang Mai,2025-10-12,referral
+3038,customer03038@example.com,Bangkok,2025-10-12,organic
+3039,customer03039@example.com,Bangkok,2025-10-12,organic
+3040,customer03040@example.com,Udon Thani,2025-10-12,referral
+3041,customer03041@example.com,Chon Buri,2025-10-12,ads
+3042,customer03042@example.com,Khon Kaen,2025-10-12,organic
+3043,customer03043@example.com,Bangkok,2025-10-12,organic
+3044,customer03044@example.com,Bangkok,2025-10-13,organic
+3045,customer03045@example.com,Chon Buri,2025-10-13,organic
+3046,customer03046@example.com,Bangkok,2025-10-13,organic
+3047,customer03047@example.com,Bangkok,2025-10-13,ads
+3048,customer03048@example.com,Khon Kaen,2025-10-13,ads
+3049,customer03049@example.com,Chon Buri,2025-10-14,organic
+3050,customer03050@example.com,Bangkok,2025-10-14,ads
+3051,customer03051@example.com,Hat Yai,2025-10-14,organic
+3052,customer03052@example.com,Phuket,2025-10-14,ads
+3053,customer03053@example.com,Bangkok,2025-10-15,ads
+3054,customer03054@example.com,Bangkok,2025-10-15,ads
+3055,customer03055@example.com,Bangkok,2025-10-15,ads
+3056,customer03056@example.com,Khon Kaen,2025-10-15,organic
+3057,customer03057@example.com,Chiang Mai,2025-10-16,referral
+3058,customer03058@example.com,Chiang Mai,2025-10-16,organic
+3059,customer03059@example.com,Bangkok,2025-10-16,organic
+3060,customer03060@example.com,Bangkok,2025-10-16,organic
+3061,customer03061@example.com,Phuket,2025-10-16,ads
+3062,customer03062@example.com,Hat Yai,2025-10-17,organic
+3063,customer03063@example.com,Hat Yai,2025-10-17,referral
+3064,customer03064@example.com,Khon Kaen,2025-10-18,ads
+3065,customer03065@example.com,Bangkok,2025-10-18,referral
+3066,customer03066@example.com,Bangkok,2025-10-18,ads
+3067,customer03067@example.com,Khon Kaen,2025-10-18,organic
+3068,customer03068@example.com,Chon Buri,2025-10-19,ads
+3069,customer03069@example.com,Bangkok,2025-10-19,organic
+3070,customer03070@example.com,Hat Yai,2025-10-19,organic
+3071,customer03071@example.com,Nakhon Ratchasima,2025-10-19,referral
+3072,customer03072@example.com,Phuket,2025-10-20,organic
+3073,customer03073@example.com,Bangkok,2025-10-20,organic
+3074,customer03074@example.com,Bangkok,2025-10-20,organic
+3075,customer03075@example.com,Hat Yai,2025-10-20,organic
+3076,customer03076@example.com,Bangkok,2025-10-21,ads
+3077,customer03077@example.com,Udon Thani,2025-10-21,organic
+3078,customer03078@example.com,Nakhon Ratchasima,2025-10-21,referral
+3079,customer03079@example.com,Khon Kaen,2025-10-21,organic
+3080,customer03080@example.com,Chiang Mai,2025-10-21,organic
+3081,customer03081@example.com,Nakhon Ratchasima,2025-10-21,organic
+3082,customer03082@example.com,Bangkok,2025-10-22,ads
+3083,customer03083@example.com,Udon Thani,2025-10-23,organic
+3084,customer03084@example.com,Chon Buri,2025-10-23,organic
+3085,customer03085@example.com,Phuket,2025-10-23,ads
+3086,customer03086@example.com,Bangkok,2025-10-23,organic
+3087,customer03087@example.com,Bangkok,2025-10-23,referral
+3088,customer03088@example.com,Nakhon Ratchasima,2025-10-23,organic
+3089,customer03089@example.com,Bangkok,2025-10-23,organic
+3090,customer03090@example.com,Bangkok,2025-10-23,organic
+3091,customer03091@example.com,Nakhon Ratchasima,2025-10-24,organic
+3092,customer03092@example.com,Bangkok,2025-10-24,organic
+3093,customer03093@example.com,Phuket,2025-10-24,organic
+3094,customer03094@example.com,Bangkok,2025-10-25,ads
+3095,customer03095@example.com,Chiang Mai,2025-10-25,ads
+3096,customer03096@example.com,Bangkok,2025-10-25,referral
+3097,customer03097@example.com,Bangkok,2025-10-26,organic
+3098,customer03098@example.com,Bangkok,2025-10-26,organic
+3099,customer03099@example.com,Bangkok,2025-10-26,ads
+3100,customer03100@example.com,Khon Kaen,2025-10-27,referral
+3101,customer03101@example.com,Chiang Mai,2025-10-27,ads
+3102,customer03102@example.com,Nakhon Ratchasima,2025-10-27,organic
+3103,customer03103@example.com,Nakhon Ratchasima,2025-10-27,ads
+3104,customer03104@example.com,Chon Buri,2025-10-27,organic
+3105,customer03105@example.com,Chon Buri,2025-10-27,ads
+3106,customer03106@example.com,Bangkok,2025-10-28,organic
+3107,customer03107@example.com,Udon Thani,2025-10-28,organic
+3108,customer03108@example.com,Phuket,2025-10-28,organic
+3109,customer03109@example.com,Phuket,2025-10-29,ads
+3110,customer03110@example.com,Nakhon Ratchasima,2025-10-29,organic
+3111,customer03111@example.com,Bangkok,2025-10-29,ads
+3112,customer03112@example.com,Udon Thani,2025-10-29,organic
+3113,customer03113@example.com,Bangkok,2025-10-30,ads
+3114,customer03114@example.com,Bangkok,2025-10-30,organic
+3115,customer03115@example.com,Nakhon Ratchasima,2025-10-30,ads
+3116,customer03116@example.com,Bangkok,2025-10-30,ads
+3117,customer03117@example.com,Chon Buri,2025-10-30,referral
+3118,customer03118@example.com,Bangkok,2025-10-30,ads
+3119,customer03119@example.com,Bangkok,2025-10-31,ads
+3120,customer03120@example.com,Bangkok,2025-10-31,ads
+3121,customer03121@example.com,Bangkok,2025-10-31,ads
+3122,customer03122@example.com,Bangkok,2025-11-01,organic
+3123,customer03123@example.com,Chiang Mai,2025-11-01,ads
+3124,customer03124@example.com,Nakhon Ratchasima,2025-11-01,organic
+3125,customer03125@example.com,Chon Buri,2025-11-01,ads
+3126,customer03126@example.com,Nakhon Ratchasima,2025-11-02,ads
+3127,customer03127@example.com,Hat Yai,2025-11-02,referral
+3128,customer03128@example.com,Bangkok,2025-11-02,ads
+3129,customer03129@example.com,Bangkok,2025-11-02,referral
+3130,customer03130@example.com,Nakhon Ratchasima,2025-11-02,ads
+3131,customer03131@example.com,Nakhon Ratchasima,2025-11-02,organic
+3132,customer03132@example.com,Bangkok,2025-11-02,organic
+3133,customer03133@example.com,Bangkok,2025-11-03,referral
+3134,customer03134@example.com,Nakhon Ratchasima,2025-11-03,referral
+3135,customer03135@example.com,Bangkok,2025-11-03,organic
+3136,customer03136@example.com,Chiang Mai,2025-11-04,organic
+3137,customer03137@example.com,Udon Thani,2025-11-04,ads
+3138,customer03138@example.com,Phuket,2025-11-04,referral
+3139,customer03139@example.com,Phuket,2025-11-05,ads
+3140,customer03140@example.com,Bangkok,2025-11-05,organic
+3141,customer03141@example.com,Bangkok,2025-11-05,ads
+3142,customer03142@example.com,Udon Thani,2025-11-06,ads
+3143,customer03143@example.com,Bangkok,2025-11-06,organic
+3144,customer03144@example.com,Bangkok,2025-11-07,referral
+3145,customer03145@example.com,Khon Kaen,2025-11-08,ads
+3146,customer03146@example.com,Chiang Mai,2025-11-08,ads
+3147,customer03147@example.com,Chiang Mai,2025-11-08,organic
+3148,customer03148@example.com,Bangkok,2025-11-08,organic
+3149,customer03149@example.com,Bangkok,2025-11-08,ads
+3150,customer03150@example.com,Nakhon Ratchasima,2025-11-08,organic
+3151,customer03151@example.com,Nakhon Ratchasima,2025-11-08,organic
+3152,customer03152@example.com,Nakhon Ratchasima,2025-11-08,ads
+3153,customer03153@example.com,Bangkok,2025-11-09,organic
+3154,customer03154@example.com,Chon Buri,2025-11-09,organic
+3155,customer03155@example.com,Phuket,2025-11-09,organic
+3156,customer03156@example.com,Chon Buri,2025-11-09,organic
+3157,customer03157@example.com,Nakhon Ratchasima,2025-11-09,organic
+3158,customer03158@example.com,Nakhon Ratchasima,2025-11-10,organic
+3159,customer03159@example.com,Chon Buri,2025-11-10,referral
+3160,customer03160@example.com,Bangkok,2025-11-11,ads
+3161,customer03161@example.com,Chiang Mai,2025-11-11,referral
+3162,customer03162@example.com,Bangkok,2025-11-11,ads
+3163,customer03163@example.com,Udon Thani,2025-11-11,organic
+3164,customer03164@example.com,Chiang Mai,2025-11-11,organic
+3165,customer03165@example.com,Bangkok,2025-11-12,referral
+3166,customer03166@example.com,Bangkok,2025-11-12,ads
+3167,customer03167@example.com,Chiang Mai,2025-11-12,organic
+3168,customer03168@example.com,Bangkok,2025-11-12,organic
+3169,customer03169@example.com,Nakhon Ratchasima,2025-11-12,organic
+3170,customer03170@example.com,Nakhon Ratchasima,2025-11-12,organic
+3171,customer03171@example.com,Nakhon Ratchasima,2025-11-12,organic
+3172,customer03172@example.com,Hat Yai,2025-11-12,referral
+3173,customer03173@example.com,Chiang Mai,2025-11-12,ads
+3174,customer03174@example.com,Chiang Mai,2025-11-13,organic
+3175,customer03175@example.com,Khon Kaen,2025-11-13,organic
+3176,customer03176@example.com,Chiang Mai,2025-11-13,organic
+3177,customer03177@example.com,Chon Buri,2025-11-14,referral
+3178,customer03178@example.com,Bangkok,2025-11-14,ads
+3179,customer03179@example.com,Bangkok,2025-11-14,ads
+3180,customer03180@example.com,Chon Buri,2025-11-15,ads
+3181,customer03181@example.com,Bangkok,2025-11-15,referral
+3182,customer03182@example.com,Bangkok,2025-11-15,referral
+3183,customer03183@example.com,Bangkok,2025-11-15,organic
+3184,customer03184@example.com,Bangkok,2025-11-15,ads
+3185,customer03185@example.com,Bangkok,2025-11-15,ads
+3186,customer03186@example.com,Bangkok,2025-11-15,organic
+3187,customer03187@example.com,Bangkok,2025-11-15,organic
+3188,customer03188@example.com,Bangkok,2025-11-15,ads
+3189,customer03189@example.com,Hat Yai,2025-11-15,organic
+3190,customer03190@example.com,Chiang Mai,2025-11-16,ads
+3191,customer03191@example.com,Hat Yai,2025-11-16,ads
+3192,customer03192@example.com,Bangkok,2025-11-16,ads
+3193,customer03193@example.com,Bangkok,2025-11-17,ads
+3194,customer03194@example.com,Bangkok,2025-11-18,organic
+3195,customer03195@example.com,Chon Buri,2025-11-18,referral
+3196,customer03196@example.com,Bangkok,2025-11-18,referral
+3197,customer03197@example.com,Phuket,2025-11-18,organic
+3198,customer03198@example.com,Chon Buri,2025-11-18,ads
+3199,customer03199@example.com,Nakhon Ratchasima,2025-11-18,ads
+3200,customer03200@example.com,Udon Thani,2025-11-18,organic
+3201,customer03201@example.com,Bangkok,2025-11-19,ads
+3202,customer03202@example.com,Bangkok,2025-11-20,organic
+3203,customer03203@example.com,Bangkok,2025-11-20,organic
+3204,customer03204@example.com,Udon Thani,2025-11-20,ads
+3205,customer03205@example.com,Chon Buri,2025-11-20,ads
+3206,customer03206@example.com,Chon Buri,2025-11-20,organic
+3207,customer03207@example.com,Nakhon Ratchasima,2025-11-21,ads
+3208,customer03208@example.com,Nakhon Ratchasima,2025-11-21,ads
+3209,customer03209@example.com,Bangkok,2025-11-21,organic
+3210,customer03210@example.com,Khon Kaen,2025-11-21,referral
+3211,customer03211@example.com,Bangkok,2025-11-21,referral
+3212,customer03212@example.com,Chon Buri,2025-11-22,referral
+3213,customer03213@example.com,Phuket,2025-11-22,organic
+3214,customer03214@example.com,Udon Thani,2025-11-22,organic
+3215,customer03215@example.com,Udon Thani,2025-11-22,referral
+3216,customer03216@example.com,Bangkok,2025-11-23,organic
+3217,customer03217@example.com,Bangkok,2025-11-23,ads
+3218,customer03218@example.com,Khon Kaen,2025-11-23,organic
+3219,customer03219@example.com,Bangkok,2025-11-24,ads
+3220,customer03220@example.com,Nakhon Ratchasima,2025-11-24,organic
+3221,customer03221@example.com,Chiang Mai,2025-11-24,organic
+3222,customer03222@example.com,Bangkok,2025-11-24,organic
+3223,customer03223@example.com,Bangkok,2025-11-24,organic
+3224,customer03224@example.com,Bangkok,2025-11-24,organic
+3225,customer03225@example.com,Hat Yai,2025-11-25,organic
+3226,customer03226@example.com,Bangkok,2025-11-25,organic
+3227,customer03227@example.com,Bangkok,2025-11-25,referral
+3228,customer03228@example.com,Bangkok,2025-11-25,ads
+3229,customer03229@example.com,Phuket,2025-11-26,organic
+3230,customer03230@example.com,Bangkok,2025-11-27,organic
+3231,customer03231@example.com,Chiang Mai,2025-11-27,referral
+3232,customer03232@example.com,Chiang Mai,2025-11-27,ads
+3233,customer03233@example.com,Bangkok,2025-11-28,organic
+3234,customer03234@example.com,Hat Yai,2025-11-28,referral
+3235,customer03235@example.com,Bangkok,2025-11-28,organic
+3236,customer03236@example.com,Bangkok,2025-11-29,organic
+3237,customer03237@example.com,Bangkok,2025-11-29,referral
+3238,customer03238@example.com,Phuket,2025-11-29,ads
+3239,customer03239@example.com,Khon Kaen,2025-11-30,ads
+3240,customer03240@example.com,Udon Thani,2025-11-30,referral
+3241,customer03241@example.com,Chon Buri,2025-11-30,organic
+3242,customer03242@example.com,Bangkok,2025-11-30,referral
+3243,customer03243@example.com,Bangkok,2025-11-30,ads
+3244,customer03244@example.com,Bangkok,2025-12-01,referral
+3245,customer03245@example.com,Bangkok,2025-12-02,ads
+3246,customer03246@example.com,Bangkok,2025-12-02,ads
+3247,customer03247@example.com,Bangkok,2025-12-02,referral
+3248,customer03248@example.com,Bangkok,2025-12-03,referral
+3249,customer03249@example.com,Bangkok,2025-12-03,ads
+3250,customer03250@example.com,Bangkok,2025-12-03,ads
+3251,customer03251@example.com,Bangkok,2025-12-03,organic
+3252,customer03252@example.com,Phuket,2025-12-04,referral
+3253,customer03253@example.com,Hat Yai,2025-12-04,referral
+3254,customer03254@example.com,Hat Yai,2025-12-04,referral
+3255,customer03255@example.com,Chiang Mai,2025-12-05,ads
+3256,customer03256@example.com,Chiang Mai,2025-12-06,organic
+3257,customer03257@example.com,Nakhon Ratchasima,2025-12-06,ads
+3258,customer03258@example.com,Bangkok,2025-12-06,ads
+3259,customer03259@example.com,Phuket,2025-12-06,organic
+3260,customer03260@example.com,Chiang Mai,2025-12-06,organic
+3261,customer03261@example.com,Bangkok,2025-12-06,organic
+3262,customer03262@example.com,Chiang Mai,2025-12-06,referral
+3263,customer03263@example.com,Udon Thani,2025-12-06,ads
+3264,customer03264@example.com,Bangkok,2025-12-07,ads
+3265,customer03265@example.com,Phuket,2025-12-07,ads
+3266,customer03266@example.com,Bangkok,2025-12-07,ads
+3267,customer03267@example.com,Phuket,2025-12-08,organic
+3268,customer03268@example.com,Nakhon Ratchasima,2025-12-08,organic
+3269,customer03269@example.com,Phuket,2025-12-08,organic
+3270,customer03270@example.com,Bangkok,2025-12-08,ads
+3271,customer03271@example.com,Phuket,2025-12-09,organic
+3272,customer03272@example.com,Nakhon Ratchasima,2025-12-09,organic
+3273,customer03273@example.com,Bangkok,2025-12-09,organic
+3274,customer03274@example.com,Phuket,2025-12-09,ads
+3275,customer03275@example.com,Nakhon Ratchasima,2025-12-09,ads
+3276,customer03276@example.com,Bangkok,2025-12-09,organic
+3277,customer03277@example.com,Bangkok,2025-12-09,organic
+3278,customer03278@example.com,Khon Kaen,2025-12-10,referral
+3279,customer03279@example.com,Phuket,2025-12-10,ads
+3280,customer03280@example.com,Chiang Mai,2025-12-10,ads
+3281,customer03281@example.com,Bangkok,2025-12-11,ads
+3282,customer03282@example.com,Chiang Mai,2025-12-11,referral
+3283,customer03283@example.com,Bangkok,2025-12-11,ads
+3284,customer03284@example.com,Khon Kaen,2025-12-11,organic
+3285,customer03285@example.com,Bangkok,2025-12-11,organic
+3286,customer03286@example.com,Bangkok,2025-12-11,organic
+3287,customer03287@example.com,Bangkok,2025-12-12,referral
+3288,customer03288@example.com,Bangkok,2025-12-12,organic
+3289,customer03289@example.com,Nakhon Ratchasima,2025-12-12,ads
+3290,customer03290@example.com,Bangkok,2025-12-12,ads
+3291,customer03291@example.com,Chiang Mai,2025-12-13,organic
+3292,customer03292@example.com,Khon Kaen,2025-12-13,organic
+3293,customer03293@example.com,Khon Kaen,2025-12-13,ads
+3294,customer03294@example.com,Hat Yai,2025-12-13,ads
+3295,customer03295@example.com,Khon Kaen,2025-12-14,organic
+3296,customer03296@example.com,Bangkok,2025-12-14,referral
+3297,customer03297@example.com,Bangkok,2025-12-14,referral
+3298,customer03298@example.com,Bangkok,2025-12-14,ads
+3299,customer03299@example.com,Phuket,2025-12-15,organic
+3300,customer03300@example.com,Khon Kaen,2025-12-15,organic

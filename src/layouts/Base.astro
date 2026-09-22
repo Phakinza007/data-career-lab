@@ -1,0 +1,46 @@
+---
+import '@fontsource/ibm-plex-sans-thai/400.css';
+import '@fontsource/ibm-plex-sans-thai/600.css';
+import '../styles/global.css';
+import StorageWarning from '../components/StorageWarning';
+import { url } from '../lib/url';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'เว็บเรียนส่วนตัวสาย Data Analyst, ML และ AI Engineer' } = Astro.props;
+---
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title} · Data Career Lab</title>
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('dcl:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={url('/')}>Data Career Lab</a>
+      <nav>
+        <a href={url('/da/')}>Data Analyst</a>
+        <a href={url('/settings/')}>ตั้งค่า</a>
+        <button id="theme-toggle" class="ghost" type="button" aria-label="สลับโหมดสว่าง/มืด">◐</button>
+      </nav>
+    </header>
+    <StorageWarning client:only="react" />
+    <main class="container">
+      <slot />
+    </main>
+    <script>
+      import { toggleTheme } from '../lib/theme';
+      document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+    </script>
+  </body>
+</html>

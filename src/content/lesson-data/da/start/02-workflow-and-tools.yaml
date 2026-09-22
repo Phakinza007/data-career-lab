@@ -1,0 +1,178 @@
+goals:
+  - เรียงขั้นตอนการวิเคราะห์ 5 ขั้นได้ และรู้ว่าแต่ละขั้นทำอะไร
+  - เปลี่ยนคำถามกว้างๆ ให้เป็นคำถามที่ระบุช่วงเวลา ตัวชี้วัด และสิ่งที่จะเปรียบเทียบ
+  - ใช้ช่องลองเล่น แบบฝึก hint และเฉลยของเว็บนี้ได้
+
+examples:
+  - id: x1
+    title: เดือนไหนของปี 2024 มีออเดอร์มากที่สุด
+    lang: sql
+    prompt: |
+      ทีมการตลาดอยากรู้ว่าปี 2024 เดือนไหนมีออเดอร์มากที่สุด เพื่อวางแผนแคมเปญปีหน้า
+    steps:
+      - text: |
+          **ดูข้อมูลก่อนเสมอ** — เช็กว่าตาราง `orders` มีคอลัมน์อะไร และวันที่เก็บในรูปแบบไหน
+        code: |
+          SELECT order_id, order_date
+          FROM orders
+          LIMIT 5
+      - text: |
+          **ดึงเดือนออกจากวันที่** — ฟังก์ชัน `month()` คืนเลขเดือน 1–12 ลองดูคู่กับวันที่จริงว่าถูกต้อง
+        code: |
+          SELECT order_date, month(order_date) AS m
+          FROM orders
+          LIMIT 5
+      - text: |
+          **กรองปี นับ แล้วเรียง** — เลือกเฉพาะปี 2024 นับออเดอร์ต่อเดือน แล้วเรียงจากมากไปน้อย แถวแรกคือคำตอบ
+        code: |
+          SELECT month(order_date) AS m, COUNT(*) AS n_orders
+          FROM orders
+          WHERE year(order_date) = 2024
+          GROUP BY m
+          ORDER BY n_orders DESC
+    pitfall:
+      text: |
+        ถ้าลืม `WHERE year(order_date) = 2024` ออเดอร์ของปี 2024 และ 2025 จะถูกรวมเป็นเดือนเดียวกัน
+        ตัวเลขจะดูสมเหตุสมผลแต่ตอบผิดคำถาม — ลองรันแล้วเทียบกับขั้นที่ 3
+      code: |
+        SELECT month(order_date) AS m, COUNT(*) AS n_orders
+        FROM orders
+        GROUP BY m
+        ORDER BY n_orders DESC
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      นับจำนวนออเดอร์ของแต่ละช่องทางการจ่ายเงิน (`payment_method`) เก็บผลไว้ในตัวแปร `result`
+      เติม `___` ให้ถูกต้อง
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders["___"].value_counts()
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = orders["payment_method"].value_counts()
+    check: |
+      check_series(result, _sol["result"], name="result")
+    hints:
+      - ใส่ชื่อคอลัมน์ที่ต้องการนับลงในวงเล็บเหลี่ยม
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์ทั้งหมดในตาราง `orders` ตั้งชื่อคอลัมน์ว่า `n_orders`
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: SELECT COUNT(*) AS n_orders FROM orders
+    hints:
+      - ใช้ `COUNT(*)` เหมือนแบบฝึกในบทที่แล้ว
+      - "`AS n_orders` ใช้ตั้งชื่อคอลัมน์ผลลัพธ์"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      ใช้ pandas หาว่ามีออเดอร์ที่ `status` เป็น `"cancelled"` กี่ออเดอร์ เก็บคำตอบไว้ในตัวแปร `n_cancelled`
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_cancelled = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_cancelled = (orders["status"] == "cancelled").sum()
+    check: |
+      check_value(n_cancelled, _sol["n_cancelled"], name="n_cancelled")
+    hints:
+      - "`orders[\"status\"] == \"cancelled\"` ได้ค่า True/False ทีละแถว"
+      - "`.sum()` กับค่า True/False จะนับจำนวน True"
+  - id: e3
+    level: applied
+    lang: sql
+    ordered: true
+    prompt: |
+      หาจำนวนออเดอร์ของแต่ละช่องทางการจ่ายเงินเฉพาะ**ปี 2025** เรียงจากมากไปน้อย
+      ใช้ชื่อคอลัมน์ `payment_method` และ `n_orders`
+    starter: |
+      SELECT payment_method, ___ AS n_orders
+      FROM orders
+      WHERE ___
+      GROUP BY payment_method
+      ORDER BY ___
+    solution: |
+      SELECT payment_method, COUNT(*) AS n_orders
+      FROM orders
+      WHERE year(order_date) = 2025
+      GROUP BY payment_method
+      ORDER BY n_orders DESC
+    hints:
+      - ดูโค้ดในช่องลองเล่นช่วงต้นบท โครงเหมือนกันเลย
+      - "`year(order_date) = 2025` กรองเฉพาะปี 2025"
+      - "`DESC` คือเรียงจากมากไปน้อย"
+
+quiz:
+  - id: q1
+    question: ขั้นแรกของงานวิเคราะห์คืออะไร
+    choices:
+      - text: ตั้งคำถามให้ชัดว่าจะตอบอะไร
+        correct: true
+        why: ถ้ายังไม่รู้คำถาม จะไม่รู้ว่าต้องดึงข้อมูลอะไรและวิเคราะห์แบบไหน
+      - text: ดึงข้อมูลทุกตารางมาก่อน
+        why: ดึงมาโดยไม่มีคำถามจะเสียเวลาและหลงทาง
+      - text: ทำ dashboard
+        why: dashboard เป็นส่วนของการสื่อสาร ซึ่งเป็นขั้นสุดท้าย
+      - text: ทำความสะอาดข้อมูลทั้งหมด
+        why: ต้องรู้คำถามก่อน จึงจะรู้ว่าต้องทำความสะอาดคอลัมน์ไหนบ้าง
+  - id: q2
+    question: หัวหน้าบอกว่า "ยอดขายไม่ดี ช่วยดูหน่อย" ควรถามกลับเรื่องไหนก่อน
+    choices:
+      - text: เทียบกับช่วงไหน และหมายถึงจำนวนออเดอร์หรือรายได้
+        correct: true
+        why: ได้ช่วงเวลาและตัวชี้วัดชัดเจน ทำให้คำถามวิเคราะห์ได้
+      - text: ควรใช้ Power BI หรือ Tableau
+        why: เลือกเครื่องมือทีหลังได้ ยังไม่ช่วยให้คำถามชัดขึ้น
+      - text: ขอข้อมูลทั้งหมดของบริษัทได้ไหม
+        why: ข้อมูลทั้งหมดเยอะเกินจำเป็น และยังไม่รู้ว่าต้องดูอะไร
+      - text: ควรเขียนด้วย Python หรือ SQL
+        why: เป็นเรื่องวิธีทำ ไม่ได้ช่วยให้รู้ว่าต้องตอบอะไร
+  - id: q3
+    question: ถ้ากดดูเฉลยก่อนทำข้อนั้นผ่าน เว็บจะบันทึกข้อนั้นว่าอะไรเมื่อทำผ่าน
+    choices:
+      - text: ผ่านด้วยเฉลย
+        correct: true
+        why: แยกไว้ให้รู้ว่าข้อไหนควรกลับมาทำเองอีกรอบ
+      - text: ผ่านเอง
+        why: ผ่านเองใช้กับข้อที่ทำได้โดยไม่ดูเฉลย
+      - text: ไม่ผ่าน
+        why: ยังนับว่าผ่าน แต่ติดป้ายว่าใช้เฉลยช่วย
+      - text: ข้อนั้นจะถูกลบ
+        why: ไม่มีข้อไหนถูกลบ
+
+summary:
+  - งานวิเคราะห์มี 5 ขั้น — ตั้งคำถาม หาข้อมูล ทำความสะอาด วิเคราะห์ และสื่อสาร
+  - คำถามที่ดีระบุช่วงเวลา ตัวชี้วัด และสิ่งที่จะเปรียบเทียบ
+  - คำถามเดียวกันตอบได้ทั้ง SQL และ pandas งานจริงมักใช้ทั้งสองอย่างคู่กัน
+
+interview:
+  - id: i1
+    q: เล่าขั้นตอนการวิเคราะห์ข้อมูลที่คุณเคยทำให้ฟังหน่อย
+    a: |
+      ตอบตาม 5 ขั้น โดยยกโปรเจกต์จริงหนึ่งงาน เช่น Capstone ของสายนี้
+      เริ่มจากคำถามธุรกิจที่ได้รับ แล้วเล่าว่าเปลี่ยนเป็นคำถามที่วิเคราะห์ได้ยังไง ใช้ข้อมูลอะไร
+      เจอปัญหาข้อมูลสกปรกแบบไหนและแก้ยังไง ใช้วิธีวิเคราะห์อะไร และสุดท้ายผลนำไปสู่การตัดสินใจอะไร
+      ผู้สัมภาษณ์อยากเห็นวิธีคิด ไม่ใช่แค่รายชื่อเครื่องมือ
+
+flashcards:
+  - id: c1
+    front: 5 ขั้นของงานวิเคราะห์
+    back: ตั้งคำถาม → หาข้อมูล → ทำความสะอาด → วิเคราะห์ → สื่อสาร
+  - id: c2
+    front: คำถามที่วิเคราะห์ได้ต้องระบุอะไรบ้าง
+    back: ช่วงเวลา ตัวชี้วัด และสิ่งที่จะเปรียบเทียบ
