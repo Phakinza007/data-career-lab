@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import Drill from '../components/Drill';
+import { getDrillPool } from '../lib/content/drill';
+
+const { items, modules } = await getDrillPool('da');
+---
+<Base title="ฝึกซ้อม">
+  <h1>ฝึกซ้อม</h1>
+  <p class="lead">สุ่มโจทย์จากบทที่เรียนจบแล้ว ข้อที่เคยตอบผิดหรือเคยดูเฉลยจะถูกสุ่มมาบ่อยกว่า</p>
+  <Drill client:only="react" items={items} modules={modules} />
+</Base>

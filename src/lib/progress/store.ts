@@ -1,3 +1,5 @@
+import { nextBox } from '../practice/leitner';
+
 export const STORAGE_KEY = 'dcl:progress';
 export const BACKUP_KEY = 'dcl:progress:backup';
 
@@ -111,6 +113,11 @@ export function createStore(storage: StorageLike | null, onChange: () => void = 
       if (r.solutionViewed) return;
       r.solutionViewed = true;
       data.exercises[id] = r;
+      commit();
+    },
+    leitnerBox: (id: string): number => data.leitner[id] ?? 1,
+    reviewFlashcard(id: string, remembered: boolean) {
+      data.leitner[id] = nextBox(data.leitner[id] ?? 1, remembered);
       commit();
     },
     draft: (id: string): string | null => data.drafts[id] ?? null,

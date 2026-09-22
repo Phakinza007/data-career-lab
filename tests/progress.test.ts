@@ -95,6 +95,30 @@ describe('createStore', () => {
     expect(onChange).toHaveBeenCalledTimes(2);
     expect(s.exercise('a/e1').status).toBe('none');
   });
+  it('tracks Leitner boxes: default 1, moves up on remembered, resets on forgotten', () => {
+    const s = createStore(new MemoryStorage());
+    expect(s.leitnerBox('c1')).toBe(1);
+    s.reviewFlashcard('c1', true);
+    expect(s.leitnerBox('c1')).toBe(2);
+    s.reviewFlashcard('c1', true);
+    s.reviewFlashcard('c1', true);
+    s.reviewFlashcard('c1', true);
+    expect(s.leitnerBox('c1')).toBe(5);
+    s.reviewFlashcard('c1', true); // capped
+    expect(s.leitnerBox('c1')).toBe(5);
+    s.reviewFlashcard('c1', false);
+    expect(s.leitnerBox('c1')).toBe(1);
+  });
+  it('persists Leitner boxes across stores on the same storage, including via export/import', () => {
+    const storage = new MemoryStorage();
+    const a = createStore(storage);
+    a.reviewFlashcard('c1', true);
+    const b = createStore(storage);
+    expect(b.leitnerBox('c1')).toBe(2);
+    const c = createStore(new MemoryStorage());
+    c.importJson(a.exportJson());
+    expect(c.leitnerBox('c1')).toBe(2);
+  });
 });
 
 describe('lessonStatus / moduleProgress', () => {

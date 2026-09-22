@@ -1,0 +1,13 @@
+---
+import Base from '../layouts/Base.astro';
+import Flashcards from '../components/Flashcards';
+import { getTrack } from '../lib/content/catalog';
+import { getFlashcardPool } from '../lib/content/flashcards';
+
+const [cards, modules] = await Promise.all([getFlashcardPool('da'), getTrack('da')]);
+---
+<Base title="ทบทวน">
+  <h1>ทบทวนคำศัพท์</h1>
+  <p class="lead">Flashcard แบบ Leitner — ตอบถูกเลื่อนขึ้นกล่อง ตอบผิดกลับไปกล่อง 1 เพื่อทวนถี่ขึ้น</p>
+  <Flashcards client:only="react" cards={cards} modules={modules} />
+</Base>
