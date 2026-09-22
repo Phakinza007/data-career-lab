@@ -1,0 +1,417 @@
+goals:
+  - นิยามตัวชี้วัดหลักของร้านค้า (revenue, orders, customers, AOV) ให้ชัดเจนจนทุกคนคำนวณได้ตรงกัน
+  - หลีกเลี่ยงกับดักการนับแถวหลัง JOIN ด้วย COUNT(DISTINCT ...)
+  - เทียบตัวเลขข้ามช่วงเวลาด้วย MoM และรู้ว่าเมื่อไหร่ควรเทียบแบบ YoY แทน
+
+examples:
+  - id: x1
+    title: ตาราง KPI รายเดือนของปี 2025
+    lang: sql
+    prompt: |
+      ทีมขอตารางสรุป KPI รายเดือนของปี 2025 — รายได้ จำนวนออเดอร์ และยอดเฉลี่ยต่อออเดอร์ (AOV)
+      โดยนับเฉพาะออเดอร์ที่ `completed`
+    steps:
+      - text: |
+          เริ่มจากสรุประดับเดือนก่อน — `DATE_TRUNC('month', ...)` ทำให้เดือนเดียวกันของคนละปีไม่ปนกัน
+          และ `COUNT(DISTINCT o.order_id)` นับ "ออเดอร์" ไม่ใช่ "รายการสินค้า"
+        code: |
+          SELECT DATE_TRUNC('month', o.order_date) AS month,
+                 SUM(li.quantity * li.unit_price) AS revenue,
+                 COUNT(DISTINCT o.order_id) AS orders
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          WHERE o.status = 'completed'
+            AND EXTRACT(year FROM o.order_date) = 2025
+          GROUP BY 1
+          ORDER BY 1
+      - text: |
+          เอาผลสรุปมาเข้า CTE แล้วค่อยคำนวณ AOV ต่อ — แยกชั้นแบบนี้ทำให้แก้นิยาม "รายได้" ที่เดียว
+          แล้วตัวเลขที่คำนวณต่อจากมันถูกต้องตามไปด้วยทั้งหมด
+        code: |
+          WITH monthly AS (
+            SELECT DATE_TRUNC('month', o.order_date) AS month,
+                   SUM(li.quantity * li.unit_price) AS revenue,
+                   COUNT(DISTINCT o.order_id) AS orders
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            WHERE o.status = 'completed'
+              AND EXTRACT(year FROM o.order_date) = 2025
+            GROUP BY 1
+          )
+          SELECT month, revenue, orders, ROUND(revenue / orders, 2) AS aov
+          FROM monthly
+          ORDER BY month
+    pitfall:
+      text: |
+        ถ้าใช้ `COUNT(*)` แทน `COUNT(DISTINCT o.order_id)` โค้ดยังรันผ่านปกติและไม่มี error ใดๆ
+        แต่ตัวเลขที่ได้คือจำนวน **รายการสินค้า** (ทั้งปี 2025 รวมกัน 5,988 รายการ จาก 3,415 ออเดอร์)
+        ไม่ใช่จำนวนออเดอร์ ผลคือ AOV ต่ำกว่าความจริงราว 43% — กับดักนี้เงียบมากเพราะไม่มีอะไรฟ้องว่าผิด
+      code: |
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               COUNT(*) AS wrong_orders,
+               COUNT(DISTINCT o.order_id) AS orders
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+          AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+        ORDER BY 1
+  - id: x2
+    title: รายได้เติบโตกี่เปอร์เซ็นต์เทียบเดือนก่อนหน้า (MoM)
+    lang: sql
+    prompt: |
+      ตัวเลขรายได้เดี่ยวๆ ไม่บอกว่าดีขึ้นหรือแย่ลง ต้องมีอะไรให้เทียบ — ขอรายได้รายเดือนปี 2025
+      พร้อมอัตราการเติบโตเทียบเดือนก่อนหน้าเป็นเปอร์เซ็นต์
+    steps:
+      - text: |
+          ดึงรายได้รายเดือนก่อน แล้วใช้ `LAG(revenue) OVER (ORDER BY month)` ดึงค่าของเดือนก่อนหน้ามาวางข้างกัน
+        code: |
+          WITH monthly AS (
+            SELECT DATE_TRUNC('month', o.order_date) AS month,
+                   SUM(li.quantity * li.unit_price) AS revenue
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            WHERE o.status = 'completed'
+            GROUP BY 1
+          )
+          SELECT month, revenue, LAG(revenue) OVER (ORDER BY month) AS prev_revenue
+          FROM monthly
+          ORDER BY month
+      - text: |
+          เปลี่ยนเป็นเปอร์เซ็นต์ด้วยสูตร `(ปัจจุบัน - ก่อนหน้า) / ก่อนหน้า * 100`
+          เดือนแรกสุดไม่มีเดือนก่อนหน้าให้เทียบ ค่าจึงเป็น NULL ซึ่งถูกต้องแล้ว
+        code: |
+          WITH monthly AS (
+            SELECT DATE_TRUNC('month', o.order_date) AS month,
+                   SUM(li.quantity * li.unit_price) AS revenue
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            WHERE o.status = 'completed'
+            GROUP BY 1
+          )
+          SELECT month, revenue,
+                 ROUND((revenue - LAG(revenue) OVER (ORDER BY month))
+                       / LAG(revenue) OVER (ORDER BY month) * 100, 1) AS mom_pct
+          FROM monthly
+          ORDER BY month
+    pitfall:
+      text: |
+        สูตรเปอร์เซ็นต์การเติบโตต้องหารด้วย **ค่าของเดือนก่อนหน้า** (ฐานที่เราเทียบจาก) ไม่ใช่ค่าเดือนปัจจุบัน
+        โค้ดด้านล่างหารผิดตัว รันผ่านและได้ตัวเลขหน้าตาน่าเชื่อถือ แต่ค่าที่ได้จะน้อยกว่าความจริงเสมอเวลาโต
+        (เช่น พ.ย. 2025 ได้ 37.8% แทนที่จะเป็น 60.7%) เพราะฐานที่ใช้หารใหญ่เกินไป
+      code: |
+        WITH monthly AS (
+          SELECT DATE_TRUNC('month', o.order_date) AS month,
+                 SUM(li.quantity * li.unit_price) AS revenue
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          WHERE o.status = 'completed'
+          GROUP BY 1
+        )
+        SELECT month, revenue,
+               ROUND((revenue - LAG(revenue) OVER (ORDER BY month)) / revenue * 100, 1) AS wrong_mom_pct
+        FROM monthly
+        ORDER BY month
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      รายได้ จำนวนออเดอร์ และ AOV แยกตามวิธีจ่ายเงิน (เฉพาะ `completed`) เรียงตามรายได้จากมากไปน้อย
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT o.payment_method,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             COUNT(___ o.order_id) AS orders,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(___ o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = ___
+      GROUP BY 1
+      ORDER BY revenue DESC
+    solution: |
+      SELECT o.payment_method,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             COUNT(DISTINCT o.order_id) AS orders,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - หลัง JOIN หนึ่งแถวคือหนึ่งรายการสินค้า ต้องนับออเดอร์แบบไม่ซ้ำ
+      - "นิยามรายได้ของเว็บนี้คือเฉพาะออเดอร์สถานะ 'completed'"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้รวมทั้งหมด (เฉพาะออเดอร์ `completed`) แสดงคอลัมน์เดียวชื่อ revenue
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT SUM(li.quantity * li.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+    hints:
+      - รายได้ต่อรายการ = quantity × unit_price
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์และจำนวนลูกค้าที่ซื้อจริง (เฉพาะ `completed`) แสดงคอลัมน์ orders, customers
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(DISTINCT order_id) AS orders,
+             COUNT(DISTINCT customer_id) AS customers
+      FROM orders
+      WHERE status = 'completed'
+    hints:
+      - ข้อนี้ไม่ต้อง join เพราะทั้งสองคอลัมน์อยู่ในตาราง orders อยู่แล้ว
+      - ลูกค้าหนึ่งคนซื้อได้หลายออเดอร์ ต้องนับแบบไม่ซ้ำ
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      AOV (รายได้เฉลี่ยต่อออเดอร์) ของทั้งชุดข้อมูล เฉพาะ `completed` ปัด 2 ตำแหน่ง
+      แสดงคอลัมน์เดียวชื่อ aov
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+    hints:
+      - AOV = รายได้รวม ÷ จำนวนออเดอร์ (ไม่ซ้ำ)
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้แยกตามสถานะออเดอร์ (ทุกสถานะ) แสดงคอลัมน์ status, revenue เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT o.status, SUM(li.quantity * li.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - ข้อนี้ไม่ต้องกรอง status เพราะโจทย์ขอทุกสถานะ
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง KPI รายเดือนของปี 2025 (เฉพาะ `completed`) แสดงคอลัมน์ month, revenue, orders, aov
+      โดย aov ปัด 2 ตำแหน่ง เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+          AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+      )
+      SELECT month, revenue, orders, ROUND(revenue / orders, 2) AS aov
+      FROM monthly
+      ORDER BY month
+    ordered: true
+    hints:
+      - สรุประดับเดือนใน CTE ก่อน แล้วค่อยคำนวณ AOV ข้างนอก
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      เทียบรายได้ก่อนและหลังหักส่วนลดรายเดือนของปี 2025 (เฉพาะ `completed`)
+      แสดงคอลัมน์ month, gross_revenue, net_revenue (ปัดทั้งคู่ 2 ตำแหน่ง) เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT DATE_TRUNC('month', o.order_date) AS month,
+             ROUND(SUM(li.quantity * li.unit_price), 2) AS gross_revenue,
+             ROUND(SUM(li.quantity * li.unit_price * (1 - COALESCE(o.discount_pct, 0) / 100.0)), 2) AS net_revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+        AND EXTRACT(year FROM o.order_date) = 2025
+      GROUP BY 1
+      ORDER BY month
+    ordered: true
+    hints:
+      - "discount_pct ที่เป็น NULL แปลว่าไม่มีส่วนลด ใช้ COALESCE(discount_pct, 0)"
+      - ส่วนลดเป็นเปอร์เซ็นต์ ต้องหาร 100 ก่อนเอาไปคูณ
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้รายเดือนของทั้งชุดข้อมูล (เฉพาะ `completed`) พร้อม MoM เป็นเปอร์เซ็นต์ปัด 1 ตำแหน่ง
+      แสดงคอลัมน์ month, revenue, mom_pct เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      )
+      SELECT month, revenue,
+             ROUND((revenue - LAG(revenue) OVER (ORDER BY month))
+                   / LAG(revenue) OVER (ORDER BY month) * 100, 1) AS mom_pct
+      FROM monthly
+      ORDER BY month
+    ordered: true
+    hints:
+      - "LAG(revenue) OVER (ORDER BY month) คือค่าของเดือนก่อนหน้า"
+      - หารด้วยค่าของเดือนก่อนหน้า ไม่ใช่เดือนปัจจุบัน
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      เดือนไหนของปี 2025 มี AOV สูงที่สุด (เฉพาะ `completed`) แสดงคอลัมน์ month, aov (ปัด 2 ตำแหน่ง) แถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id) AS aov
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+          AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+      )
+      SELECT month, ROUND(aov, 2) AS aov
+      FROM monthly
+      ORDER BY aov DESC
+      LIMIT 1
+    hints:
+      - คำนวณ AOV รายเดือนก่อน แล้วค่อยเรียงและตัดด้วย LIMIT
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      สัดส่วนรายได้ที่ "หายไป" เพราะออเดอร์ถูกยกเลิกหรือคืนของ แยกรายเดือนของปี 2025
+      แสดงคอลัมน์ month, completed_revenue, lost_pct (สัดส่วนรายได้ของออเดอร์ที่ไม่ใช่ `completed`
+      เทียบกับรายได้ทุกสถานะของเดือนนั้น เป็นเปอร์เซ็นต์ปัด 1 ตำแหน่ง) เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT DATE_TRUNC('month', o.order_date) AS month,
+             SUM(CASE WHEN o.status = 'completed' THEN li.quantity * li.unit_price ELSE 0 END) AS completed_revenue,
+             ROUND(SUM(CASE WHEN o.status <> 'completed' THEN li.quantity * li.unit_price ELSE 0 END)
+                   / SUM(li.quantity * li.unit_price) * 100, 1) AS lost_pct
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE EXTRACT(year FROM o.order_date) = 2025
+      GROUP BY 1
+      ORDER BY month
+    ordered: true
+    hints:
+      - "ใช้ SUM(CASE WHEN ... THEN ... ELSE 0 END) แยกยอดตามสถานะภายใน query เดียว"
+      - ตัวหารคือรายได้ทุกสถานะของเดือนนั้น (ไม่กรอง status ใน WHERE)
+
+quiz:
+  - id: q1
+    question: หลัง JOIN orders กับ order_items แล้วใช้ COUNT(*) เพื่อนับจำนวนออเดอร์ จะเกิดอะไรขึ้น
+    choices:
+      - text: ได้จำนวนรายการสินค้าแทนจำนวนออเดอร์ ทำให้ AOV ต่ำกว่าความจริง
+        correct: true
+        why: หนึ่งออเดอร์มีได้หลายรายการสินค้า หลัง join หนึ่งแถวคือหนึ่งรายการ ต้องใช้ COUNT(DISTINCT order_id)
+      - text: ได้จำนวนออเดอร์ถูกต้อง เพราะ JOIN ไม่เพิ่มจำนวนแถว
+        why: JOIN แบบหนึ่ง-ต่อ-หลายเพิ่มจำนวนแถวเสมอ ออเดอร์ที่มี 3 รายการจะกลายเป็น 3 แถว
+      - text: query จะ error เพราะนับคอลัมน์ที่ซ้ำกัน
+        why: ไม่ error เลย นี่คือสิ่งที่ทำให้กับดักนี้อันตราย — ได้ตัวเลขที่ผิดแบบเงียบๆ
+      - text: ได้จำนวนลูกค้าแทน
+        why: COUNT(*) นับแถว ไม่เกี่ยวกับจำนวนลูกค้า
+  - id: q2
+    question: ทำไมรายงานต้องระบุว่า "รายได้" นับจากออเดอร์สถานะไหนบ้าง
+    choices:
+      - text: เพราะการรวมออเดอร์ที่ยกเลิก/คืนของเข้าไปด้วย ทำให้ตัวเลขต่างจากการนับเฉพาะ completed ถึง 12.3%
+        correct: true
+        why: นิยามที่ต่างกันทำให้คนสองคนได้ตัวเลขคนละตัวจากข้อมูลชุดเดียวกัน จนเถียงกันไม่จบ
+      - text: เพราะฐานข้อมูลจะคำนวณผิดถ้าไม่ระบุ
+        why: ฐานข้อมูลคำนวณตามที่สั่งเสมอ ปัญหาอยู่ที่คนนิยามไม่ตรงกัน ไม่ใช่ที่ฐานข้อมูล
+      - text: เพราะออเดอร์ที่ยกเลิกไม่มีข้อมูลในตาราง order_items
+        why: ออเดอร์ที่ยกเลิกก็มีรายการสินค้าอยู่ในตารางครบ แค่ไม่ควรนับเป็นเงินที่ร้านได้จริง
+      - text: ไม่จำเป็นต้องระบุ เพราะทุกคนเข้าใจตรงกันอยู่แล้ว
+        why: นี่คือสมมติฐานที่ทำให้รายงานสองฉบับไม่ตรงกันบ่อยที่สุด
+  - id: q3
+    question: gross revenue กับ net revenue ในบทนี้ต่างกันยังไง
+    choices:
+      - text: gross คือยอดตามป้ายราคา ส่วน net คือยอดหลังหักส่วนลดแล้ว — ถูกทั้งคู่แต่ตอบคนละคำถาม
+        correct: true
+        why: ทั้งสองตัวใช้ได้ ขอแค่รายงานบอกชัดว่ากำลังพูดถึงตัวไหน
+      - text: net คือ gross ที่หักต้นทุนสินค้าออกแล้ว
+        why: การหักต้นทุนจะได้ gross profit ซึ่งเป็นอีกตัวชี้วัดหนึ่ง ไม่ใช่ net revenue ในบทนี้
+      - text: gross ผิดเสมอ ต้องใช้ net เท่านั้น
+        why: ไม่มีตัวไหนผิด ขึ้นกับคำถามที่กำลังตอบ ขอแค่ระบุให้ชัด
+      - text: ต่างกันแค่การปัดเศษ
+        why: ต่างกันจริงประมาณ 2.8% ของรายได้ ไม่ใช่เรื่องการปัดเศษ
+  - id: q4
+    question: ธุรกิจที่ยอดขายพุ่งทุกเดือน พ.ย.–ธ.ค. ควรเทียบการเติบโตแบบไหนเป็นหลัก
+    choices:
+      - text: YoY (เทียบเดือนเดียวกันของปีก่อน) เพราะหักผลของฤดูกาลออกไปได้
+        correct: true
+        why: เดือนเดียวกันของคนละปีมีฤดูกาลเหมือนกัน ความต่างที่เหลือจึงเป็นการเติบโตจริง
+      - text: MoM เท่านั้น เพราะใหม่กว่าและไวกว่า
+        why: MoM ไวจริงแต่ในธุรกิจที่มีฤดูกาลจะเห็นตัวเลขกระโดดทุกปลายปีจนตีความผิดได้
+      - text: เทียบกับค่าเฉลี่ยทั้งปีก็พอ
+        why: ค่าเฉลี่ยทั้งปีกลบทั้งฤดูกาลและแนวโน้ม ทำให้มองไม่เห็นว่าโตหรือหดจริง
+      - text: ไม่ต้องเทียบเลย ดูตัวเลขดิบพอ
+        why: ตัวเลขเดี่ยวๆ ไม่บอกว่าดีขึ้นหรือแย่ลง ต้องมีฐานให้เทียบเสมอ
+
+summary:
+  - ตัวชี้วัดที่ใช้ได้จริงต้องมีนิยามเดียว เทียบได้ และชี้ทางต่อได้ — ในเว็บนี้ "รายได้" = ออเดอร์ completed เท่านั้น
+  - หลัง JOIN หนึ่งแถวคือหนึ่งรายการสินค้า ต้องใช้ COUNT(DISTINCT order_id) เวลานับออเดอร์ ไม่งั้น AOV เพี้ยน
+  - MoM ใช้ LAG() เทียบเดือนก่อนหน้า แต่ธุรกิจที่มีฤดูกาลควรดู YoY ควบคู่ไปด้วย
+
+interview:
+  - id: i1
+    q: ถ้าทีมสองทีมรายงานยอดขายเดือนเดียวกันไม่ตรงกัน จะไล่หาสาเหตุยังไง
+    a: |
+      ไล่จากนิยามก่อนโค้ดเสมอ: (1) นับออเดอร์สถานะไหนบ้าง (completed อย่างเดียว หรือรวม cancelled/returned)
+      (2) ยอดก่อนหรือหลังหักส่วนลด รวมค่าส่ง/ภาษีไหม (3) ใช้วันที่อะไรเป็นตัวแบ่งเดือน (วันสั่ง วันจ่ายเงิน หรือวันส่งของ)
+      (4) ตัดรอบเดือนด้วย timezone เดียวกันหรือเปล่า ส่วนใหญ่ความต่างมาจากข้อใดข้อหนึ่งข้างบน ไม่ใช่บั๊กใน query
+      ถ้านิยามตรงกันหมดแล้วตัวเลขยังต่าง ค่อยไปดูกับดักทางเทคนิค เช่น COUNT(*) หลัง JOIN ที่นับรายการสินค้าแทนออเดอร์
+  - id: i2
+    q: AOV ลดลง 10% เดือนนี้ จะตีความยังไง
+    a: |
+      AOV = รายได้ ÷ จำนวนออเดอร์ ตัวเลขลดได้จากสองทาง — รายได้ลดโดยจำนวนออเดอร์เท่าเดิม
+      หรือจำนวนออเดอร์เพิ่มเร็วกว่ารายได้ (ซึ่งอาจเป็นข่าวดีด้วยซ้ำ เช่น แคมเปญดึงลูกค้าใหม่ที่ซื้อชิ้นเล็กเข้ามาเยอะ)
+      จึงต้องดูตัวตั้งและตัวหารแยกกันก่อนเสมอ แล้วค่อยเจาะต่อว่าเกิดกับทุกกลุ่มหรือเฉพาะบางกลุ่ม
+      (เช่น หมวดสินค้า ช่องทาง หรือลูกค้าใหม่/เก่า) — ตัวเลขอัตราส่วนตัวเดียวไม่เคยบอกสาเหตุได้ด้วยตัวเอง
+
+flashcards:
+  - id: c1
+    front: AOV คำนวณยังไง
+    back: รายได้รวม ÷ จำนวนออเดอร์ (นับแบบไม่ซ้ำ) — ต้องระบุด้วยว่านับสถานะไหน
+  - id: c2
+    front: ทำไมต้อง COUNT(DISTINCT order_id) หลัง JOIN order_items
+    back: เพราะหลัง join หนึ่งแถวคือหนึ่งรายการสินค้า ไม่ใช่หนึ่งออเดอร์
+  - id: c3
+    front: MoM vs YoY ใช้ตอนไหน
+    back: MoM จับความเปลี่ยนแปลงระยะสั้น ส่วน YoY หักผลฤดูกาลออก เหมาะกับธุรกิจที่ยอดขายขึ้นลงตามเทศกาล
