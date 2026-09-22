@@ -1,0 +1,68 @@
+---
+track: da
+module: sql
+order: 2
+title: GROUP BY และ HAVING
+minutes: 25
+prereqs: [da/sql/01-select-where-order]
+---
+
+## สรุปข้อมูลเป็นกลุ่มด้วย GROUP BY
+
+จนถึงตอนนี้เราดูข้อมูลทีละแถว แต่คำถามธุรกิจส่วนใหญ่ถามถึง "ภาพรวม" เช่น "แต่ละเมืองมีลูกค้ากี่คน"
+ต้องใช้ **ฟังก์ชัน aggregate** รวมกับ `GROUP BY`:
+
+| ฟังก์ชัน | ทำอะไร |
+| --- | --- |
+| `COUNT(*)` | นับจำนวนแถว |
+| `SUM(col)` | รวมค่า |
+| `AVG(col)` | ค่าเฉลี่ย |
+| `MIN(col)` / `MAX(col)` | ค่าต่ำสุด / สูงสุด |
+
+```sql
+SELECT city, COUNT(*) AS n FROM customers GROUP BY city
+```
+
+**กติกาสำคัญ:** ทุกคอลัมน์ที่อยู่ใน `SELECT` (ที่ไม่ใช่ aggregate function) ต้องอยู่ใน `GROUP BY` ด้วย
+ถ้าลืม SQL จะ error ทันที — ต่างจากภาษาทั่วไปที่มักจะ "เดา" ให้ SQL เข้มงวดเรื่องนี้เพื่อป้องกันผลลัพธ์ที่กำกวม
+
+## กรอง "กลุ่ม" ด้วย HAVING
+
+`WHERE` กรองทีละแถวก่อนจัดกลุ่ม แต่ถ้าอยากกรองผลลัพธ์ *หลัง* รวมกลุ่มแล้ว (เช่น "เฉพาะเมืองที่มีลูกค้ามากกว่า 300 คน")
+ต้องใช้ `HAVING` แทน:
+
+```sql
+SELECT city, COUNT(*) AS n FROM customers
+GROUP BY city
+HAVING COUNT(*) > 300
+```
+
+| | WHERE | HAVING |
+| --- | --- | --- |
+| ทำงานตอนไหน | ก่อนจัดกลุ่ม | หลังจัดกลุ่มและคำนวณ aggregate แล้ว |
+| ใช้ aggregate function ได้ไหม | ไม่ได้ (error) | ได้ |
+| กรองอะไร | ทีละแถว | ทีละกลุ่ม |
+
+## GROUP BY หลายคอลัมน์
+
+```sql
+SELECT city, channel, COUNT(*) AS n
+FROM customers
+GROUP BY city, channel
+```
+
+ยิ่งใส่คอลัมน์เยอะใน `GROUP BY` กลุ่มก็ยิ่งละเอียดขึ้น — แต่ละแถวผลลัพธ์คือ 1 คู่ค่าที่ไม่ซ้ำกันของทุกคอลัมน์ที่ GROUP BY ไว้
+
+## เงื่อนไขแบบมีเงื่อนไขซ้อนใน aggregate
+
+บางครั้งอยากนับเฉพาะบางเงื่อนไขภายในกลุ่มเดียวกัน (เช่น "กี่ % ของลูกค้าในเมืองนี้มาจาก organic")
+ใช้ `CASE WHEN ... THEN 1 ELSE 0 END` ข้างใน `SUM`/`COUNT` ได้:
+
+```sql
+SELECT city,
+       SUM(CASE WHEN channel = 'organic' THEN 1 ELSE 0 END) AS n_organic
+FROM customers
+GROUP BY city
+```
+
+วิธีนี้ใช้ได้กับฐานข้อมูลแทบทุกยี่ห้อ (พกไปใช้ตอนสัมภาษณ์ได้เลย)

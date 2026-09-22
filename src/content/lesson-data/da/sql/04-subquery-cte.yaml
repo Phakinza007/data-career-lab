@@ -1,0 +1,259 @@
+goals:
+  - ใช้ scalar/correlated subquery เทียบค่าของแถวกับค่าที่คำนวณแยกไว้
+  - กรองด้วย IN / EXISTS / NOT EXISTS และรู้กับดักของ NOT IN เมื่อข้อมูลมี NULL
+  - ใช้ CTE (WITH) ทำให้ query หลายขั้นตอนอ่านง่ายขึ้น
+
+examples:
+  - id: x1
+    title: สินค้าที่ราคาแพงกว่าราคาเฉลี่ยของหมวดตัวเอง
+    lang: sql
+    prompt: |
+      ทีมสินค้าอยากรู้ว่าในแต่ละหมวด มีสินค้าตัวไหนที่ราคาสูงกว่าค่าเฉลี่ยของหมวดนั้นเอง (ไม่ใช่เฉลี่ยทั้งร้าน)
+    steps:
+      - text: |
+          ใช้ **correlated subquery** — subquery ข้างในอ้างอิงถึงแถวข้างนอก (`p1.category`)
+          ทำให้คำนวณค่าเฉลี่ยใหม่ทุกครั้งตามหมวดของแถวนั้นๆ
+        code: |
+          SELECT product_name, category, price FROM products p1
+          WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.category)
+          ORDER BY category, price DESC
+          LIMIT 10
+      - text: |
+          นับจำนวนทั้งหมดที่เข้าเงื่อนไขนี้
+        code: |
+          SELECT COUNT(*) FROM products p1
+          WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.category)
+    pitfall:
+      text: |
+        ถ้าลืมใส่ `WHERE p2.category = p1.category` (ไม่ correlate กับแถวข้างนอก) subquery จะกลายเป็นค่าคงที่
+        ค่าเดียว (ค่าเฉลี่ยของทั้งร้าน) แล้วเอาไปเทียบกับทุกแถว ได้ผลต่างไปเลย (31 แถว แทนที่จะเป็น 48 แถว)
+      code: |
+        SELECT count(*) FROM products p1
+        WHERE price > (SELECT AVG(price) FROM products p2)
+  - id: x2
+    title: "ลูกค้าที่เคยมีออเดอร์ถูกยกเลิก — เขียนได้ 2 แบบ"
+    lang: sql
+    prompt: |
+      อยากนับลูกค้าที่เคยมีออเดอร์สถานะ cancelled อย่างน้อยหนึ่งครั้ง เปรียบเทียบ 2 วิธีเขียน
+    steps:
+      - text: |
+          แบบที่ 1: `IN` กับ subquery ที่คืนลิสต์ของ customer_id
+        code: |
+          SELECT COUNT(*) FROM customers
+          WHERE customer_id IN (SELECT customer_id FROM orders WHERE status = 'cancelled')
+      - text: |
+          แบบที่ 2: `EXISTS` กับ correlated subquery ที่เช็กว่า "มีแถวแบบนี้อยู่จริงไหม" — ได้ผลลัพธ์เท่ากัน (371)
+          `EXISTS` ปลอดภัยกว่าเมื่อ subquery อาจมีค่า NULL ปนอยู่ (ดู pitfall)
+        code: |
+          SELECT COUNT(*) FROM customers c
+          WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'cancelled')
+    pitfall:
+      text: |
+        `NOT IN` อันตรายเมื่อ subquery มีค่า NULL ปนอยู่ ลองดูตัวอย่างนี้: เช็กว่าส่วนลด 25% เคยถูกใช้ไหม
+        (คำตอบที่ถูกต้องคือ "ไม่เคย" เพราะร้านมีแค่ส่วนลด 5/10/15/20%) แต่ผลลัพธ์กลับว่างเปล่า (0 แถว)
+        ทั้งที่ 25 ไม่เคยปรากฏจริงๆ! สาเหตุคือ `orders.discount_pct` มีค่า NULL ปนอยู่ (ออเดอร์ที่ไม่มีส่วนลด)
+        ทำให้ `NOT IN` กลายเป็น unknown ทุกแถวไปเลย ทางแก้คือกรอง NULL ออกจาก subquery ก่อนเสมอ
+        (`WHERE discount_pct IS NOT NULL`) หรือใช้ `NOT EXISTS` แทน
+      code: |
+        SELECT * FROM (VALUES (5), (10), (15), (20), (25)) v(pct)
+        WHERE pct NOT IN (SELECT discount_pct FROM orders)
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      ใช้ CTE หาจำนวนออเดอร์ต่อสถานะก่อน แล้วเลือกเฉพาะสถานะที่มีมากกว่า 400 ออเดอร์
+      เติม `___` ให้ครบ
+    starter: |
+      ___ t AS (SELECT status, COUNT(*) AS n FROM orders GROUP BY status)
+      SELECT * FROM t WHERE n > ___
+    solution: |
+      WITH t AS (SELECT status, COUNT(*) AS n FROM orders GROUP BY status)
+      SELECT * FROM t WHERE n > 400
+    hints:
+      - CTE เริ่มต้นด้วยคำว่า WITH
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยมีออเดอร์เลย (ใช้ subquery และ NOT IN)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers
+      WHERE customer_id NOT IN (SELECT customer_id FROM orders)
+    hints:
+      - "`orders.customer_id` ไม่มีค่า NULL เลย จึงใช้ NOT IN ได้อย่างปลอดภัยในกรณีนี้"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนสินค้าที่ราคาสูงกว่าราคาเฉลี่ยของสินค้าทั้งหมด (ไม่แยกหมวด)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM products
+      WHERE price > (SELECT AVG(price) FROM products)
+    hints:
+      - subquery ตัวนี้ไม่ต้อง correlate เพราะต้องการค่าเฉลี่ยของทั้งตาราง
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยสั่งซื้อด้วย credit_card (ใช้ EXISTS)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers c
+      WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.payment_method = 'credit_card')
+    hints:
+      - เหมือนแบบที่ 2 ของตัวอย่าง x2 แต่เปลี่ยนเงื่อนไข
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      ใช้ CTE หารายได้ (quantity × unit_price) ต่อลูกค้าก่อน (เฉพาะ completed) แล้วนับว่ามีกี่คนที่รายได้เกิน 50000 บาท
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH rev AS (
+        SELECT o.customer_id, SUM(i.quantity * i.unit_price) AS revenue
+        FROM orders o JOIN order_items i ON o.order_id = i.order_id
+        WHERE o.status = 'completed'
+        GROUP BY o.customer_id
+      )
+      SELECT COUNT(*) FROM rev WHERE revenue > 50000
+    hints:
+      - สร้าง CTE ชื่อ rev เก็บรายได้ต่อลูกค้าก่อน แล้วค่อยนับจาก CTE นั้น
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนสินค้าที่ราคาต่ำกว่าราคาเฉลี่ยของหมวดตัวเอง (correlated subquery, ตรงข้ามกับตัวอย่าง x1)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM products p1
+      WHERE price < (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.category)
+    hints:
+      - เหมือน x1 เป๊ะ แค่เปลี่ยนเครื่องหมายจาก > เป็น <
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยมีออเดอร์ยกเลิกเลยสักครั้ง (ใช้ NOT EXISTS)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'cancelled')
+    hints:
+      - "NOT EXISTS ปลอดภัยกว่า NOT IN เมื่อกังวลเรื่อง NULL"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      ใช้ CTE หา 2 อย่าง (รายได้รวมแต่ละหมวด และจำนวนสินค้าในหมวด) แล้วนับว่ามีกี่หมวดที่
+      "รายได้ ÷ จำนวนสินค้า" มากกว่า 100000 บาท
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH rev AS (
+        SELECT p.category, SUM(i.quantity * i.unit_price) AS revenue
+        FROM order_items i JOIN products p USING(product_id)
+        GROUP BY p.category
+      ),
+      cnt AS (
+        SELECT category, COUNT(*) AS n FROM products GROUP BY category
+      )
+      SELECT COUNT(*) FROM rev JOIN cnt USING(category)
+      WHERE revenue / n > 100000
+    hints:
+      - ตั้ง CTE สองตัว แล้ว JOIN กันด้วยคอลัมน์ category
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยมีออเดอร์ยกเลิกเลย แต่มีออเดอร์อย่างน้อย 3 ครั้ง
+      (รวมเทคนิค subquery/CTE เข้ากับ GROUP BY/HAVING)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH ok AS (
+        SELECT customer_id FROM customers c
+        WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'cancelled')
+      )
+      SELECT COUNT(*) FROM (
+        SELECT o.customer_id FROM orders o
+        JOIN ok USING(customer_id)
+        GROUP BY o.customer_id
+        HAVING COUNT(*) >= 3
+      ) t
+    hints:
+      - "หา 'ลูกค้าที่ไม่เคยยกเลิก' ด้วย CTE ก่อน แล้ว JOIN กับ orders เพื่อนับจำนวนออเดอร์"
+      - ผลลัพธ์จาก GROUP BY...HAVING เป็นหลายแถว ต้องห่อด้วย subquery อีกชั้นเพื่อ COUNT(*) ให้ได้ค่าเดียว
+
+quiz:
+  - id: q1
+    question: subquery กับ JOIN ต่างกันยังไง ควรเลือกใช้แบบไหน
+    choices:
+      - text: ทั้งสองแบบทำงานคล้ายกันได้ในหลายกรณี subquery มักอ่านง่ายกว่าเมื่อแค่ต้องการ "เช็คว่ามี/ไม่มี" หรือเทียบค่าเดียว ส่วน JOIN เหมาะกับตอนต้องการดึงคอลัมน์จากอีกตารางมาแสดงด้วย
+        correct: true
+        why: ไม่มีกฎตายตัวว่าต้องใช้แบบไหนเสมอ ขึ้นกับว่าโจทย์ต้องการดึงข้อมูลจากอีกตารางมาแสดงด้วยไหม
+      - text: subquery เร็วกว่า JOIN เสมอ
+        why: ความเร็วขึ้นกับ query planner และ index ไม่ใช่กฎตายตัว
+      - text: JOIN ใช้ได้แค่ 2 ตาราง ส่วน subquery ใช้ได้ไม่จำกัด
+        why: JOIN เชื่อมได้หลายตารางเหมือนกัน ไม่ได้จำกัดที่ 2
+      - text: subquery ใช้ได้เฉพาะใน WHERE เท่านั้น
+        why: subquery ใช้ได้ทั้งใน SELECT, FROM, WHERE
+  - id: q2
+    question: EXISTS ต่างจาก IN ยังไงเมื่อข้อมูลมี NULL
+    choices:
+      - text: NOT IN กับ subquery ที่มี NULL ปนจะได้ผลลัพธ์ว่างเปล่าเสมอ ส่วน NOT EXISTS ไม่มีปัญหานี้
+        correct: true
+        why: NOT IN เทียบค่าทีละตัวและ NULL ทำให้ผลเป็น unknown ทั้งชุด ส่วน EXISTS แค่เช็คว่ามีแถวจับคู่ได้ไหม ไม่สนใจ NULL ในลักษณะเดียวกัน
+      - text: IN กับ EXISTS ให้ผลต่างกันเสมอไม่ว่ากรณีไหน
+        why: ในหลายกรณี (ไม่มี NULL) ทั้งสองให้ผลเหมือนกัน ต่างกันชัดตอนมี NULL กับ NOT IN/NOT EXISTS
+      - text: EXISTS ใช้ได้แค่กับ correlated subquery เท่านั้น
+        why: ถูกที่ EXISTS มักใช้แบบ correlated แต่ไม่ใช่ปัญหาเรื่อง NULL ที่ถามถึง
+      - text: ปัญหา NULL เกิดกับ EXISTS ไม่ใช่ IN
+        why: ตรงข้าม ปัญหาเกิดกับ NOT IN ไม่ใช่ NOT EXISTS
+  - id: q3
+    question: CTE (WITH) ต่างจาก subquery ธรรมดายังไง
+    choices:
+      - text: CTE ตั้งชื่อและเขียนแยกไว้ก่อน ทำให้ query ที่มีหลายขั้นตอนอ่านง่ายขึ้น และเรียกใช้ซ้ำได้ในคำสั่งเดียวกัน
+        correct: true
+        why: ความแตกต่างหลักคือความอ่านง่ายและการจัดโครงสร้าง ไม่ใช่ความสามารถ (ทำสิ่งเดียวกันได้ด้วย subquery ซ้อนกัน)
+      - text: CTE เร็วกว่า subquery เสมอ
+        why: ไม่มีการรับประกันเรื่องความเร็ว ขึ้นกับ query planner ของแต่ละฐานข้อมูล
+      - text: CTE ใช้ aggregate function ไม่ได้
+        why: CTE เขียน SELECT อะไรก็ได้ข้างในเหมือน query ปกติ รวมถึง aggregate function
+      - text: ใช้ CTE ได้แค่ครั้งเดียวต่อ query
+        why: ตั้ง CTE ได้หลายตัวในคำสั่งเดียว (คั่นด้วยจุลภาค) อย่างที่เห็นใน e7
+
+summary:
+  - correlated subquery คำนวณค่าใหม่ทุกแถวโดยอ้างอิงค่าจากแถวข้างนอก (เช่น เฉลี่ยของหมวดตัวเอง)
+  - "NOT IN อันตรายเมื่อ subquery มี NULL ปน (ได้ผลว่างเปล่าเสมอ) ใช้ NOT EXISTS แทนจะปลอดภัยกว่า"
+  - CTE (WITH) ทำให้ query หลายขั้นตอนอ่านง่ายขึ้น โดยตั้งชื่อผลลัพธ์แต่ละขั้นไว้ก่อน
+
+interview:
+  - id: i1
+    q: ทำไม NOT IN ถึงอันตรายเมื่อ subquery มี NULL ควรใช้อะไรแทน
+    a: |
+      `NOT IN (subquery)` เทียบค่าของแถวปัจจุบันกับ**ทุกค่า**ที่ subquery คืนมาทีละตัวด้วย `<>`
+      ถ้าใน subquery มีแม้แต่ค่า NULL ปนอยู่ค่าเดียว การเทียบ `x <> NULL` จะได้ unknown เสมอ
+      และเมื่อรวม unknown เข้ากับผลลัพธ์อื่นด้วย AND ทั้งชุดจะกลายเป็น unknown (ไม่ผ่านเงื่อนไข) ทุกแถวไปเลย
+      แม้ว่าจริงๆ แถวนั้นควรจะผ่านก็ตาม
+
+      ทางแก้ที่ปลอดภัยกว่าคือใช้ `NOT EXISTS` แทน เพราะมันแค่เช็คว่า "มีแถวที่จับคู่ได้ไหม" ไม่ได้เทียบค่าทีละตัว
+      จึงไม่มีปัญหานี้ หรือถ้าจะใช้ NOT IN ต่อไป ต้องกรอง NULL ออกจาก subquery ด้วย `IS NOT NULL` เสมอ
+
+flashcards:
+  - id: c1
+    front: correlated subquery คืออะไร
+    back: subquery ที่อ้างอิงค่าจากแถวของ query ข้างนอก ทำให้คำนวณใหม่ทุกแถว (เช่น เฉลี่ยของหมวดตัวเอง)
+  - id: c2
+    front: ทำไม NOT IN อันตรายเมื่อ subquery มี NULL
+    back: การเทียบ <> กับ NULL ได้ unknown เสมอ ทำให้ทั้งชุดกลายเป็น unknown (ไม่ผ่าน) ทุกแถว ควรใช้ NOT EXISTS แทน

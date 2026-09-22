@@ -1,0 +1,246 @@
+goals:
+  - เลือกและตั้งชื่อคอลัมน์ที่ต้องการด้วย SELECT
+  - กรองแถวด้วย WHERE (comparison, AND/OR, IN, BETWEEN, LIKE, IS NULL)
+  - เรียงและตัดผลลัพธ์ด้วย ORDER BY หลายคอลัมน์และ LIMIT
+
+examples:
+  - id: x1
+    title: 5 สินค้าราคาถูกที่สุดในหมวด Books
+    lang: sql
+    prompt: |
+      ร้านอยากรู้ว่าหมวด Books มีสินค้าอะไรบ้างที่ราคาถูก เผื่อเอาไปทำโปรโมชัน "ซื้อหนังสือราคาย่อมเยา"
+    steps:
+      - text: |
+          **ดูโครงตารางก่อน** — เช็กว่า `products` มีคอลัมน์อะไรบ้าง
+        code: |
+          SELECT * FROM products LIMIT 5
+      - text: |
+          **กรองเฉพาะหมวดที่ต้องการ** ด้วย WHERE แล้วเลือกแค่คอลัมน์ที่ใช้จริง
+        code: |
+          SELECT product_name, price FROM products WHERE category = 'Books'
+      - text: |
+          **เรียงจากถูกไปแพงแล้วตัดเอาแค่ 5 แถว** ด้วย ORDER BY กับ LIMIT
+        code: |
+          SELECT product_name, price FROM products
+          WHERE category = 'Books'
+          ORDER BY price
+          LIMIT 5
+    pitfall:
+      text: |
+        การเทียบสตริงใน SQL สนใจตัวพิมพ์เล็ก-ใหญ่ ถ้าพิมพ์ `'books'` (b เล็ก) จะไม่เจอแถวไหนเลย
+        ทั้งที่หมวดที่ถูกต้องเขียนว่า `'Books'` (B ใหญ่) — ค่าที่เก็บในคอลัมน์ต้องตรงเป๊ะ
+      code: |
+        SELECT product_name, price FROM products
+        WHERE category = 'books'
+        ORDER BY price
+        LIMIT 5
+  - id: x2
+    title: ออเดอร์ที่ยกเลิกหรือคืนสินค้าในเดือน มี.ค. 2025
+    lang: sql
+    prompt: |
+      ทีมบริการลูกค้าอยากดูออเดอร์ที่มีปัญหา (ยกเลิกหรือคืนสินค้า) ในเดือนมีนาคม 2025 เพื่อตามไปสอบถามลูกค้า
+    steps:
+      - text: |
+          **ดูค่าที่เป็นไปได้ของ status ก่อน** จะได้รู้ว่าต้องกรองคำว่าอะไร
+        code: |
+          SELECT DISTINCT status FROM orders
+      - text: |
+          **กรองด้วย IN (สถานะที่ต้องการ) และ BETWEEN (ช่วงวันที่)** แล้วเรียงจากล่าสุดก่อน
+        code: |
+          SELECT order_id, order_date, status FROM orders
+          WHERE status IN ('cancelled', 'returned')
+            AND order_date BETWEEN '2025-03-01' AND '2025-03-31'
+          ORDER BY order_date DESC
+    pitfall:
+      text: |
+        SQL ให้ความสำคัญกับ `AND` มากกว่า `OR` (ทำงานก่อน) ถ้าเขียนเงื่อนไขแบบนี้โดยไม่ใส่วงเล็บ
+        มันจะแปลว่า "cancelled ทั้งหมดทุกวัน" หรือ "returned เฉพาะเดือน มี.ค." — ไม่ใช่สิ่งที่ต้องการ
+        (ได้ 412 แถว ทั้งที่คำตอบที่ถูกต้องมีแค่ 19 แถว) วิธีแก้คือใส่วงเล็บ `(status = 'cancelled' OR status = 'returned')`
+      code: |
+        SELECT order_id, order_date, status FROM orders
+        WHERE status = 'cancelled' OR status = 'returned' AND order_date BETWEEN '2025-03-01' AND '2025-03-31'
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      หา 5 ลูกค้าล่าสุดที่สมัคร ถ้าวันที่สมัครซ้ำกัน ให้เอาคนที่ customer_id มากกว่าไว้ก่อน
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT customer_id, signup_date FROM customers
+      ORDER BY ___, ___
+      LIMIT 5
+    solution: |
+      SELECT customer_id, signup_date FROM customers
+      ORDER BY signup_date DESC, customer_id DESC
+      LIMIT 5
+    ordered: true
+    hints:
+      - เรียงจากสมัคร "ล่าสุด" ก่อน ต้องใช้ DESC
+      - ตัวตัดสินเมื่อวันที่ซ้ำกัน (tie-break) ใส่เป็นคอลัมน์ที่สองใน ORDER BY
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      สินค้าหมวด Electronics ที่ราคาไม่เกิน 2000 บาท (แสดงชื่อสินค้าและราคา)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, price FROM products
+      WHERE category = 'Electronics' AND price <= 2000
+    hints:
+      - ใช้ AND เชื่อมสองเงื่อนไขในตัวเดียว
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      ออเดอร์ที่จ่ายด้วย promptpay และเกิดก่อนวันที่ 1 ก.พ. 2024
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT order_id, order_date FROM orders
+      WHERE payment_method = 'promptpay' AND order_date < '2024-02-01'
+    hints:
+      - เทียบวันที่ด้วย < ได้เหมือนตัวเลข
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนลูกค้าที่อยู่เมือง Phuket (ตั้งชื่อคอลัมน์ว่า n_phuket)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) AS n_phuket FROM customers WHERE city = 'Phuket'
+    hints:
+      - "`COUNT(*)` นับจำนวนแถวทั้งหมดที่ผ่านเงื่อนไข WHERE"
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      ช่องทางสมัครสมาชิก (channel) ทั้งหมดที่มีในระบบ (ไม่ซ้ำ) เรียงตามตัวอักษร
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT DISTINCT channel FROM customers ORDER BY channel
+    ordered: true
+    hints:
+      - "`DISTINCT` ตัดค่าที่ซ้ำกันออก"
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      5 ออเดอร์ที่สถานะ completed และมีส่วนลด เรียงส่วนลดจากมากไปน้อย
+      ถ้าส่วนลดเท่ากันให้เรียง order_id จากน้อยไปมาก
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT order_id, discount_pct FROM orders
+      WHERE discount_pct IS NOT NULL AND status = 'completed'
+      ORDER BY discount_pct DESC, order_id ASC
+      LIMIT 5
+    ordered: true
+    hints:
+      - ส่วนลดที่ "มี" หมายถึงคอลัมน์นั้นไม่ใช่ NULL
+      - ORDER BY สองคอลัมน์ได้ คอลัมน์แรกเรียงหลัก คอลัมน์ที่สองใช้ตัดสินเมื่อเท่ากัน
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      สินค้าหมวด Home หรือ Sports ที่ราคาอยู่ระหว่าง 500-1000 บาท
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, price FROM products
+      WHERE category IN ('Home', 'Sports') AND price BETWEEN 500 AND 1000
+    hints:
+      - "`IN (...)` ใช้แทน `category='Home' OR category='Sports'` ได้"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่มาจากช่องทาง promo และสมัครในปี 2025
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers
+      WHERE channel = 'promo' AND signup_date BETWEEN '2025-01-01' AND '2025-12-31'
+    hints:
+      - ใช้ BETWEEN กับวันแรกและวันสุดท้ายของปี
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      3 สินค้าราคาแพงที่สุดที่ไม่ใช่หมวด Electronics ถ้าราคาเท่ากันให้เรียงชื่อสินค้าจาก A ไป Z
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, category, price FROM products
+      WHERE category <> 'Electronics'
+      ORDER BY price DESC, product_name
+      LIMIT 3
+    ordered: true
+    hints:
+      - "`<>` แปลว่า ไม่เท่ากับ"
+      - อย่าลืมตัวตัดสินเมื่อราคาเท่ากัน
+
+quiz:
+  - id: q1
+    question: "`BETWEEN 5 AND 10` นับค่า 5 และ 10 เองด้วยไหม"
+    choices:
+      - text: นับด้วย (inclusive ทั้งสองฝั่ง)
+        correct: true
+        why: BETWEEN รวมค่าที่ขอบทั้งสองด้าน เขียนแทน >= และ <= พร้อมกัน
+      - text: ไม่นับทั้งคู่ (exclusive ทั้งสองฝั่ง)
+        why: ถ้าอยากตัดขอบออกต้องเขียน > และ < เอง BETWEEN ไม่ทำแบบนั้น
+      - text: นับเฉพาะค่าเริ่มต้น (5) เท่านั้น
+        why: BETWEEN นับทั้งสองขอบเท่ากัน ไม่ได้เอนเอียงไปทางใดทางหนึ่ง
+      - text: ขึ้นอยู่กับชนิดข้อมูล
+        why: BETWEEN inclusive เสมอไม่ว่าจะเป็นตัวเลขหรือวันที่
+  - id: q2
+    question: "`WHERE discount_pct = NULL` ใช้หาแถวที่ไม่มีส่วนลดได้ไหม"
+    choices:
+      - text: ไม่ได้ ต้องใช้ `IS NULL` แทน
+        correct: true
+        why: NULL แปลว่า "ไม่รู้ค่า" การเทียบด้วย = กับ NULL จึงได้ผลเป็น unknown เสมอ ไม่มีทางเป็น true
+      - text: ได้ เพราะ = ใช้เทียบค่าได้ทุกกรณี
+        why: NULL ไม่ใช่ค่าธรรมดา เทียบด้วย = ไม่มีทางได้ true
+      - text: ได้ แต่ต้องใส่เครื่องหมายคำพูดรอบ NULL
+        why: ไม่ว่าจะใส่เครื่องหมายคำพูดหรือไม่ `= NULL` ก็ไม่ทำงานอยู่ดี
+      - text: ใช้ได้เฉพาะกับคอลัมน์ตัวเลข
+        why: ปัญหานี้เกิดกับ NULL ทุกชนิดข้อมูล ไม่ใช่แค่ตัวเลข
+  - id: q3
+    question: "`ORDER BY a, b` เรียงลำดับยังไง"
+    choices:
+      - text: เรียงตาม a ก่อน ถ้า a เท่ากันค่อยเรียงตาม b
+        correct: true
+        why: คอลัมน์แรกใน ORDER BY มีความสำคัญสูงสุด คอลัมน์ถัดไปใช้ตัดสินเมื่อคอลัมน์ก่อนหน้าเท่ากัน
+      - text: เรียงตาม b ก่อนเสมอ
+        why: ลำดับคอลัมน์ใน ORDER BY มีผล คอลัมน์แรกสำคัญกว่า
+      - text: สลับกันเรียงทีละคอลัมน์
+        why: ไม่ใช่ SQL เรียงตามลำดับความสำคัญจากซ้ายไปขวา
+      - text: เรียงตาม a และ b พร้อมกันแบบรวมค่า
+        why: SQL ไม่ได้รวมค่า a กับ b เข้าด้วยกัน แต่ใช้ a เป็นหลักและ b เป็นตัวตัดสิน
+
+summary:
+  - SELECT เลือกคอลัมน์ที่ต้องการ WHERE กรองแถว ORDER BY เรียงผลลัพธ์ LIMIT ตัดจำนวนแถว
+  - การเทียบสตริงสนใจตัวพิมพ์เล็ก-ใหญ่ และ NULL ต้องเช็กด้วย IS NULL ไม่ใช่ =
+  - AND ทำงานก่อน OR เสมอ ถ้าผสมกันต้องใส่วงเล็บให้ชัดเจน
+
+interview:
+  - id: i1
+    q: ทำไม `WHERE x = NULL` ไม่เคยคืนแถวไหนเลย ต้องเขียนยังไงแทน
+    a: |
+      NULL ใน SQL แปลว่า "ไม่รู้ค่า" ไม่ใช่ค่าว่างเปล่าหรือศูนย์ การเปรียบเทียบใดๆ กับ NULL ด้วย `=`, `<>`, `>` ฯลฯ
+      จะได้ผลเป็น unknown เสมอ ไม่ใช่ true หรือ false จึงไม่มีแถวไหนผ่านเงื่อนไข `WHERE x = NULL` เลย
+
+      ต้องใช้ `IS NULL` หรือ `IS NOT NULL` ซึ่งเป็นตัวดำเนินการพิเศษที่ออกแบบมาสำหรับเช็ก NULL โดยเฉพาะ
+
+flashcards:
+  - id: c1
+    front: BETWEEN a AND b รวมค่า a กับ b ไหม
+    back: รวมทั้งสองฝั่ง (inclusive)
+  - id: c2
+    front: ทำไม WHERE x = NULL ไม่ทำงาน
+    back: NULL แปลว่าไม่รู้ค่า เทียบด้วย = ได้ unknown เสมอ ต้องใช้ IS NULL แทน

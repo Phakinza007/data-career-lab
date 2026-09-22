@@ -1,0 +1,47 @@
+---
+track: da
+module: sql
+order: 6
+title: จัดการวันที่ (Date functions)
+minutes: 30
+prereqs: [da/sql/05-window-functions]
+---
+
+## EXTRACT — ดึงส่วนของวันที่
+
+```sql
+SELECT EXTRACT(year FROM order_date) AS y,
+       EXTRACT(month FROM order_date) AS m,
+       EXTRACT(dow FROM order_date) AS dow
+FROM orders
+```
+
+`dow` (day of week) ในฐานข้อมูลส่วนใหญ่รวมถึงที่ใช้ในเว็บนี้: **0 = อาทิตย์ ... 6 = เสาร์**
+
+## DATE_TRUNC — ตัดวันที่ให้เหลือความละเอียดที่กำหนด
+
+```sql
+SELECT DATE_TRUNC('month', order_date) FROM orders
+-- '2024-03-15' กลายเป็น '2024-03-01'
+```
+
+ต่างจาก `EXTRACT` ตรงที่ผลลัพธ์ยังเป็น**วันที่** (ไม่ใช่แค่ตัวเลข) และยังเก็บข้อมูลปีไว้ครบ
+นี่คือเหตุผลที่ต้องใช้ `DATE_TRUNC('month', ...)` แทน `EXTRACT(month FROM ...)` เฉยๆ เวลาจะเปรียบเทียบ
+ยอดขายรายเดือนข้ามปี — ถ้าใช้ `EXTRACT(month...)` เดือนเดียวกันจากคนละปีจะถูกนับรวมกันโดยไม่ตั้งใจ
+เพราะมันดึงแค่ตัวเลขเดือนออกมา ไม่สนใจว่าเป็นปีไหน
+
+## DATEDIFF — ระยะห่างระหว่างวันที่
+
+```sql
+SELECT DATEDIFF('day', signup_date, order_date) AS days_between
+FROM ...
+```
+
+นับจาก **argument ตัวแรก (start) ไปตัวที่สอง (end)** เสมอ — ถ้าสลับตำแหน่งกัน ผลลัพธ์จะได้ค่าเดิม
+แต่เครื่องหมายกลับกัน (บวกกลายเป็นลบ) ค่าติดลบที่ไม่คาดคิดมักเป็นสัญญาณว่าใส่ argument สลับกัน
+
+## เทียบกับ "วันนี้"
+
+ข้อมูลจำลองในเว็บนี้ไม่มี "วันนี้" ที่แท้จริง (ไม่ใช่ข้อมูล real-time) จึงมักใช้วันที่ล่าสุดที่มีอยู่ในระบบ
+(`MAX(order_date)`) เป็นจุดอ้างอิงแทน `CURRENT_DATE` ในงานจริงที่มีข้อมูล real-time จะใช้ `CURRENT_DATE`
+หรือ `NOW()` ได้ตรงๆ

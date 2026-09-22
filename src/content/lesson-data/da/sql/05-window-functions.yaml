@@ -1,0 +1,301 @@
+goals:
+  - ใช้ ROW_NUMBER / RANK / DENSE_RANK จัดลำดับภายในกลุ่มด้วย PARTITION BY
+  - ใช้ LAG เทียบแถวปัจจุบันกับแถวก่อนหน้าของกลุ่มเดียวกัน
+  - ทำผลรวมสะสม (running total) ด้วย SUM() OVER และรู้ว่าต้องห่อ query ด้วย subquery ก่อนถึงจะกรองผลลัพธ์ของ window function ได้
+
+examples:
+  - id: x1
+    title: หาออเดอร์แรกสุดของลูกค้าแต่ละคน (top-1 ต่อกลุ่ม)
+    lang: sql
+    prompt: |
+      ทีมการตลาดอยากรู้ว่าลูกค้าแต่ละคนซื้อครั้งแรกเมื่อไหร่ ด้วยออเดอร์ไหน
+    steps:
+      - text: |
+          `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)` ให้เลขลำดับ 1, 2, 3, ... แยกทีละกลุ่ม
+          (แบ่งกลุ่มด้วย PARTITION BY เหมือน GROUP BY แต่ไม่ยุบแถว ยังเห็นทุกแถวเหมือนเดิม)
+          ใส่ `order_id` เป็นตัวตัดสิน (tie-break) ต่อจากวันที่ เผื่อลูกค้าสั่งซื้อ 2 ครั้งในวันเดียวกัน
+        code: |
+          SELECT customer_id, order_id, order_date,
+                 ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS rn
+          FROM orders
+          WHERE customer_id IN (1, 2, 3)
+          ORDER BY customer_id, order_date
+      - text: |
+          ตัวเลข `rn` ใช้ใน `WHERE` ของ SELECT เดียวกันไม่ได้ (window function ทำงานหลัง WHERE)
+          ต้องห่อด้วย subquery อีกชั้นก่อน แล้วค่อยกรอง `rn = 1` เพื่อได้ "ออเดอร์แรกสุด" ของทุกคนจริงๆ
+        code: |
+          SELECT customer_id, order_id, order_date FROM (
+            SELECT customer_id, order_id, order_date,
+                   ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS rn
+            FROM orders
+          ) t
+          WHERE rn = 1
+          ORDER BY customer_id
+          LIMIT 5
+    pitfall:
+      text: |
+        ถ้าลืม `PARTITION BY customer_id` เลขลำดับจะรันต่อเนื่องทั้งตาราง ไม่ใช่แยกตามลูกค้าแต่ละคน
+        ผลคือกรอง `rn = 1` แล้วเหลือแค่ **1 แถวทั้งตาราง** (ออเดอร์แรกสุดของทั้งระบบ) ไม่ใช่ 1 แถวต่อลูกค้า
+        (ที่ถูกต้องควรได้ 2,839 แถว เท่ากับจำนวนลูกค้าที่เคยสั่งซื้อ)
+      code: |
+        SELECT COUNT(*) FROM (
+          SELECT customer_id, order_id, ROW_NUMBER() OVER (ORDER BY order_date, order_id) AS rn
+          FROM orders
+        ) t WHERE rn = 1
+  - id: x2
+    title: หาจำนวนวันระหว่างออเดอร์ปัจจุบันกับออเดอร์ก่อนหน้าของลูกค้าคนเดียวกัน
+    lang: sql
+    prompt: |
+      อยากรู้ว่าลูกค้าแต่ละคนสั่งซื้อถี่แค่ไหน โดยดูระยะห่างระหว่างออเดอร์แต่ละครั้งของตัวเอง
+    steps:
+      - text: |
+          `LAG(col) OVER (PARTITION BY ... ORDER BY ...)` ดึงค่าจาก "แถวก่อนหน้า" ของกลุ่มเดียวกันมาไว้ในแถวปัจจุบัน
+          (แถวแรกของแต่ละกลุ่มจะได้ NULL เพราะไม่มีแถวก่อนหน้า)
+        code: |
+          SELECT customer_id, order_date,
+                 LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS prev_date
+          FROM orders
+          WHERE customer_id = 2
+          ORDER BY order_date
+      - text: |
+          ใช้ `DATEDIFF` คำนวณจำนวนวันระหว่างวันที่ปัจจุบันกับ `prev_date` ที่ได้จาก LAG
+        code: |
+          SELECT customer_id, order_date,
+                 DATEDIFF('day', LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id), order_date) AS gap_days
+          FROM orders
+          WHERE customer_id = 2
+          ORDER BY order_date
+    pitfall:
+      text: |
+        ถ้าลืมใส่ `ORDER BY` ข้างใน `OVER(...)` ของ LAG, DuckDB จะจับคู่ "แถวก่อนหน้า" ตามลำดับที่เก็บในตารางจริง
+        ไม่ใช่ตามลำดับวันที่ ทำให้ gap_days ผิดพลาดโดยที่**ไม่มี error ให้เห็นเลย** — อันตรายกว่าการ error เสียอีก
+        เพราะดูเหมือนรันผ่านปกติทุกอย่าง แต่ตัวเลขที่ได้ไม่มีความหมาย
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      หาผลรวมสะสม (running total) ของจำนวนสินค้าที่มีในแต่ละหมวด เรียงตามชื่อหมวด A-Z
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT category, COUNT(*) AS n, SUM(COUNT(*)) OVER (ORDER BY ___) AS running
+      FROM products
+      GROUP BY ___
+      ORDER BY category
+    solution: |
+      SELECT category, COUNT(*) AS n, SUM(COUNT(*)) OVER (ORDER BY category) AS running
+      FROM products
+      GROUP BY category
+      ORDER BY category
+    ordered: true
+    hints:
+      - เรียงสะสมตามคอลัมน์เดียวกับที่ GROUP BY และ ORDER BY หลัก
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จัดอันดับสินค้าหมวด Beauty ตามราคาจากแพงไปถูก ด้วย RANK (คอลัมน์ product_name, price, rnk)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, price, RANK() OVER (ORDER BY price DESC) AS rnk
+      FROM products
+      WHERE category = 'Beauty'
+      ORDER BY rnk
+    hints:
+      - ไม่ต้องมี PARTITION BY เพราะกรองเหลือหมวดเดียวด้วย WHERE แล้ว
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      หมายเลขลำดับการสมัคร (ROW_NUMBER) ของลูกค้าเมือง Phuket เรียงตามวันสมัคร
+      (ถ้าวันสมัครซ้ำ ให้ customer_id น้อยกว่ามาก่อน) เอาแค่ 5 คนแรก
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT customer_id, signup_date,
+             ROW_NUMBER() OVER (PARTITION BY city ORDER BY signup_date, customer_id) AS rn
+      FROM customers
+      WHERE city = 'Phuket'
+      ORDER BY rn
+      LIMIT 5
+    ordered: true
+    hints:
+      - "PARTITION BY city ไม่จำเป็นเมื่อกรองเหลือเมืองเดียวแล้ว แต่ใส่ไว้ก็ไม่ผิด"
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      DENSE_RANK ของหมวดสินค้าตามราคาเฉลี่ย มากไปน้อย (คอลัมน์ category, avgp ปัดเป็นจำนวนเต็ม, rnk)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT category, ROUND(AVG(price), 0) AS avgp, DENSE_RANK() OVER (ORDER BY AVG(price) DESC) AS rnk
+      FROM products
+      GROUP BY category
+      ORDER BY rnk
+    ordered: true
+    hints:
+      - ใช้ window function ร่วมกับ GROUP BY ได้ (คำนวณ AVG ก่อนแล้วค่อยจัดอันดับ)
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนแถวที่ได้เมื่อหา "ออเดอร์ล่าสุด" ของลูกค้าแต่ละคน (ROW_NUMBER แบบ DESC, ใช้ order_id DESC เป็น tie-break)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM (
+        SELECT customer_id,
+               ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC, order_id DESC) AS rn
+        FROM orders
+      ) t
+      WHERE rn = 1
+    hints:
+      - เหมือนตัวอย่าง x1 แต่กลับทิศทาง ORDER BY เป็น DESC
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนวันระหว่างออเดอร์กับออเดอร์ก่อนหน้าของลูกค้า customer_id=5 เรียงตามวันที่
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT order_date,
+             DATEDIFF('day', LAG(order_date) OVER (ORDER BY order_date, order_id), order_date) AS gap_days
+      FROM orders
+      WHERE customer_id = 5
+      ORDER BY order_date
+    hints:
+      - กรองเหลือลูกค้าคนเดียวด้วย WHERE ก่อน ไม่ต้อง PARTITION BY ก็ได้
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ลูกค้าที่ใช้จ่ายมากที่สุด (completed) ของแต่ละเมือง (top-1 ต่อกลุ่มด้วย RANK)
+      แสดง city, customer_id, revenue เรียงตามชื่อเมือง
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH rev AS (
+        SELECT c.customer_id, c.city, SUM(i.quantity * i.unit_price) AS revenue
+        FROM customers c
+        JOIN orders o ON c.customer_id = o.customer_id
+        JOIN order_items i ON o.order_id = i.order_id
+        WHERE o.status = 'completed'
+        GROUP BY c.customer_id, c.city
+      ),
+      ranked AS (
+        SELECT *, RANK() OVER (PARTITION BY city ORDER BY revenue DESC) AS rnk FROM rev
+      )
+      SELECT city, customer_id, revenue FROM ranked
+      WHERE rnk = 1
+      ORDER BY city
+    ordered: true
+    hints:
+      - หารายได้ต่อลูกค้าก่อนด้วย CTE แล้วค่อยจัดอันดับด้วย window function
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      ผลรวมสะสม (running total) ของจำนวนออเดอร์ต่อสถานะ เรียงตามชื่อสถานะ A-Z
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT status, COUNT(*) AS n, SUM(COUNT(*)) OVER (ORDER BY status) AS running
+      FROM orders
+      GROUP BY status
+      ORDER BY status
+    ordered: true
+    hints:
+      - เหมือน f1 แต่เปลี่ยนตารางและคอลัมน์ที่ GROUP BY
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      ลูกค้า customer_id=2083 (คนที่ใช้จ่ายมากที่สุดในระบบ) ใช้ออเดอร์ลำดับที่เท่าไร (เรียงตามวันที่)
+      ยอดสะสมถึงจะทะลุ 50000 บาทเป็นครั้งแรก (นับเฉพาะ completed) — แสดง rn, order_date, cum
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH amt AS (
+        SELECT o.order_id, o.order_date, SUM(i.quantity * i.unit_price) AS order_amt
+        FROM orders o JOIN order_items i ON o.order_id = i.order_id
+        WHERE o.customer_id = 2083 AND o.status = 'completed'
+        GROUP BY o.order_id, o.order_date
+      ),
+      running AS (
+        SELECT *,
+               SUM(order_amt) OVER (ORDER BY order_date, order_id) AS cum,
+               ROW_NUMBER() OVER (ORDER BY order_date, order_id) AS rn
+        FROM amt
+      )
+      SELECT rn, order_date, cum FROM running
+      WHERE cum >= 50000
+      ORDER BY order_date
+      LIMIT 1
+    hints:
+      - หายอดต่อออเดอร์ก่อนด้วย CTE แล้วค่อยทำ running total และ ROW_NUMBER ในอีก CTE
+
+quiz:
+  - id: q1
+    question: ROW_NUMBER, RANK, DENSE_RANK ต่างกันยังไงเวลามีค่าเท่ากัน (tie)
+    choices:
+      - text: ROW_NUMBER ให้เลขไม่ซ้ำกันเสมอ (ตัดสินแบบสุ่มลำดับ) RANK เว้นเลขข้ามเมื่อมี tie ส่วน DENSE_RANK ไม่เว้น
+        correct: true
+        why: "เช่น ค่าเท่ากัน 2 แถวที่อันดับ 1: RANK ให้ 1,1,3 (ข้าม 2) ส่วน DENSE_RANK ให้ 1,1,2 (ไม่ข้าม) ROW_NUMBER ให้ 1,2,3 เสมอ"
+      - text: ทั้งสามฟังก์ชันให้ผลเหมือนกันทุกกรณี
+        why: ต่างกันชัดเจนเมื่อมีค่าเท่ากัน (tie) เกิดขึ้น
+      - text: RANK กับ DENSE_RANK ให้ผลเหมือนกันเสมอ
+        why: ต่างกันตรงที่ RANK เว้นเลขข้ามเมื่อมี tie แต่ DENSE_RANK ไม่เว้น
+      - text: ROW_NUMBER ใช้กับ PARTITION BY ไม่ได้
+        why: ROW_NUMBER ใช้ร่วมกับ PARTITION BY ได้ปกติเหมือน RANK และ DENSE_RANK
+  - id: q2
+    question: PARTITION BY ต่างจาก GROUP BY ยังไง
+    choices:
+      - text: PARTITION BY แบ่งกลุ่มสำหรับ window function แต่ไม่ยุบแถว ยังเห็นทุกแถวเหมือนเดิม ส่วน GROUP BY ยุบแถวในแต่ละกลุ่มให้เหลือแถวเดียว
+        correct: true
+        why: นี่คือความต่างหลัก window function คำนวณค่าเพิ่มเข้าไปในทุกแถวโดยไม่ลดจำนวนแถว
+      - text: PARTITION BY ใช้แทน GROUP BY ได้ทุกกรณี
+        why: ถ้าต้องการยุบแถวให้เหลือ 1 แถวต่อกลุ่ม (เช่น อยากได้แค่ยอดรวม) ต้องใช้ GROUP BY ไม่ใช่ PARTITION BY
+      - text: GROUP BY ใช้ได้กับ window function เท่านั้น
+        why: GROUP BY เป็นคำสั่งพื้นฐานที่ใช้แยกกันได้ ไม่ได้ผูกกับ window function
+      - text: PARTITION BY ต้องมาคู่กับ HAVING เสมอ
+        why: PARTITION BY เขียนอยู่ข้างใน OVER(...) ไม่เกี่ยวกับ HAVING
+  - id: q3
+    question: ทำไมเอาผลลัพธ์ของ window function ไปใช้ใน WHERE ของ SELECT เดียวกันตรงๆ ไม่ได้
+    choices:
+      - text: window function ทำงานหลัง WHERE ในลำดับการประมวลผล จึงต้องห่อผลลัพธ์ด้วย subquery อีกชั้นก่อนถึงจะกรองได้
+        correct: true
+        why: เหมือนปัญหาเดียวกับการกรอง aggregate ด้วย WHERE — ต้องรอให้คำนวณเสร็จก่อน (ผ่าน SELECT ชั้นใน) แล้วค่อยกรองชั้นนอก
+      - text: window function ใช้ WHERE ไม่ได้เลยไม่ว่ากรณีไหน
+        why: ใช้ได้ถ้าห่อด้วย subquery ก่อน อย่างที่ทำในตัวอย่าง x1
+      - text: ต้องใช้ HAVING แทน WHERE เสมอ
+        why: HAVING ก็มีข้อจำกัดเดียวกัน วิธีที่ใช้ได้จริงคือห่อด้วย subquery แล้วกรองชั้นนอก
+      - text: เฉพาะ ROW_NUMBER เท่านั้นที่มีข้อจำกัดนี้
+        why: ข้อจำกัดนี้เกิดกับ window function ทุกตัว ไม่ใช่แค่ ROW_NUMBER
+
+summary:
+  - "ROW_NUMBER/RANK/DENSE_RANK จัดลำดับได้ทั้งตาราง หรือแยกกลุ่มด้วย PARTITION BY โดยไม่ยุบแถว"
+  - LAG ดึงค่าจากแถวก่อนหน้าของกลุ่มเดียวกันมาเทียบกับแถวปัจจุบัน ต้องมี ORDER BY ข้างใน OVER() เสมอ
+  - ผลลัพธ์ของ window function ใช้ใน WHERE ของ SELECT เดียวกันไม่ได้ ต้องห่อด้วย subquery ก่อน
+
+interview:
+  - id: i1
+    q: จะหา "สินค้าขายดี 3 อันดับต่อหมวด" ด้วย SQL ทำยังไง
+    a: |
+      ใช้ window function (มักเป็น `RANK` หรือ `ROW_NUMBER`) พร้อม `PARTITION BY` ตามหมวดสินค้า
+      เรียงตามยอดขายจากมากไปน้อยในแต่ละกลุ่ม แล้วห่อ query นั้นด้วย subquery อีกชั้น
+      เพื่อกรอง `WHERE rnk <= 3` (ใช้ RANK ไม่ใช้ ROW_NUMBER ถ้าอยากให้สินค้าที่ยอดขายเท่ากันติดอันดับพร้อมกัน)
+
+      รูปแบบนี้เป็น pattern มาตรฐานสำหรับโจทย์ "top-N ต่อกลุ่ม" ทุกแบบ ไม่ใช่แค่สินค้าขายดี
+
+flashcards:
+  - id: c1
+    front: RANK กับ DENSE_RANK ต่างกันตอนมี tie ยังไง
+    back: RANK เว้นเลขข้าม (1,1,3) DENSE_RANK ไม่เว้น (1,1,2)
+  - id: c2
+    front: ทำไมกรอง window function ด้วย WHERE ตรงๆ ไม่ได้
+    back: window function ทำงานหลัง WHERE ในลำดับการประมวลผล ต้องห่อด้วย subquery ก่อนแล้วกรองชั้นนอก

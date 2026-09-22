@@ -1,0 +1,82 @@
+---
+track: da
+module: sql
+order: 5
+title: Window Functions
+minutes: 35
+prereqs: [da/sql/04-subquery-cte]
+---
+
+## window function ต่างจาก aggregate function ยังไง
+
+`GROUP BY` ยุบหลายแถวให้เหลือแถวเดียวต่อกลุ่ม แต่บางครั้งเราอยากได้ "อันดับ" หรือ "ผลรวมสะสม"
+โดย**ยังเห็นทุกแถวเหมือนเดิม** นี่คือหน้าที่ของ window function — คำนวณค่าเพิ่มเข้าไปในทุกแถว
+โดยอ้างอิงแถวอื่นๆ ในกลุ่มเดียวกัน (ไม่ยุบแถวทิ้ง)
+
+รูปแบบทั่วไป:
+
+```sql
+ฟังก์ชัน(...) OVER (PARTITION BY คอลัมน์ที่แบ่งกลุ่ม ORDER BY คอลัมน์ที่เรียง)
+```
+
+## ROW_NUMBER, RANK, DENSE_RANK
+
+ทั้งสามให้ "เลขลำดับ" แต่ต่างกันตอนมีค่าเท่ากัน (tie):
+
+| ฟังก์ชัน | ถ้าราคาเท่ากัน 2 แถวที่อันดับ 1 |
+| --- | --- |
+| `ROW_NUMBER()` | 1, 2, 3 — ให้เลขไม่ซ้ำกันเสมอ |
+| `RANK()` | 1, 1, 3 — เว้นเลขข้าม |
+| `DENSE_RANK()` | 1, 1, 2 — ไม่เว้นเลขข้าม |
+
+```sql
+SELECT product_name, price,
+       ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+FROM products
+```
+
+`PARTITION BY` ทำงานเหมือน `GROUP BY` ตรงที่แบ่งข้อมูลเป็นกลุ่ม แต่**ไม่ยุบแถว** — ทุกแถวยังอยู่ครบ
+
+## กรองผลลัพธ์ของ window function ต้องห่อด้วย subquery
+
+Window function ทำงาน**หลัง** `WHERE` ในลำดับการประมวลผล จึงเอาผลลัพธ์ของมัน (เช่น `rn`) ไปใช้ใน
+`WHERE` ของ SELECT เดียวกันตรงๆ ไม่ได้ ต้องห่อ query ด้วย subquery อีกชั้นก่อน:
+
+```sql
+SELECT * FROM (
+  SELECT product_name, price,
+         ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+  FROM products
+) t
+WHERE rn <= 3
+```
+
+รูปแบบนี้คือวิธีมาตรฐานในการหา "top-N ต่อกลุ่ม" — ใช้บ่อยมากทั้งในงานจริงและห้องสัมภาษณ์
+
+## LAG — เทียบกับแถวก่อนหน้า
+
+`LAG(col) OVER (PARTITION BY ... ORDER BY ...)` ดึงค่าจากแถวก่อนหน้า (ของกลุ่มเดียวกัน) มาไว้ในแถวปัจจุบัน
+มีประโยชน์มากตอนอยากรู้ "เปลี่ยนแปลงจากครั้งก่อนแค่ไหน":
+
+```sql
+SELECT customer_id, order_date,
+       LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) AS prev_date
+FROM orders
+```
+
+**ต้องมี `ORDER BY` ข้างใน `OVER()` เสมอ** ไม่งั้น "แถวก่อนหน้า" จะหมายถึงแถวก่อนหน้าตามลำดับที่เก็บในตาราง
+ซึ่งไม่ตรงกับความหมายที่ต้องการ (และจะไม่มี error เตือนด้วย)
+
+## ผลรวมสะสม (running total)
+
+`SUM(col) OVER (ORDER BY ...)` โดยไม่มี `PARTITION BY` จะรวมค่าสะสมไปเรื่อยๆ ตามลำดับที่กำหนด:
+
+```sql
+SELECT order_date, COUNT(*) AS n,
+       SUM(COUNT(*)) OVER (ORDER BY order_date) AS running_total
+FROM orders
+GROUP BY order_date
+```
+
+สังเกตว่าใช้ window function ร่วมกับ `GROUP BY` ได้ — คำนวณ aggregate ปกติก่อน (`COUNT(*)`)
+แล้วค่อยเอาผลนั้นไปทำ running total อีกที

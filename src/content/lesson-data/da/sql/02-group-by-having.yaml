@@ -1,0 +1,239 @@
+goals:
+  - ใช้ COUNT/SUM/AVG/MIN/MAX สรุปข้อมูลเป็นกลุ่มด้วย GROUP BY
+  - กรอง "กลุ่ม" ด้วย HAVING (ต่างจาก WHERE ที่กรองทีละแถว)
+  - จัดกลุ่มด้วยหลายคอลัมน์พร้อมกัน
+
+examples:
+  - id: x1
+    title: จำนวนลูกค้าต่อเมือง เรียงจากมากไปน้อย
+    lang: sql
+    prompt: |
+      ทีมการตลาดอยากรู้ว่าเมืองไหนมีลูกค้าเยอะที่สุด เพื่อวางแผนเปิดสาขาใหม่
+    steps:
+      - text: |
+          ถ้าเขียน `SELECT city, COUNT(*) FROM customers` เฉยๆ (ไม่มี GROUP BY) จะ error ทันที
+          เพราะ SQL ไม่รู้ว่าจะ "นับแยกตาม" อะไร ต้องบอกด้วย GROUP BY ว่าจะรวมกลุ่มตามคอลัมน์ไหน
+        code: |
+          SELECT city, COUNT(*) AS n FROM customers GROUP BY city
+      - text: |
+          เพิ่ม ORDER BY บนคอลัมน์ที่ตั้งชื่อไว้ (`n`) เพื่อเรียงจากเมืองที่มีลูกค้ามากไปน้อย
+        code: |
+          SELECT city, COUNT(*) AS n FROM customers
+          GROUP BY city
+          ORDER BY n DESC
+    pitfall:
+      text: |
+        ถ้าอยากดูคอลัมน์อื่นเพิ่ม เช่น `channel` แต่ไม่เพิ่มมันเข้า GROUP BY ด้วย จะ error ว่า
+        `column "channel" must appear in the GROUP BY clause or must be part of an aggregate function`
+        กติกาคือทุกคอลัมน์ใน SELECT ต้องเป็นคอลัมน์ที่ GROUP BY ไว้ หรือไม่ก็ต้องอยู่ในฟังก์ชัน aggregate เท่านั้น
+  - id: x2
+    title: เมืองไหนมีลูกค้ามากกว่า 300 คน
+    lang: sql
+    prompt: |
+      ต่อจากตัวอย่างที่แล้ว อยากเห็นเฉพาะเมืองที่มีลูกค้าค่อนข้างเยอะ (มากกว่า 300 คน) เท่านั้น
+    steps:
+      - text: |
+          เริ่มจากนับจำนวนลูกค้าต่อเมืองเหมือนตัวอย่างก่อนหน้า
+        code: |
+          SELECT city, COUNT(*) AS n FROM customers
+          GROUP BY city
+          ORDER BY n DESC
+      - text: |
+          กรองเฉพาะกลุ่มที่นับได้มากกว่า 300 ด้วย **HAVING** — ไม่ใช่ WHERE
+        code: |
+          SELECT city, COUNT(*) AS n FROM customers
+          GROUP BY city
+          HAVING COUNT(*) > 300
+          ORDER BY n DESC
+    pitfall:
+      text: |
+        ถ้าเขียน `WHERE COUNT(*) > 300` แทน HAVING จะ error ทันที
+        (`WHERE clause cannot contain aggregates!`) เพราะตอนที่ WHERE ทำงาน ข้อมูลยังไม่ถูกรวมกลุ่ม/นับเสร็จ
+        WHERE กรองทีละแถวก่อนจัดกลุ่ม ส่วน HAVING กรองทีหลังจัดกลุ่มและคำนวณ aggregate เสร็จแล้ว
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      หาราคาเฉลี่ยของสินค้าแต่ละหมวด ปัดเป็นจำนวนเต็ม เรียงจากแพงไปถูก
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT category, ROUND(___(price), 0) AS avg_price FROM products
+      GROUP BY ___
+      ORDER BY avg_price ___
+    solution: |
+      SELECT category, ROUND(AVG(price), 0) AS avg_price FROM products
+      GROUP BY category
+      ORDER BY avg_price DESC
+    ordered: true
+    hints:
+      - ฟังก์ชันหาค่าเฉลี่ยคือ AVG
+      - เรียง "แพงไปถูก" ต้องใช้ DESC
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์แต่ละสถานะ (status)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT status, COUNT(*) AS n FROM orders GROUP BY status
+    hints:
+      - GROUP BY คอลัมน์ status
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      หาราคาต่ำสุดและสูงสุดของสินค้าแต่ละหมวด (ตั้งชื่อคอลัมน์ lo และ hi)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT category, MIN(price) AS lo, MAX(price) AS hi FROM products GROUP BY category
+    hints:
+      - ใช้ได้ทั้ง MIN และ MAX ในคำสั่งเดียวกัน
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนลูกค้าที่สมัครในแต่ละปี (ตั้งชื่อคอลัมน์ y และ n)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT EXTRACT(year FROM signup_date) AS y, COUNT(*) AS n FROM customers GROUP BY y
+    hints:
+      - "`EXTRACT(year FROM ...)` ดึงเฉพาะปีออกจากวันที่"
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์แต่ละช่องทางชำระเงิน (payment_method)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT payment_method, COUNT(*) AS n FROM orders GROUP BY payment_method
+    hints:
+      - เหมือน e1 แต่เปลี่ยนคอลัมน์ที่ GROUP BY
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      หมวดสินค้าที่มีจำนวนสินค้าน้อยกว่า 20 รายการ
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT category, COUNT(*) AS n FROM products
+      GROUP BY category
+      HAVING COUNT(*) < 20
+    hints:
+      - กรองจำนวนกลุ่มด้วย HAVING ไม่ใช่ WHERE
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ช่องทางชำระเงินที่มีออเดอร์อย่างน้อย 1000 รายการ เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT payment_method, COUNT(*) AS n FROM orders
+      GROUP BY payment_method
+      HAVING COUNT(*) >= 1000
+      ORDER BY n DESC
+    ordered: true
+    hints:
+      - "\"อย่างน้อย\" แปลว่า >="
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      ส่วนลดเฉลี่ย (ปัด 1 ตำแหน่ง) ของออเดอร์ที่มีส่วนลด แยกตามช่องทางชำระเงิน
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT payment_method, ROUND(AVG(discount_pct), 1) AS avgd FROM orders
+      WHERE discount_pct IS NOT NULL
+      GROUP BY payment_method
+    hints:
+      - กรองออเดอร์ที่ "มีส่วนลด" ด้วย WHERE ก่อน แล้วค่อย GROUP BY
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      เมืองที่มีสัดส่วนลูกค้าจากช่องทาง organic มากกว่า 46% ของลูกค้าทั้งหมดในเมืองนั้น
+      (ปัดเป็น 1 ตำแหน่งทศนิยม, คอลัมน์ pct_organic) เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT city,
+             ROUND(100.0 * SUM(CASE WHEN channel = 'organic' THEN 1 ELSE 0 END) / COUNT(*), 1) AS pct_organic
+      FROM customers
+      GROUP BY city
+      HAVING SUM(CASE WHEN channel = 'organic' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) > 0.46
+      ORDER BY pct_organic DESC
+    ordered: true
+    hints:
+      - "`SUM(CASE WHEN channel='organic' THEN 1 ELSE 0 END)` นับเฉพาะแถวที่เป็น organic"
+      - หารด้วย COUNT(*) ของกลุ่มนั้นแล้วคูณ 100 จะได้เปอร์เซ็นต์
+      - HAVING ใช้เงื่อนไขเดียวกับที่คำนวณใน SELECT ได้ (ไม่ต้องมีชื่อ column มาก่อน)
+
+quiz:
+  - id: q1
+    question: WHERE กับ HAVING ต่างกันยังไง
+    choices:
+      - text: WHERE กรองทีละแถวก่อนจัดกลุ่ม ส่วน HAVING กรองทีหลังจัดกลุ่มและคำนวณ aggregate แล้ว
+        correct: true
+        why: ลำดับการทำงานคือ WHERE ก่อน แล้วค่อย GROUP BY แล้วค่อย HAVING จึงใช้ aggregate ใน HAVING ได้แต่ใน WHERE ไม่ได้
+      - text: ทั้งสองใช้แทนกันได้ทุกกรณี
+        why: ใช้ aggregate function อย่าง COUNT(*) ใน WHERE ไม่ได้ ต้องใช้ HAVING
+      - text: WHERE ใช้กับตัวเลข HAVING ใช้กับข้อความ
+        why: ทั้งสองใช้กับข้อมูลชนิดไหนก็ได้ ความต่างอยู่ที่ "ตอนไหน" ในลำดับการทำงาน
+      - text: HAVING ต้องมาก่อน GROUP BY เสมอ
+        why: HAVING เขียนต่อจาก GROUP BY เสมอ ไม่ใช่มาก่อน
+  - id: q2
+    question: ทำไม `SELECT city, COUNT(*) FROM customers` (ไม่มี GROUP BY) ถึง error
+    choices:
+      - text: SQL ไม่รู้ว่าจะนับแยกกลุ่มตามอะไร เพราะมีทั้งคอลัมน์ปกติ (city) และ aggregate (COUNT) ปนกัน
+        correct: true
+        why: การผสม column ธรรมดากับ aggregate function ต้องบอกก่อนว่าจะ "จัดกลุ่ม" ตามคอลัมน์ไหน ด้วย GROUP BY
+      - text: COUNT(*) ใช้ได้เฉพาะกับตัวเลขเท่านั้น
+        why: COUNT(*) นับจำนวนแถว ใช้ได้กับทุกตาราง ไม่เกี่ยวกับชนิดข้อมูล
+      - text: ต้องใส่ ORDER BY ก่อนถึงจะใช้ COUNT ได้
+        why: ORDER BY ไม่เกี่ยวกับปัญหานี้เลย
+      - text: city เป็นคอลัมน์ข้อความ นำมาคำนวณไม่ได้
+        why: เราไม่ได้เอา city ไปคำนวณ แค่แสดงคู่กับ COUNT(*) ปัญหาคือขาด GROUP BY
+  - id: q3
+    question: "`GROUP BY city, channel` ต่างจาก `GROUP BY city` ยังไง"
+    choices:
+      - text: จัดกลุ่มตามคู่ (city, channel) ที่ไม่ซ้ำกัน ไม่ใช่แค่ city อย่างเดียว
+        correct: true
+        why: ยิ่งใส่หลายคอลัมน์ใน GROUP BY กลุ่มก็ยิ่งละเอียดขึ้น แต่ละแถวผลลัพธ์คือหนึ่งคู่ค่าที่ไม่ซ้ำกัน
+      - text: ผลลัพธ์เหมือนกันทุกประการ
+        why: จำนวนแถวผลลัพธ์จะต่างกัน เพราะ GROUP BY 2 คอลัมน์ให้กลุ่มที่ละเอียดกว่า
+      - text: channel จะถูกละเลยไปเอง
+        why: ทุกคอลัมน์ใน GROUP BY มีผลต่อการจัดกลุ่มเสมอ
+      - text: ต้องเลือกได้แค่คอลัมน์เดียวใน GROUP BY
+        why: GROUP BY ใส่ได้หลายคอลัมน์พร้อมกัน
+
+summary:
+  - COUNT/SUM/AVG/MIN/MAX สรุปค่าของกลุ่มแถวที่ GROUP BY จัดไว้
+  - ทุกคอลัมน์ใน SELECT ต้องอยู่ใน GROUP BY หรือเป็น aggregate function เท่านั้น ไม่งั้น error
+  - WHERE กรองก่อนจัดกลุ่ม (ใช้ aggregate ไม่ได้) ส่วน HAVING กรองหลังจัดกลุ่ม (ใช้ aggregate ได้)
+
+interview:
+  - id: i1
+    q: อธิบายลำดับการประมวลผลจริงของ SQL query หนึ่งคำสั่ง
+    a: |
+      แม้จะเขียนตามลำดับ SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT
+      แต่ SQL ประมวลผลจริงตามลำดับนี้: **FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT**
+
+      นี่คือเหตุผลที่ WHERE ใช้ aggregate function ไม่ได้ (ยังไม่ถึงขั้น GROUP BY) แต่ HAVING ใช้ได้
+      (ทำงานหลัง GROUP BY แล้ว) และทำไม ORDER BY ถึงใช้ชื่อ alias จาก SELECT ได้ (SELECT ทำงานก่อน ORDER BY)
+
+flashcards:
+  - id: c1
+    front: WHERE กับ HAVING ต่างกันตรงไหน
+    back: WHERE กรองทีละแถวก่อนจัดกลุ่ม (ใช้ aggregate ไม่ได้) HAVING กรองหลังจัดกลุ่ม (ใช้ aggregate ได้)
+  - id: c2
+    front: ลำดับการประมวลผลจริงของ SQL
+    back: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT

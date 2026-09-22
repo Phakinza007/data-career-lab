@@ -1,0 +1,278 @@
+goals:
+  - เชื่อมตารางด้วย INNER/LEFT/RIGHT/FULL JOIN และรู้ว่าแบบไหนให้ผลต่างกันยังไง
+  - หา "แถวที่ไม่มีคู่" ด้วย LEFT JOIN ร่วมกับ IS NULL
+  - เชื่อมได้มากกว่า 2 ตาราง และระวังปัญหาแถวเบิ้ล (fan-out)
+
+examples:
+  - id: x1
+    title: ลูกค้าคนไหนที่ยังไม่เคยสั่งซื้อเลย
+    lang: sql
+    prompt: |
+      ทีมการตลาดอยากส่งโปรโมชันไปกระตุ้นลูกค้าที่สมัครแล้วแต่ยังไม่เคยสั่งซื้อเลยสักครั้ง
+    steps:
+      - text: |
+          ลอง INNER JOIN `customers` กับ `orders` ก่อน — สังเกตว่าจำนวนแถวที่ได้ (6938) ไม่ใช่จำนวนลูกค้า
+          แต่เป็นจำนวน**ออเดอร์** เพราะลูกค้าคนเดียวมีได้หลายออเดอร์ INNER JOIN จึงคูณแถวตามนั้น
+        code: |
+          SELECT COUNT(*) FROM customers c
+          JOIN orders o ON c.customer_id = o.customer_id
+      - text: |
+          เปลี่ยนเป็น **LEFT JOIN** แล้วกรองแถวที่ `order_id` เป็น NULL — นี่คือลูกค้าที่ "จับคู่ไม่ได้" กับออเดอร์ไหนเลย
+          (LEFT JOIN เก็บทุกแถวจากตารางซ้าย `customers` ไว้ ต่อให้หาคู่ในตารางขวาไม่เจอ ก็ใส่ NULL แทน)
+        code: |
+          SELECT c.customer_id, c.city FROM customers c
+          LEFT JOIN orders o ON c.customer_id = o.customer_id
+          WHERE o.order_id IS NULL
+          ORDER BY c.customer_id
+          LIMIT 5
+    pitfall:
+      text: |
+        ถ้าใช้ INNER JOIN แทน LEFT JOIN ในขั้นตอนหาลูกค้าที่ไม่เคยสั่งซื้อ จะไม่มีทางเจอใครเลย (`count(*)` ได้ 0)
+        เพราะ INNER JOIN ตัดแถวที่จับคู่ไม่ได้ทิ้งไปตั้งแต่ต้น จึงไม่มีทางที่ `o.order_id` จะเป็น NULL ให้เจอ
+      code: |
+        SELECT count(*) FROM customers c
+        JOIN orders o ON c.customer_id = o.customer_id
+        WHERE o.order_id IS NULL
+  - id: x2
+    title: รายได้รวมแต่ละหมวดสินค้า (เฉพาะออเดอร์ completed)
+    lang: sql
+    prompt: |
+      อยากรู้ว่าหมวดไหนทำรายได้ให้ร้านมากที่สุด นับเฉพาะออเดอร์ที่จบสมบูรณ์ (completed)
+    steps:
+      - text: |
+          รายได้คำนวณจาก `order_items` (quantity × unit_price) เชื่อมกับ `orders` เพื่อกรองสถานะได้
+        code: |
+          SELECT o.order_id, i.product_id, i.quantity, i.unit_price
+          FROM orders o
+          JOIN order_items i ON o.order_id = i.order_id
+          WHERE o.status = 'completed'
+          LIMIT 5
+      - text: |
+          เชื่อมเพิ่มกับ `products` เพื่อรู้หมวดสินค้า แล้วรวมรายได้ด้วย GROUP BY
+        code: |
+          SELECT p.category, SUM(i.quantity * i.unit_price) AS revenue
+          FROM orders o
+          JOIN order_items i ON o.order_id = i.order_id
+          JOIN products p ON i.product_id = p.product_id
+          WHERE o.status = 'completed'
+          GROUP BY p.category
+          ORDER BY revenue DESC
+    pitfall:
+      text: |
+        ถ้าอยากนับว่า "มีกี่ออเดอร์ที่ซื้อสินค้าหมวด Electronics" ห้ามใช้ `COUNT(*)` ตรงๆ หลัง JOIN กับ order_items
+        เพราะออเดอร์เดียวอาจมีสินค้าหมวด Electronics หลายชิ้น ทำให้นับซ้ำ (ได้ 2534 ทั้งที่ออเดอร์จริงมีแค่ 2249 ใบ)
+        ต้องใช้ `COUNT(DISTINCT o.order_id)` แทนเพื่อนับออเดอร์ไม่ซ้ำ
+      code: |
+        SELECT COUNT(*) FROM orders o
+        JOIN order_items i ON o.order_id = i.order_id
+        JOIN products p ON i.product_id = p.product_id
+        WHERE p.category = 'Electronics'
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์ (ไม่ซ้ำ) ที่ซื้อสินค้าหมวด Electronics ให้ถูกต้อง (ไม่ติดปัญหานับซ้ำแบบตัวอย่าง)
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT COUNT(___ o.order_id) FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      JOIN products p ON i.product_id = ___
+      WHERE p.category = 'Electronics'
+    solution: |
+      SELECT COUNT(DISTINCT o.order_id) FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      JOIN products p ON i.product_id = p.product_id
+      WHERE p.category = 'Electronics'
+    hints:
+      - นับแบบไม่ซ้ำใช้ DISTINCT ข้างใน COUNT
+      - เงื่อนไข JOIN ตัวที่สองต้องจับคู่ product_id ของทั้งสองตาราง
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จับคู่ order_items กับ products ด้วย USING แล้วนับจำนวนแถวทั้งหมด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM order_items i JOIN products p USING(product_id)
+    hints:
+      - "`USING(col)` ใช้แทน `ON a.col=b.col` ได้เมื่อชื่อคอลัมน์เหมือนกันทั้งสองตาราง"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      ออเดอร์กับเมืองของลูกค้าที่สั่ง (JOIN customers) 5 ออเดอร์แรกสุด (order_id น้อยสุด)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT o.order_id, c.city FROM orders o
+      JOIN customers c ON o.customer_id = c.customer_id
+      ORDER BY o.order_id
+      LIMIT 5
+    ordered: true
+    hints:
+      - order_id เป็นคีย์หลัก ไม่มีทางซ้ำ เรียงได้ตรงๆ
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ยังไม่เคยสั่งซื้อเลย แยกตามเมือง เฉพาะเมือง Phuket และ Hat Yai
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT c.city, COUNT(*) AS n FROM customers c
+      LEFT JOIN orders o ON c.customer_id = o.customer_id
+      WHERE o.order_id IS NULL AND c.city IN ('Phuket', 'Hat Yai')
+      GROUP BY c.city
+    hints:
+      - ใช้ LEFT JOIN + IS NULL เหมือนตัวอย่าง x1 แล้วเพิ่มเงื่อนไขเมือง
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้รวม (quantity × unit_price) ของออเดอร์ที่ completed ทั้งหมด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT SUM(i.quantity * i.unit_price) AS total_revenue FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      WHERE o.status = 'completed'
+    hints:
+      - ไม่ต้อง GROUP BY เพราะต้องการยอดรวมก้อนเดียว
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      หมวดสินค้าที่มีรายได้มากที่สุด (เฉพาะ completed) และรายได้เท่าไร
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT p.category, SUM(i.quantity * i.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      JOIN products p ON i.product_id = p.product_id
+      WHERE o.status = 'completed'
+      GROUP BY p.category
+      ORDER BY revenue DESC
+      LIMIT 1
+    hints:
+      - เหมือนตัวอย่าง x2 แต่เอาแค่อันดับ 1 ด้วย LIMIT
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      5 ลูกค้าเมือง Bangkok ที่ใช้จ่ายมากที่สุด (เฉพาะ completed) เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT c.customer_id, SUM(i.quantity * i.unit_price) AS revenue
+      FROM customers c
+      JOIN orders o ON c.customer_id = o.customer_id
+      JOIN order_items i ON o.order_id = i.order_id
+      WHERE c.city = 'Bangkok' AND o.status = 'completed'
+      GROUP BY c.customer_id
+      ORDER BY revenue DESC
+      LIMIT 5
+    ordered: true
+    hints:
+      - เชื่อม 3 ตาราง (customers, orders, order_items) แล้ว GROUP BY ที่ลูกค้า
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยสั่งซื้อเลย แยกตามเมือง เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT c.city, COUNT(*) AS n FROM customers c
+      LEFT JOIN orders o ON c.customer_id = o.customer_id
+      WHERE o.order_id IS NULL
+      GROUP BY c.city
+      ORDER BY n DESC
+    ordered: true
+    hints:
+      - เหมือน e3 แต่ไม่กรองเมือง และเรียงผลลัพธ์ด้วย
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      จำนวนคู่สินค้าในหมวดเดียวกันที่ราคาต่างกันไม่เกิน 10 บาท (self-join กับตัวเอง)
+      นับแต่ละคู่แค่ครั้งเดียว (ไม่นับ (A,B) ซ้ำกับ (B,A) และไม่นับคู่กับตัวเอง)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM products p1
+      JOIN products p2
+        ON p1.category = p2.category
+        AND p1.product_id < p2.product_id
+        AND ABS(p1.price - p2.price) <= 10
+    hints:
+      - self-join คือ JOIN ตารางเดียวกันกับตัวเองด้วยชื่อ alias ต่างกัน (p1, p2)
+      - "`p1.product_id < p2.product_id` กันไม่ให้นับคู่ซ้ำหรือคู่กับตัวเอง"
+
+quiz:
+  - id: q1
+    question: INNER JOIN กับ LEFT JOIN ต่างกันยังไง
+    choices:
+      - text: LEFT JOIN เก็บทุกแถวจากตารางซ้ายไว้เสมอ (ใส่ NULL ถ้าหาคู่ไม่เจอ) ส่วน INNER JOIN ตัดแถวที่จับคู่ไม่ได้ทิ้ง
+        correct: true
+        why: นี่คือความต่างหลัก LEFT JOIN จึงใช้หา "แถวที่ไม่มีคู่" ได้ ส่วน INNER JOIN ทำไม่ได้
+      - text: LEFT JOIN เร็วกว่า INNER JOIN เสมอ
+        why: ความเร็วขึ้นกับ index และขนาดข้อมูล ไม่ใช่กติกาตายตัว
+      - text: ทั้งสองแบบให้ผลลัพธ์เหมือนกันทุกกรณี
+        why: ต่างกันชัดเจนเมื่อมีแถวที่จับคู่ไม่ได้ในตารางใดตารางหนึ่ง
+      - text: INNER JOIN ใช้ได้กับ 2 ตารางเท่านั้น
+        why: JOIN แบบไหนก็เชื่อมได้มากกว่า 2 ตาราง ไม่จำกัดที่ INNER
+  - id: q2
+    question: ทำไม COUNT(*) หลัง JOIN กับตารางลูก (เช่น order_items) ถึงมากกว่าจำนวนออเดอร์จริง
+    choices:
+      - text: เพราะออเดอร์ 1 ใบมีสินค้าได้หลายชิ้น การ JOIN จึงคูณแถวตามจำนวนสินค้า (fan-out)
+        correct: true
+        why: นี่คือปัญหา fan-out แก้ด้วย COUNT(DISTINCT order_id) หรือรวมยอดก่อน join
+      - text: JOIN มี bug ทำให้นับซ้ำโดยไม่ตั้งใจ
+        why: ไม่ใช่ bug แต่เป็นพฤติกรรมปกติของ JOIN แบบ one-to-many
+      - text: ต้องใช้ LEFT JOIN แทน INNER JOIN ถึงจะนับถูก
+        why: ปัญหานี้เกิดกับ JOIN ทุกแบบเมื่อความสัมพันธ์เป็น one-to-many ไม่เกี่ยวกับ LEFT/INNER
+      - text: order_items มีข้อมูลผิดพลาดปนอยู่
+        why: ข้อมูลไม่ได้ผิด แค่ธรรมชาติของความสัมพันธ์ 1 ออเดอร์ต่อหลายสินค้า
+  - id: q3
+    question: จะหา "แถวที่ไม่มีคู่" (เช่น ลูกค้าที่ไม่เคยสั่งซื้อ) ต้องใช้ JOIN แบบไหนและเงื่อนไขอะไร
+    choices:
+      - text: LEFT JOIN แล้วกรองด้วย WHERE ที่คอลัมน์คีย์ของตารางขวาเป็น IS NULL
+        correct: true
+        why: LEFT JOIN ใส่ NULL ให้ตารางขวาเมื่อจับคู่ไม่ได้ กรองด้วย IS NULL จึงเจอเฉพาะแถวที่ไม่มีคู่
+      - text: INNER JOIN แล้วกรองด้วย WHERE IS NULL
+        why: INNER JOIN ตัดแถวที่ไม่มีคู่ทิ้งไปแล้ว ไม่มีทางเจอ NULL เลย
+      - text: RIGHT JOIN เท่านั้นที่ทำได้
+        why: RIGHT JOIN ก็ทำได้เหมือนกันถ้าสลับตำแหน่งตาราง แต่ LEFT JOIN เป็นวิธีที่ใช้กันทั่วไปมากกว่า
+      - text: ใช้ GROUP BY แทน JOIN
+        why: GROUP BY ไม่ได้ช่วยหาแถวที่ไม่มีคู่ระหว่างสองตาราง
+
+summary:
+  - LEFT JOIN เก็บทุกแถวจากตารางซ้าย ใส่ NULL เมื่อหาคู่ในตารางขวาไม่เจอ ส่วน INNER JOIN ตัดแถวที่ไม่มีคู่ทิ้ง
+  - หา "แถวที่ไม่มีคู่" ด้วย LEFT JOIN + WHERE คอลัมน์คีย์ของตารางขวา IS NULL
+  - JOIN กับตารางแบบ one-to-many (เช่น order_items) ทำให้แถวเบิ้ล ระวัง COUNT(*) นับซ้ำ ใช้ COUNT(DISTINCT ...) แทน
+
+interview:
+  - id: i1
+    q: เจอ bug ว่าตัวเลขหลัง JOIN เยอะกว่าที่ควรจะเป็น สาเหตุที่เป็นไปได้คืออะไร และแก้ยังไง
+    a: |
+      สาเหตุที่พบบ่อยที่สุดคือ **fan-out**: JOIN กับตารางที่มีความสัมพันธ์แบบ one-to-many
+      (เช่น 1 ออเดอร์มีหลายรายการสินค้าใน order_items) ทำให้แถวของฝั่ง "one" ถูกคูณซ้ำตามจำนวนแถวฝั่ง "many"
+
+      วิธีตรวจสอบ: ลองนับจำนวนแถวก่อนและหลัง JOIN เทียบกัน ถ้าหลัง JOIN เพิ่มขึ้นมาก
+      ให้สงสัยความสัมพันธ์แบบ one-to-many ก่อนเสมอ
+
+      วิธีแก้: ใช้ `COUNT(DISTINCT ...)` เพื่อนับไม่ซ้ำ หรือ aggregate ตารางลูกให้เป็นแถวเดียวต่อคีย์ก่อน
+      (เช่นด้วย subquery/CTE) แล้วค่อย JOIN
+
+flashcards:
+  - id: c1
+    front: LEFT JOIN ต่างจาก INNER JOIN ยังไง
+    back: LEFT JOIN เก็บทุกแถวจากตารางซ้าย ใส่ NULL เมื่อหาคู่ไม่เจอ INNER JOIN ตัดแถวที่ไม่มีคู่ทิ้ง
+  - id: c2
+    front: fan-out คืออะไร
+    back: การที่แถวถูกคูณซ้ำหลัง JOIN กับตารางแบบ one-to-many ทำให้ COUNT(*) นับเกินจริง แก้ด้วย COUNT(DISTINCT ...)

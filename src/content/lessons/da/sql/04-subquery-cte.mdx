@@ -1,0 +1,65 @@
+---
+track: da
+module: sql
+order: 4
+title: Subquery และ CTE
+minutes: 30
+prereqs: [da/sql/03-joins]
+---
+
+## Subquery คืออะไร
+
+Subquery คือ query ที่ซ้อนอยู่ในอีก query หนึ่ง ใช้ตอนต้องการค่าที่คำนวณแยกออกไปก่อน
+เช่น "ราคาเฉลี่ยของทั้งร้าน" แล้วเอามาเทียบกับแต่ละแถว:
+
+```sql
+SELECT product_name, price FROM products
+WHERE price > (SELECT AVG(price) FROM products)
+```
+
+## Correlated subquery
+
+Subquery แบบพิเศษที่**อ้างอิงค่าจากแถวข้างนอก** เรียกว่า correlated subquery — มันจะถูกคำนวณใหม่ทุกแถว
+ต่างจาก subquery ธรรมดาที่คำนวณครั้งเดียวแล้วได้ค่าคงที่ตัวเดียว:
+
+```sql
+SELECT product_name, category, price FROM products p1
+WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.category)
+```
+
+สังเกต `p2.category = p1.category` — นี่คือจุดที่ subquery ข้างในอ้างอิงตาราง `p1` จากข้างนอก
+ทำให้ค่าเฉลี่ยที่คำนวณเปลี่ยนไปตามหมวดของแต่ละแถว
+
+## IN, EXISTS และกับดักของ NOT IN
+
+| รูปแบบ | ความหมาย |
+| --- | --- |
+| `col IN (subquery)` | ค่าตรงกับค่าใดค่าหนึ่งที่ subquery คืนมา |
+| `EXISTS (correlated subquery)` | มีแถวที่จับคู่เงื่อนไขได้ไหม (ไม่สนใจค่าจริงของแถวนั้น) |
+| `NOT EXISTS (correlated subquery)` | ไม่มีแถวที่จับคู่เงื่อนไขได้เลย |
+
+**กับดักสำคัญ:** `NOT IN (subquery)` ถ้า subquery มีค่า NULL ปนอยู่แม้แค่ตัวเดียว
+ผลลัพธ์ทั้งหมดจะกลายเป็นว่างเปล่า (ไม่มีแถวไหนผ่านเงื่อนไขเลย) เพราะการเทียบ `<>` กับ NULL
+ได้ผลเป็น "ไม่รู้" (unknown) เสมอ ไม่ใช่ true หรือ false
+
+ทางที่ปลอดภัยกว่า: ใช้ `NOT EXISTS` แทน หรือถ้าจะใช้ `NOT IN` ต่อไป ต้องกรอง NULL ออกจาก subquery
+ด้วย `IS NOT NULL` ก่อนเสมอ
+
+## CTE (Common Table Expression)
+
+เขียนด้วย `WITH` — ตั้งชื่อผลลัพธ์ของ query ย่อยไว้ก่อน แล้วค่อยใช้ชื่อนั้นต่อในคำสั่งหลัก
+ทำให้ query ที่มีหลายขั้นตอนอ่านง่ายขึ้นมาก เมื่อเทียบกับการซ้อน subquery หลายชั้น:
+
+```sql
+WITH rev AS (
+  SELECT customer_id, SUM(amount) AS total FROM orders GROUP BY customer_id
+)
+SELECT * FROM rev WHERE total > 10000
+```
+
+ตั้ง CTE ได้หลายตัวในคำสั่งเดียว คั่นด้วยจุลภาค และ CTE ตัวหลังอ้างอิง CTE ตัวก่อนหน้าได้ด้วย:
+
+```sql
+WITH a AS (...), b AS (SELECT * FROM a WHERE ...)
+SELECT * FROM b
+```

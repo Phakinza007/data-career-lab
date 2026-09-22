@@ -1,0 +1,419 @@
+goals:
+  - แก้โจทย์ "อันดับที่ N" แบบคลาสสิกโดยไม่ใช้ LIMIT/OFFSET
+  - รวมเทคนิคจากบทก่อนหน้า (subquery, join, window function, date) แก้โจทย์ธุรกิจที่ซับซ้อนขึ้น
+  - รู้ทันกับดักที่พบบ่อยในห้องสัมภาษณ์ (RANK vs DENSE_RANK เมื่อมี tie, ลำดับการทำงานของ WHERE กับ window function)
+
+examples:
+  - id: x1
+    title: สินค้าราคาแพงอันดับ 2 ของหมวด Beauty โดยไม่ใช้ LIMIT/OFFSET
+    lang: sql
+    prompt: |
+      โจทย์คลาสสิกในห้องสัมภาษณ์: หา "อันดับที่ 2" โดยไม่ให้ใช้ LIMIT/OFFSET
+      (เพื่อทดสอบว่าเข้าใจการเทียบค่าและ window function จริงๆ ไม่ใช่จำ syntax)
+      ใช้หมวด Beauty เพราะมีสินค้าราคาสูงสุดเท่ากันอยู่ 2 ชิ้นพอดี ทำให้เห็นปัญหาที่ซ่อนอยู่ชัดเจน
+    steps:
+      - text: |
+          วิธีที่คุ้นเคย: `ORDER BY ... DESC LIMIT 1 OFFSET 1` ใช้งานได้จริงในหลายกรณี
+          แต่ลองดูผลลัพธ์ให้ดี — ได้ "Beauty Item 11" ราคา 1759 ซึ่ง**ซ้ำ**กับราคาสูงสุด (Beauty Item 06 ก็ 1759)
+          นี่ไม่ใช่ "ราคาอันดับ 2" ในทางความหมาย เพราะราคาที่ต่ำกว่าอันดับ 1 จริงๆ คือ 1309
+        code: |
+          SELECT product_name, price FROM products
+          WHERE category = 'Beauty'
+          ORDER BY price DESC
+          LIMIT 1 OFFSET 1
+      - text: |
+          วิธีที่ 2: หาค่าสูงสุดที่ "น้อยกว่า" ค่าสูงสุดของทั้งหมด ด้วย correlated ไม่จำเป็น แค่ subquery ธรรมดา
+        code: |
+          SELECT MAX(price) AS second_highest FROM products
+          WHERE category = 'Beauty' AND price < (SELECT MAX(price) FROM products WHERE category = 'Beauty')
+      - text: |
+          วิธีที่ 3: ใช้ `DENSE_RANK` แล้วกรอง `rnk = 2` — วิธีนี้ยังทำงานถูกต้องแม้ราคาอันดับ 1 จะซ้ำกันหลายแถว
+          และคืนชื่อสินค้ามาด้วย ไม่ใช่แค่ราคา
+        code: |
+          SELECT product_name, price FROM (
+            SELECT product_name, price, DENSE_RANK() OVER (ORDER BY price DESC) AS rnk
+            FROM products
+            WHERE category = 'Beauty'
+          ) t
+          WHERE rnk = 2
+    pitfall:
+      text: |
+        ถ้าใช้ `RANK` แทน `DENSE_RANK` ในวิธีที่ 3 — เมื่อราคาอันดับ 1 ซ้ำกัน 2 แถว RANK จะให้ทั้งคู่เป็นอันดับ 1
+        แล้ว**ข้ามไปอันดับ 3 เลย** (ไม่มีอันดับ 2) ผลคือกรอง `rnk = 2` แล้วไม่เจอแถวไหนเลย (0 แถว)
+        ทั้งที่ควรมีคำตอบ (Beauty Item 05, ราคา 1309) — DENSE_RANK ไม่ข้ามเลข จึงไม่มีปัญหานี้
+      code: |
+        SELECT product_name, price FROM (
+          SELECT product_name, price, RANK() OVER (ORDER BY price DESC) AS rnk
+          FROM products
+          WHERE category = 'Beauty'
+        ) t
+        WHERE rnk = 2
+  - id: x2
+    title: ลูกค้าที่ "ซื้อซ้ำ" แต่ไม่เคยยกเลิกออเดอร์เลยสักครั้ง
+    lang: sql
+    prompt: |
+      รวมเทคนิค GROUP BY/HAVING (บทที่ 2) กับ NOT EXISTS (บทที่ 4) เข้าด้วยกัน
+    steps:
+      - text: |
+          หาลูกค้าที่ "ซื้อซ้ำ" ก่อน (มีออเดอร์มากกว่า 1 ครั้ง)
+        code: |
+          SELECT COUNT(*) FROM (
+            SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 1
+          ) t
+      - text: |
+          กรองเฉพาะคนที่ไม่เคยมีออเดอร์สถานะ cancelled เลยสักครั้ง ด้วย NOT EXISTS
+        code: |
+          WITH repeaters AS (
+            SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 1
+          )
+          SELECT COUNT(*) FROM repeaters r
+          WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = r.customer_id AND o.status = 'cancelled')
+    pitfall:
+      text: |
+        ถ้ากรอง `status <> 'cancelled'` ตั้งแต่ต้น (ก่อน GROUP BY) แทนที่จะกรองทีหลังด้วย NOT EXISTS
+        จะเป็นการตัดออเดอร์ cancelled ทิ้งไปเลยตั้งแต่แรก ทำให้ลูกค้าที่**เคย**ยกเลิกมาก่อนแอบปนเข้ามาในกลุ่ม
+        "ซื้อซ้ำไม่เคยยกเลิก" อย่างผิดๆ (เพราะไม่เหลือหลักฐานว่าเขาเคยยกเลิกให้เห็นแล้ว) — ได้ 1591 แทนที่จะเป็น 1375
+      code: |
+        SELECT COUNT(*) FROM (
+          SELECT customer_id, COUNT(*) AS n FROM orders
+          WHERE status <> 'cancelled'
+          GROUP BY customer_id
+          HAVING COUNT(*) > 1
+        ) t
+  - id: x3
+    title: session ไหนผ่านครบทุกขั้นของ funnel (visit → view_product → add_to_cart → checkout → purchase)
+    lang: sql
+    prompt: |
+      ทีมผลิตภัณฑ์อยากรู้ว่า session ไหนที่ผู้ใช้เดินทางครบทุกขั้นของ funnel จนซื้อสำเร็จ
+    steps:
+      - text: |
+          นับจำนวน event_type ที่ต่างกัน (ไม่ซ้ำ) ในแต่ละ session — session ที่ผ่านครบทุกขั้นจะมีค่านี้เท่ากับ 5
+        code: |
+          SELECT session_id, COUNT(DISTINCT event_type) AS n_steps FROM events
+          GROUP BY session_id
+          ORDER BY n_steps DESC
+          LIMIT 5
+      - text: |
+          กรองเฉพาะ session ที่มีครบ 5 ขั้นจริงๆ
+        code: |
+          SELECT COUNT(*) FROM (
+            SELECT session_id, COUNT(DISTINCT event_type) AS n_steps FROM events GROUP BY session_id
+          ) t
+          WHERE n_steps = 5
+    pitfall:
+      text: |
+        ถ้าใช้เงื่อนไข `n_steps >= 4` แทน `= 5` (คิดว่า "ไปได้ไกลก็นับด้วย") จะได้ผลลัพธ์ที่เยอะเกินจริง (3178 แทนที่จะเป็น 2139)
+        เพราะรวม session ที่ไปได้ถึงแค่ checkout (4 ขั้น) แต่ยังไม่ได้ purchase จริงปนเข้ามาด้วย
+        "ผ่านครบ funnel" กับ "ไปได้ไกลพอสมควร" เป็นคำถามคนละข้อ ต้องเลือก threshold ให้ตรงกับสิ่งที่ถูกถาม
+      code: |
+        SELECT COUNT(*) FROM (
+          SELECT session_id, COUNT(DISTINCT event_type) AS n_steps FROM events GROUP BY session_id
+        ) t
+        WHERE n_steps >= 4
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      หาสินค้าราคาถูกอันดับ 2 (ไม่ใช้ LIMIT/OFFSET) ในหมวด Home
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT product_name, price FROM (
+        SELECT product_name, price, DENSE_RANK() OVER (ORDER BY price ___) AS rnk
+        FROM products
+        WHERE category = 'Home'
+      ) t
+      WHERE rnk = ___
+    solution: |
+      SELECT product_name, price FROM (
+        SELECT product_name, price, DENSE_RANK() OVER (ORDER BY price ASC) AS rnk
+        FROM products
+        WHERE category = 'Home'
+      ) t
+      WHERE rnk = 2
+    hints:
+      - "\"ถูกอันดับ 2\" คือเรียงจากถูกไปแพง (ASC) แล้วเอาอันดับที่สอง"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      5 ลูกค้าที่สมัครก่อนใครในระบบ (ถ้าวันสมัครซ้ำกัน ให้ customer_id น้อยกว่าถือว่าสมัครก่อน)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT customer_id, signup_date FROM customers
+      ORDER BY signup_date ASC, customer_id ASC
+      LIMIT 5
+    ordered: true
+    hints:
+      - "\"ก่อนใคร\" คือเรียงจากวันสมัครน้อยไปมาก (ASC)"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์ของแต่ละวิธีจ่ายเงิน ที่มีการให้ส่วนลด (discount_pct ไม่ใช่ NULL)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT payment_method, COUNT(*) AS n FROM orders
+      WHERE discount_pct IS NOT NULL
+      GROUP BY payment_method
+    hints:
+      - ทบทวนจากบทที่ 2 (GROUP BY) และบทที่ 1 (IS NOT NULL)
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อสินค้าหมวด Books (นับไม่ซ้ำคน)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(DISTINCT o.customer_id) FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      JOIN products p ON i.product_id = p.product_id
+      WHERE p.category = 'Books'
+    hints:
+      - ทบทวนจากบทที่ 3 (JOIN 3 ตาราง + COUNT DISTINCT กัน fan-out)
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยจ่ายด้วย cod เลยสักครั้ง
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.payment_method = 'cod')
+    hints:
+      - ทบทวนจากบทที่ 4 (NOT EXISTS)
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      หมวดสินค้าที่มีราคาสูงสุด (MAX price) เป็นอันดับ 2 เมื่อเทียบราคาสูงสุดของแต่ละหมวดด้วยกัน (ไม่ใช้ LIMIT/OFFSET)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH capmax AS (
+        SELECT category, MAX(price) AS mx FROM products GROUP BY category
+      ),
+      ranked AS (
+        SELECT *, DENSE_RANK() OVER (ORDER BY mx DESC) AS rnk FROM capmax
+      )
+      SELECT category, mx FROM ranked WHERE rnk = 2
+    hints:
+      - หาราคาสูงสุดของแต่ละหมวดก่อนด้วย CTE แล้วค่อยจัดอันดับเหมือน x1
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ลูกค้าที่ออเดอร์แรกสุดของตัวเอง (เรียงตามวันที่ แล้ว order_id เป็น tie-break) มีมูลค่ารวมมากกว่า 5000 บาท มีกี่คน
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH first_o AS (
+        SELECT customer_id, order_id,
+               ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS rn
+        FROM orders
+      )
+      SELECT COUNT(*) FROM (
+        SELECT f.customer_id, SUM(i.quantity * i.unit_price) AS amt
+        FROM first_o f
+        JOIN order_items i ON f.order_id = i.order_id
+        WHERE f.rn = 1
+        GROUP BY f.customer_id
+      ) t
+      WHERE amt > 5000
+    hints:
+      - หา "ออเดอร์แรกสุด" ด้วย ROW_NUMBER เหมือนบทที่ 5 ก่อน แล้วค่อยรวมมูลค่า
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      เดือนไหน (ปีไหน) ที่มีลูกค้าสมัครใหม่มากที่สุด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT DATE_TRUNC('month', signup_date) AS m, COUNT(*) AS n FROM customers
+      GROUP BY m
+      ORDER BY n DESC
+      LIMIT 1
+    hints:
+      - ใช้ DATE_TRUNC เหมือนบทที่ 6
+  - id: e8
+    level: applied
+    lang: sql
+    prompt: |
+      ค่าเฉลี่ยจำนวนวันระหว่างการสั่งซื้อแต่ละครั้ง ของลูกค้าที่มีออเดอร์อย่างน้อย 2 ครั้ง (ปัด 1 ตำแหน่ง)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH gaps AS (
+        SELECT customer_id,
+               DATEDIFF('day', LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id), order_date) AS gap
+        FROM orders
+      )
+      SELECT ROUND(AVG(gap), 1) AS avg_gap FROM gaps WHERE gap IS NOT NULL
+    hints:
+      - ใช้ LAG + DATEDIFF เหมือนบทที่ 5 แล้วเอามาเข้า AVG
+      - แถวแรกของแต่ละลูกค้าจะได้ gap เป็น NULL ต้องกรองออกก่อนหา AVG
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      หมวดสินค้าที่มีสัดส่วนรายได้ (completed) มากกว่า 10% ของรายได้รวมทั้งหมด (ปัด 1 ตำแหน่งเป็น %)
+
+      **ระวัง:** ถ้าคำนวณ % ด้วย `SUM(...) OVER ()` วางไว้ในจุดที่มันถูกคำนวณ**หลัง**จากที่ WHERE
+      กรองแถวออกไปแล้ว window จะคิดจากยอดของแถวที่เหลือหลังกรองเท่านั้น ไม่ใช่ยอดรวมทั้งหมดจริง
+      (ตัวอย่างที่ผิด: Electronics จะได้ 70.2% ทั้งที่จริงคือ 59% เพราะฐานหารเหลือแค่ Electronics+Home+Sports)
+      ต้องแยกคำนวณยอดรวมจริงไว้ก่อนใน CTE ต่างหาก แล้วค่อยกรอง
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH cat AS (
+        SELECT p.category, SUM(i.quantity * i.unit_price) AS rev
+        FROM orders o
+        JOIN order_items i ON o.order_id = i.order_id
+        JOIN products p ON i.product_id = p.product_id
+        WHERE o.status = 'completed'
+        GROUP BY p.category
+      ),
+      total AS (
+        SELECT SUM(rev) AS grand FROM cat
+      )
+      SELECT category, ROUND(100.0 * rev / grand, 1) AS pct FROM cat
+      CROSS JOIN total
+      WHERE rev > 0.1 * grand
+      ORDER BY pct DESC
+    ordered: true
+    hints:
+      - "คำนวณยอดรวมจริง (grand total) แยกไว้ใน CTE ต่างหาก อย่าใช้ SUM() OVER () หลังจากกรองแล้ว"
+      - "`CROSS JOIN` กับตารางที่มีแถวเดียว (total) จะติดค่านั้นไปทุกแถวของ cat"
+  - id: e10
+    level: challenge
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อ (completed) ทั้งหมวด Electronics และหมวด Books (อาจคนละออเดอร์ก็ได้)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers c
+      WHERE EXISTS (
+        SELECT 1 FROM orders o
+        JOIN order_items i ON o.order_id = i.order_id
+        JOIN products p ON i.product_id = p.product_id
+        WHERE o.customer_id = c.customer_id AND o.status = 'completed' AND p.category = 'Electronics'
+      )
+      AND EXISTS (
+        SELECT 1 FROM orders o
+        JOIN order_items i ON o.order_id = i.order_id
+        JOIN products p ON i.product_id = p.product_id
+        WHERE o.customer_id = c.customer_id AND o.status = 'completed' AND p.category = 'Books'
+      )
+    hints:
+      - ใช้ EXISTS สองตัวคู่กันด้วย AND — ต้องผ่านทั้งคู่ถึงจะนับ
+
+quiz:
+  - id: q1
+    question: ลำดับการประมวลผลจริงของ SQL query หนึ่งคำสั่งคืออะไร
+    choices:
+      - text: "FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT"
+        correct: true
+        why: นี่คือลำดับที่ SQL ประมวลผลจริง ต่างจากลำดับที่เขียนโค้ด (ซึ่งขึ้นต้นด้วย SELECT)
+      - text: "SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT"
+        why: นี่คือลำดับที่ *เขียน* โค้ด ไม่ใช่ลำดับที่ *ประมวลผล* จริง
+      - text: "WHERE → SELECT → FROM → GROUP BY → ORDER BY"
+        why: FROM ต้องมาก่อน WHERE เสมอ เพราะต้องรู้ก่อนว่าดึงข้อมูลจากตารางไหน
+      - text: ไม่มีลำดับตายตัว ขึ้นอยู่กับฐานข้อมูลแต่ละยี่ห้อ
+        why: ลำดับนี้เป็นมาตรฐาน SQL ทั่วไป ใช้เหมือนกันแทบทุกฐานข้อมูล
+  - id: q2
+    question: จะหา "อันดับที่ N" โดยไม่ใช้ LIMIT/OFFSET ทำยังไง
+    choices:
+      - text: ใช้ correlated subquery นับ/เทียบค่าที่มากกว่า หรือใช้ DENSE_RANK แล้วกรอง rnk = N
+        correct: true
+        why: สองแนวทางนี้คือวิธีมาตรฐาน DENSE_RANK ยังทำงานถูกต้องแม้มีค่าเท่ากัน (tie) ที่อันดับสูงกว่า
+      - text: ใช้ ORDER BY อย่างเดียวโดยไม่ต้อง LIMIT
+        why: ORDER BY เรียงลำดับ แต่ไม่ได้ "เลือก" อันดับที่ N ให้ ต้องมีวิธีกรองเพิ่ม
+      - text: เป็นไปไม่ได้ถ้าไม่ใช้ LIMIT/OFFSET
+        why: ทำได้จริง ด้วย window function หรือ subquery ตามที่เรียนในบทนี้
+      - text: ใช้ GROUP BY แทน LIMIT ได้เสมอ
+        why: GROUP BY ใช้จัดกลุ่ม ไม่ได้ออกแบบมาสำหรับหาอันดับที่ N โดยตรง
+  - id: q3
+    question: DENSE_RANK ต่างจาก RANK ตอนมีค่าเท่ากันยังไง (ทำไมสำคัญกับโจทย์ "อันดับที่ N")
+    choices:
+      - text: RANK เว้นเลขข้ามเมื่อมี tie (1,1,3) ทำให้บางอันดับ (เช่น 2) หายไปเลย ส่วน DENSE_RANK ไม่เว้น (1,1,2)
+        correct: true
+        why: ถ้าใช้ RANK แล้วอันดับบนสุดมี tie การกรองหา "อันดับที่ 2" อาจไม่เจอผลลัพธ์เลยทั้งที่ควรมี
+      - text: ทั้งสองให้ผลเหมือนกันทุกกรณี
+        why: ต่างกันชัดเจนเมื่อมี tie เกิดขึ้น ซึ่งเป็นสิ่งที่ต้องระวังเวลาหา "อันดับที่ N"
+      - text: DENSE_RANK ใช้ได้เฉพาะกับตัวเลขเท่านั้น
+        why: ทั้งสองใช้ ORDER BY กับคอลัมน์ชนิดไหนก็ได้เหมือนกัน
+      - text: RANK เร็วกว่า DENSE_RANK เสมอ
+        why: ความเร็วไม่ใช่ประเด็นหลักในการเลือกใช้ ความถูกต้องของผลลัพธ์เมื่อมี tie ต่างหากที่สำคัญ
+  - id: q4
+    question: NOT IN กับ NOT EXISTS ต่างกันยังไงเมื่อข้อมูลมี NULL
+    choices:
+      - text: NOT IN กับ subquery ที่มี NULL ปนจะได้ผลลัพธ์ว่างเปล่าเสมอ (ผิดพลาด) ส่วน NOT EXISTS ไม่มีปัญหานี้
+        correct: true
+        why: ทบทวนจากบทที่ 4 — นี่คือกับดักที่พบบ่อยมากในงานจริงและห้องสัมภาษณ์
+      - text: ทั้งสองปลอดภัยเท่ากันไม่ว่าข้อมูลจะมี NULL หรือไม่
+        why: NOT IN มีความเสี่ยงที่ NOT EXISTS ไม่มี เมื่อ subquery อาจมี NULL
+      - text: NOT EXISTS ใช้ไม่ได้กับ correlated subquery
+        why: NOT EXISTS มักใช้แบบ correlated subquery อยู่แล้ว เป็นการใช้งานปกติ
+      - text: ปัญหานี้แก้ได้ด้วยการเปลี่ยนไปใช้ WHERE แทน
+        why: WHERE ไม่ได้ช่วยแก้ปัญหานี้ ต้องเปลี่ยนวิธีเขียนเงื่อนไข (ใช้ NOT EXISTS หรือกรอง NULL ออกจาก subquery)
+  - id: q5
+    question: เจอโจทย์ SQL ที่ยากในห้องสัมภาษณ์ ควรทำยังไงก่อนเริ่มเขียนโค้ด
+    choices:
+      - text: ถามให้ชัดเจนก่อนว่าโจทย์ต้องการอะไรจริงๆ แล้วเริ่มจาก query ง่ายๆ ที่ทำงานได้ก่อน ค่อยปรับให้ตรงขึ้นทีละขั้น พร้อมพูดความคิดออกมาดังๆ
+        correct: true
+        why: ผู้สัมภาษณ์ส่วนใหญ่อยากเห็นกระบวนการคิด ไม่ใช่แค่คำตอบสุดท้าย การถามคำถามที่ดีและคิดออกมาดังๆ มักได้คะแนนดีกว่าเงียบแล้วพิมพ์
+      - text: เขียน query ที่ซับซ้อนที่สุดทันทีเพื่อแสดงความสามารถ
+        why: เสี่ยงพลาดและงงเอง ควรเริ่มง่ายแล้วค่อยเพิ่มความซับซ้อนทีละขั้น
+      - text: นิ่งเงียบคิดในใจจนกว่าจะได้คำตอบที่สมบูรณ์แบบ
+        why: ผู้สัมภาษณ์มักอยากเห็นและได้ยินกระบวนการคิดระหว่างทางด้วย
+      - text: ข้ามคำถามที่ไม่แน่ใจไปทำข้ออื่นก่อนเสมอ
+        why: ในห้องสัมภาษณ์ส่วนใหญ่ไม่มี "ข้ออื่น" ให้ข้าม การถามให้ชัดเจนและลองเริ่มทำมีประโยชน์กว่า
+
+summary:
+  - โจทย์ "อันดับที่ N" แบบไม่ใช้ LIMIT/OFFSET ทำได้ด้วย DENSE_RANK (ปลอดภัยกว่า RANK เมื่อมี tie) หรือ correlated subquery
+  - โจทย์ธุรกิจซับซ้อนมักรวมหลายเทคนิคเข้าด้วยกัน (join + subquery + window function + date) ไม่ใช่ใช้ทีละอย่าง
+  - window function ที่คำนวณหลัง WHERE กรองแล้ว จะเห็นแค่ข้อมูลที่เหลือ ไม่ใช่ข้อมูลทั้งหมดตั้งแต่ต้น — ถ้าต้องการฐานคำนวณจากข้อมูลทั้งหมดต้องแยกคำนวณไว้ก่อน
+
+interview:
+  - id: i1
+    q: ระหว่างทำโจทย์ SQL สดในห้องสัมภาษณ์ ควรอธิบายความคิดยังไงให้ผู้สัมภาษณ์ตามทัน
+    a: |
+      เริ่มจากพูดสรุปสั้นๆ ว่าเข้าใจโจทย์ว่ายังไง แล้วถามกลับถ้ามีจุดที่ไม่ชัดเจน (เช่น "นับรวมออเดอร์ที่ยกเลิกด้วยไหม")
+      จากนั้นเล่าแผนคร่าวๆ ก่อนเริ่มเขียน (เช่น "ผมจะ join ตาราง A กับ B ก่อน แล้วค่อย group by")
+      ระหว่างเขียนโค้ด พูดเหตุผลของแต่ละขั้นออกมา ไม่ใช่แค่พิมพ์เงียบๆ และถ้าเขียนแบบง่ายได้ผลลัพธ์คร่าวๆ ก่อน
+      ค่อยบอกว่าจะปรับปรุงยังไงต่อ (เช่น เพิ่มเงื่อนไข หรือแก้ปัญหา edge case) ก็เป็นการแสดงกระบวนการคิดที่ดี
+  - id: i2
+    q: ยกตัวอย่างวิธีหา "อันดับที่ N" โดยไม่ใช้ LIMIT/OFFSET พร้อมอธิบายว่าทำไมบางบริษัทถามแบบนี้
+    a: |
+      ตัวอย่าง: หาพนักงานที่เงินเดือนสูงเป็นอันดับ 2 — ใช้ `DENSE_RANK() OVER (ORDER BY salary DESC)` แล้วห่อ
+      ด้วย subquery กรอง `WHERE rnk = 2` (เลือก DENSE_RANK ไม่ใช่ RANK เพราะถ้าเงินเดือนสูงสุดซ้ำกันหลายคน
+      RANK จะข้ามอันดับ 2 ไปเลย)
+
+      บริษัทถามแบบนี้เพราะ LIMIT/OFFSET เป็นเพียง syntax เฉพาะของบางฐานข้อมูล และไม่ได้บอกว่าเข้าใจแนวคิด
+      เรื่องการจัดอันดับข้อมูลจริงๆ — การห้ามใช้ LIMIT/OFFSET บังคับให้ต้องคิดด้วย window function หรือ subquery
+      ซึ่งเป็นทักษะที่ใช้แก้ปัญหาที่ซับซ้อนกว่านี้ได้ด้วย
+  - id: i3
+    q: เจอผลลัพธ์หลัง JOIN ที่ดูเยอะเกินจริง ควรตรวจสอบอะไรก่อน
+    a: |
+      ให้สงสัยปัญหา **fan-out** ก่อนเป็นอันดับแรก (ทบทวนจากบทที่ 3) — เกิดเมื่อ JOIN กับตารางที่มีความสัมพันธ์
+      แบบ one-to-many เช่น 1 ออเดอร์มีหลายรายการสินค้า ทำให้แถวของฝั่ง "one" ถูกคูณซ้ำ
+
+      วิธีตรวจสอบเร็วๆ:ลองนับจำนวนแถวก่อน JOIN เทียบกับหลัง JOIN ถ้าต่างกันมาก ให้ดูว่า JOIN
+      กับตารางไหนที่อาจมีหลายแถวต่อ 1 คีย์ แล้วแก้ด้วย `COUNT(DISTINCT ...)` บนคีย์ที่ไม่อยากนับซ้ำ
+      หรือ aggregate ตารางลูกให้เหลือแถวเดียวต่อคีย์ก่อน (ด้วย subquery/CTE) แล้วค่อย JOIN
+
+flashcards:
+  - id: c1
+    front: หา "อันดับที่ N" โดยไม่ใช้ LIMIT/OFFSET ทำยังไง
+    back: ใช้ DENSE_RANK() OVER (ORDER BY ...) แล้วห่อด้วย subquery กรอง WHERE rnk = N
+  - id: c2
+    front: ทำไมเลือก DENSE_RANK ไม่ใช่ RANK สำหรับโจทย์ "อันดับที่ N"
+    back: RANK เว้นเลขข้ามเมื่อมี tie ทำให้บางอันดับหายไปและกรองไม่เจอผลลัพธ์ DENSE_RANK ไม่เว้น

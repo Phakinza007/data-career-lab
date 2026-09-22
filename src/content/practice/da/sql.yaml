@@ -1,0 +1,237 @@
+title: "ชุดฝึกท้าย module: SQL"
+exercises:
+  - id: p1
+    level: basic
+    lang: sql
+    prompt: |
+      สินค้าหมวด Fashion ราคาต่ำกว่า 500 บาท
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, price FROM products WHERE category = 'Fashion' AND price < 500
+    hints:
+      - ทบทวนบทที่ 1 (WHERE + AND)
+  - id: p2
+    level: basic
+    lang: sql
+    prompt: |
+      5 ออเดอร์แรกสุดที่ถูกยกเลิก (order_id น้อยไปมาก)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT order_id, order_date FROM orders
+      WHERE status = 'cancelled'
+      ORDER BY order_id
+      LIMIT 5
+    ordered: true
+    hints:
+      - order_id เป็นคีย์หลัก เรียงได้ตรงๆ ไม่มีค่าซ้ำ
+  - id: p3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนสินค้าที่ราคามากกว่า 1000 บาท แยกตามหมวด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT category, COUNT(*) AS n FROM products
+      WHERE price > 1000
+      GROUP BY category
+    hints:
+      - กรองด้วย WHERE ก่อน แล้วค่อย GROUP BY
+  - id: p4
+    level: basic
+    lang: sql
+    prompt: |
+      ช่องทางสมัคร (channel) ที่มีลูกค้ามากกว่า 500 คน
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT channel, COUNT(*) AS n FROM customers
+      GROUP BY channel
+      HAVING COUNT(*) > 500
+    hints:
+      - กรองจำนวนกลุ่มด้วย HAVING
+  - id: p5
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์ที่จ่ายด้วย bank_transfer และมีส่วนลด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM orders
+      WHERE payment_method = 'bank_transfer' AND discount_pct IS NOT NULL
+    hints:
+      - สองเงื่อนไขเชื่อมด้วย AND
+  - id: p6
+    level: applied
+    lang: sql
+    prompt: |
+      5 ลูกค้าเมือง Chiang Mai ที่ใช้จ่ายมากที่สุด (เฉพาะ completed) เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT c.customer_id, SUM(i.quantity * i.unit_price) AS revenue
+      FROM customers c
+      JOIN orders o ON c.customer_id = o.customer_id
+      JOIN order_items i ON o.order_id = i.order_id
+      WHERE c.city = 'Chiang Mai' AND o.status = 'completed'
+      GROUP BY c.customer_id
+      ORDER BY revenue DESC
+      LIMIT 5
+    ordered: true
+    hints:
+      - เชื่อม customers, orders, order_items เข้าด้วยกัน
+  - id: p7
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อสินค้าที่ราคาต่อชิ้น (unit_price ใน order_items) แพงกว่า 10000 บาท (นับไม่ซ้ำคน)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(DISTINCT o.customer_id) FROM orders o
+      JOIN order_items i ON o.order_id = i.order_id
+      WHERE i.unit_price > 10000
+    hints:
+      - นับไม่ซ้ำต้องใช้ COUNT(DISTINCT ...)
+  - id: p8
+    level: challenge
+    lang: sql
+    prompt: |
+      หมวดสินค้าที่มีจำนวนสินค้าน้อยกว่าค่าเฉลี่ยจำนวนสินค้าต่อหมวด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH c AS (
+        SELECT category, COUNT(*) AS n FROM products GROUP BY category
+      )
+      SELECT category, n FROM c WHERE n < (SELECT AVG(n) FROM c)
+    hints:
+      - หาจำนวนสินค้าต่อหมวดด้วย CTE ก่อน แล้วเทียบกับค่าเฉลี่ยของ CTE นั้น
+  - id: p9
+    level: applied
+    lang: sql
+    prompt: |
+      จัดอันดับสินค้าหมวด Sports ตามราคาจากแพงไปถูก (RANK) เอาแค่ 3 อันดับแรก
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT product_name, price, RANK() OVER (ORDER BY price DESC) AS rnk FROM products
+      WHERE category = 'Sports'
+      ORDER BY rnk
+      LIMIT 3
+    ordered: true
+    hints:
+      - ทบทวนบทที่ 5 (RANK)
+  - id: p10
+    level: challenge
+    lang: sql
+    prompt: |
+      แต่ละเมืองมีสัดส่วนรายได้ (completed) เท่าไรของรายได้รวมทั้งหมด (ปัด 1 ตำแหน่งเป็น %) เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH cr AS (
+        SELECT c.city, SUM(i.quantity * i.unit_price) AS rev
+        FROM customers c
+        JOIN orders o ON c.customer_id = o.customer_id
+        JOIN order_items i ON o.order_id = i.order_id
+        WHERE o.status = 'completed'
+        GROUP BY c.city
+      )
+      SELECT city, ROUND(100.0 * rev / SUM(rev) OVER (), 1) AS pct FROM cr
+      ORDER BY pct DESC
+    ordered: true
+    hints:
+      - "`SUM(rev) OVER ()` (ไม่มี PARTITION BY) รวมทุกแถวเป็นฐานหารเดียวกัน"
+  - id: p11
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์ทั้งหมดในเดือนกุมภาพันธ์ (ทุกปีรวมกัน)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM orders WHERE EXTRACT(month FROM order_date) = 2
+    hints:
+      - เดือนกุมภาพันธ์คือเลข 2
+  - id: p12
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่สมัครในไตรมาส 4 ปี 2024 (ต.ค.-ธ.ค.)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers
+      WHERE signup_date BETWEEN '2024-10-01' AND '2024-12-31'
+    hints:
+      - ไตรมาส 4 คือเดือนตุลาคมถึงธันวาคม
+  - id: p13
+    level: challenge
+    lang: sql
+    prompt: |
+      เดือนไหนในปี 2025 ที่จำนวนออเดอร์ลดลงจากเดือนก่อนหน้ามากที่สุด (month-over-month)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH m AS (
+        SELECT DATE_TRUNC('month', order_date) AS mo, COUNT(*) AS n FROM orders GROUP BY mo
+      ),
+      g AS (
+        SELECT mo, n - LAG(n) OVER (ORDER BY mo) AS delta FROM m
+      )
+      SELECT mo, delta FROM g
+      WHERE EXTRACT(year FROM mo) = 2025
+      ORDER BY delta
+      LIMIT 1
+    hints:
+      - คำนวณ delta จากข้อมูลทุกเดือนก่อน (ไม่กรองปี) แล้วค่อยกรองปี 2025 ทีหลัง เพื่อให้เดือน ม.ค. 2025 เทียบกับ ธ.ค. 2024 ได้ถูกต้อง
+  - id: p14
+    level: basic
+    lang: sql
+    prompt: |
+      3 สินค้าที่ถูกสั่งซื้อ (นับจำนวนแถวใน order_items) มากที่สุด เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT p.product_name, COUNT(*) AS n FROM order_items i
+      JOIN products p USING(product_id)
+      GROUP BY p.product_name
+      ORDER BY n DESC
+      LIMIT 3
+    ordered: true
+    hints:
+      - นับจำนวนแถวต่อสินค้าด้วย GROUP BY แล้วเรียงมากไปน้อย
+  - id: p15
+    level: applied
+    lang: sql
+    prompt: |
+      ลูกค้าเมือง Khon Kaen ใช้จ่ายรวมเท่าไร (เฉพาะ completed)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT SUM(i.quantity * i.unit_price) AS total FROM customers c
+      JOIN orders o ON c.customer_id = o.customer_id
+      JOIN order_items i ON o.order_id = i.order_id
+      WHERE c.city = 'Khon Kaen' AND o.status = 'completed'
+    hints:
+      - เชื่อม 3 ตารางแล้วรวมยอดด้วย SUM ไม่ต้อง GROUP BY
+  - id: p16
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนสินค้าที่ไม่เคยอยู่ในออเดอร์ที่ถูกยกเลิกเลย (ใช้ NOT EXISTS)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM products p
+      WHERE NOT EXISTS (
+        SELECT 1 FROM order_items i
+        JOIN orders o ON i.order_id = o.order_id
+        WHERE i.product_id = p.product_id AND o.status = 'cancelled'
+      )
+    hints:
+      - ทบทวนบทที่ 4 (NOT EXISTS) — คำตอบที่ถูกต้องของข้อนี้คือ 0 (ทุกสินค้าเคยอยู่ในออเดอร์ที่ถูกยกเลิกอย่างน้อยหนึ่งครั้ง)

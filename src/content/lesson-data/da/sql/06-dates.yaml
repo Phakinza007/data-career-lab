@@ -1,0 +1,244 @@
+goals:
+  - ดึงส่วนของวันที่ (ปี/เดือน/วันในสัปดาห์) ด้วย EXTRACT
+  - ตัดวันที่ให้เป็นหน่วยที่ใหญ่ขึ้น (ต้นเดือน) ด้วย DATE_TRUNC เพื่อเทียบข้ามปีได้ถูกต้อง
+  - หาระยะห่างระหว่างวันที่ด้วย DATEDIFF
+
+examples:
+  - id: x1
+    title: "ยอดขายรายเดือน — ทำไมต้องใช้ DATE_TRUNC ไม่ใช่ EXTRACT(month) เฉยๆ"
+    lang: sql
+    prompt: |
+      อยากดูแนวโน้มยอดขายรายเดือนของปี 2025 เพื่อเทียบกับปีก่อนหน้า
+    steps:
+      - text: |
+          ใช้ `EXTRACT(month FROM ...)` ดึงเลขเดือนออกมา กรองเฉพาะปี 2025 ด้วย `EXTRACT(year FROM ...)`
+        code: |
+          SELECT EXTRACT(month FROM order_date) AS m, COUNT(*) AS n FROM orders
+          WHERE EXTRACT(year FROM order_date) = 2025
+          GROUP BY m
+          ORDER BY m
+      - text: |
+          ถ้าไม่อยากกรองทีละปี ใช้ `DATE_TRUNC('month', ...)` แทน — มันตัดวันที่ให้เหลือ "วันที่ 1 ของเดือนนั้น"
+          ทำให้เดือนของคนละปีไม่ถูกนำมารวมกันโดยไม่ตั้งใจ
+        code: |
+          SELECT DATE_TRUNC('month', order_date) AS m, COUNT(*) AS n FROM orders
+          GROUP BY m
+          ORDER BY m
+    pitfall:
+      text: |
+        ถ้าใช้ `EXTRACT(month FROM ...)` แบบไม่กรองปี (`GROUP BY m` เฉยๆ) เดือนเดียวกันจากคนละปีจะถูกรวมกัน
+        เช่น "เดือน 1" จะกลายเป็นยอดของ ม.ค. 2024 บวก ม.ค. 2025 รวมกัน (ได้ 388 ทั้งที่ ม.ค. 2025 เดี่ยวๆ มีแค่ 304)
+        ถ้าต้องการดูแนวโน้มแยกปี ต้องกรองปีหรือใช้ DATE_TRUNC เสมอ
+      code: |
+        SELECT EXTRACT(month FROM order_date) AS m, COUNT(*) AS n FROM orders
+        GROUP BY m
+        ORDER BY m
+  - id: x2
+    title: ลูกค้าสมัครมานานกี่วันแล้ว (นับถึงวันล่าสุดที่มีข้อมูลในระบบ)
+    lang: sql
+    prompt: |
+      ข้อมูลจำลองนี้ไม่มี "วันนี้" จริง จึงใช้วันที่ล่าสุดที่มีออเดอร์ในระบบแทน แล้วคำนวณระยะห่างจากวันสมัคร
+    steps:
+      - text: |
+          หา "วันที่ล่าสุด" ในระบบก่อน จะใช้เป็นจุดอ้างอิง
+        code: |
+          SELECT MAX(order_date) AS latest FROM orders
+      - text: |
+          ใช้ `DATEDIFF('day', จุดเริ่ม, จุดสิ้นสุด)` คำนวณจำนวนวัน — ระวังลำดับ argument!
+        code: |
+          SELECT customer_id, signup_date,
+                 DATEDIFF('day', signup_date, (SELECT MAX(order_date) FROM orders)) AS days_since_signup
+          FROM customers
+          ORDER BY customer_id
+          LIMIT 5
+    pitfall:
+      text: |
+        `DATEDIFF(หน่วย, start, end)` นับจาก **start ไป end** เสมอ ถ้าสลับตำแหน่งกัน (เอาวันที่ล่าสุดไว้ก่อน)
+        ผลลัพธ์จะติดลบทั้งหมด (เช่น -730 แทนที่จะเป็น 730) ค่าติดลบแบบนี้มักเป็นสัญญาณว่าใส่ argument สลับกัน
+      code: |
+        SELECT customer_id,
+               DATEDIFF('day', (SELECT MAX(order_date) FROM orders), signup_date) AS days_wrong
+        FROM customers
+        ORDER BY customer_id
+        LIMIT 5
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      หาจำนวนออเดอร์ในแต่ละวันของสัปดาห์ (0=อาทิตย์ ... 6=เสาร์)
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT EXTRACT(___ FROM order_date) AS dow, COUNT(*) AS n FROM orders
+      GROUP BY ___
+      ORDER BY dow
+    solution: |
+      SELECT EXTRACT(dow FROM order_date) AS dow, COUNT(*) AS n FROM orders
+      GROUP BY dow
+      ORDER BY dow
+    ordered: true
+    hints:
+      - "`dow` ย่อมาจาก day of week"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์ในแต่ละปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT EXTRACT(year FROM order_date) AS y, COUNT(*) AS n FROM orders GROUP BY y
+    hints:
+      - เหมือนตัวอย่างในบทที่แล้ว แค่เปลี่ยนจาก signup_date เป็น order_date
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      นับจำนวนออเดอร์ทั้งหมดที่เกิดในเดือนธันวาคม (ทุกปีรวมกัน)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM orders WHERE EXTRACT(month FROM order_date) = 12
+    hints:
+      - เดือนธันวาคมคือเลข 12
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      หาวันที่ล่าสุดที่มีการสั่งซื้อในระบบ
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT MAX(order_date) AS latest FROM orders
+    hints:
+      - "MAX() ใช้กับวันที่ได้เหมือนตัวเลข"
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      หาจำนวนวันระหว่างออเดอร์แรกสุดกับออเดอร์ล่าสุดในระบบทั้งหมด
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT DATEDIFF('day', MIN(order_date), MAX(order_date)) AS span_days FROM orders
+    hints:
+      - จุดเริ่มคือวันแรกสุด (MIN) จุดสิ้นสุดคือวันล่าสุด (MAX)
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      ยอดขายรายเดือน (จำนวนออเดอร์) ของปี 2024 เท่านั้น
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT DATE_TRUNC('month', order_date) AS m, COUNT(*) AS n FROM orders
+      WHERE EXTRACT(year FROM order_date) = 2024
+      GROUP BY m
+      ORDER BY m
+    hints:
+      - ใช้ DATE_TRUNC เหมือนตัวอย่าง x1 แต่กรองปีด้วย WHERE
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่สมัครมาแล้วเกิน 500 วัน (นับถึงวันล่าสุดในระบบ)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM customers
+      WHERE DATEDIFF('day', signup_date, (SELECT MAX(order_date) FROM orders)) > 500
+    hints:
+      - ใช้ DATEDIFF เหมือนตัวอย่าง x2 แล้วเทียบกับ 500
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์ที่เกิดขึ้นในวันเสาร์หรืออาทิตย์ (weekend)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      SELECT COUNT(*) FROM orders WHERE EXTRACT(dow FROM order_date) IN (0, 6)
+    hints:
+      - "0=อาทิตย์, 6=เสาร์ ตามที่เรียนใน f1"
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      เดือนไหน (ปีไหน) ที่จำนวนออเดอร์เพิ่มขึ้นจากเดือนก่อนหน้ามากที่สุด (month-over-month, ใช้ LAG)
+    starter: |
+      -- เขียน SQL ตรงนี้
+    solution: |
+      WITH m AS (
+        SELECT DATE_TRUNC('month', order_date) AS mo, COUNT(*) AS n FROM orders GROUP BY mo
+      ),
+      g AS (
+        SELECT mo, n - LAG(n) OVER (ORDER BY mo) AS delta FROM m
+      )
+      SELECT mo, delta FROM g
+      ORDER BY delta DESC
+      LIMIT 1
+    hints:
+      - รวมความรู้จากบทที่แล้ว (LAG) กับบทนี้ (DATE_TRUNC)
+      - หาจำนวนออเดอร์ต่อเดือนก่อนด้วย CTE แล้วค่อยหาผลต่างจากเดือนก่อนหน้า
+
+quiz:
+  - id: q1
+    question: EXTRACT กับ DATE_TRUNC ต่างกันยังไง
+    choices:
+      - text: EXTRACT ดึงตัวเลขส่วนหนึ่งของวันที่ออกมา (เช่น เลขเดือน) ส่วน DATE_TRUNC ตัดวันที่ทั้งก้อนให้เหลือความละเอียดที่กำหนด (เช่น วันที่ 1 ของเดือนนั้น)
+        correct: true
+        why: "EXTRACT(month FROM '2024-03-15') ได้ 3 (แค่ตัวเลข) ส่วน DATE_TRUNC('month', '2024-03-15') ได้ '2024-03-01' (ยังเป็นวันที่)"
+      - text: ทั้งสองฟังก์ชันทำสิ่งเดียวกันทุกประการ
+        why: ผลลัพธ์คนละชนิดกัน EXTRACT ได้ตัวเลข DATE_TRUNC ได้วันที่
+      - text: EXTRACT ใช้กับปีเท่านั้น DATE_TRUNC ใช้กับเดือนเท่านั้น
+        why: ทั้งสองใช้ได้กับหลายหน่วย (ปี เดือน วัน ฯลฯ) ไม่ได้จำกัดแบบนั้น
+      - text: DATE_TRUNC ใช้ได้เฉพาะกับ TIMESTAMP ไม่ใช่ DATE
+        why: ใช้ได้กับทั้งสองชนิด
+  - id: q2
+    question: "`DATEDIFF('day', a, b)` กับ `DATEDIFF('day', b, a)` ต่างกันยังไง"
+    choices:
+      - text: เครื่องหมายกลับกัน (บวกเป็นลบ ลบเป็นบวก) เพราะนับจาก argument ตัวแรกไปตัวที่สองเสมอ
+        correct: true
+        why: DATEDIFF นับทิศทางเดียวคือจาก start ไป end สลับตำแหน่งจะได้ค่าเดิมแต่เครื่องหมายกลับกัน
+      - text: ได้ผลลัพธ์เหมือนกันทุกกรณี
+        why: ผลลัพธ์จะมีเครื่องหมายตรงข้ามกัน ไม่ใช่ค่าเดียวกัน
+      - text: ตัวที่สองเท่านั้นที่ให้ผลถูกต้อง
+        why: ทั้งสองแบบถูกต้องตามหลักคณิตศาสตร์ แค่ทิศทางต่างกัน ขึ้นกับว่าต้องการนับจากไหนไปไหน
+      - text: ต่างกันเฉพาะตอนข้ามปีเท่านั้น
+        why: เครื่องหมายกลับกันเสมอไม่ว่าจะข้ามปีหรือไม่
+  - id: q3
+    question: ทำไมเทียบยอดขาย "เดือนต่อเดือน" ด้วย EXTRACT(month...) เฉยๆ ข้ามปีถึงผิด
+    choices:
+      - text: EXTRACT(month...) ดึงแค่เลขเดือน ไม่สนใจปี ทำให้เดือนเดียวกันจากคนละปีถูกนับรวมเป็นกลุ่มเดียวกันโดยไม่ตั้งใจ
+        correct: true
+        why: ต้องกรองปีเพิ่ม หรือใช้ DATE_TRUNC ที่เก็บทั้งปีและเดือนไว้ด้วยกัน ถึงจะแยกแต่ละเดือนของแต่ละปีออกจากกันได้
+      - text: EXTRACT(month...) ใช้กับ order_date ไม่ได้
+        why: ใช้ได้ปกติ ปัญหาอยู่ที่มันไม่เก็บข้อมูลปีไว้ ไม่ใช่ใช้กับคอลัมน์นี้ไม่ได้
+      - text: ต้องใช้ EXTRACT(year...) แทนเสมอ
+        why: EXTRACT(year...) ให้แค่ปี ไม่ได้แก้ปัญหาการดูแนวโน้มรายเดือน ต้องใช้ทั้งปีและเดือนคู่กัน
+      - text: ปัญหานี้เกิดเฉพาะกับข้อมูลที่มีมากกว่า 2 ปีเท่านั้น
+        why: เกิดได้ตั้งแต่มีข้อมูล 2 ปีขึ้นไป ไม่จำเป็นต้องมากกว่า 2 ปี
+
+summary:
+  - EXTRACT ดึงส่วนของวันที่ออกมาเป็นตัวเลข DATE_TRUNC ตัดวันที่ให้เหลือความละเอียดที่กำหนด
+  - DATEDIFF(หน่วย, start, end) นับจาก start ไป end เสมอ สลับ argument แล้วเครื่องหมายจะกลับกัน
+  - เทียบยอดขายรายเดือนข้ามปีต้องใช้ DATE_TRUNC หรือกรองปีด้วย ไม่งั้นเดือนของคนละปีจะถูกรวมกัน
+
+interview:
+  - id: i1
+    q: จะเปรียบเทียบยอดขายแบบเดือนต่อเดือน (MoM) ข้ามปีให้ถูกต้องต้องทำยังไง
+    a: |
+      ต้องแยกปีออกจากกันเสมอ ไม่ใช่ GROUP BY แค่เลขเดือนจาก EXTRACT(month...) เพราะจะรวมเดือนเดียวกัน
+      จากคนละปีเข้าด้วยกันโดยไม่ตั้งใจ วิธีที่ถูกต้องมีสองแบบ: (1) ใช้ `DATE_TRUNC('month', date_col)`
+      ซึ่งได้ค่าที่เก็บทั้งปีและเดือนไว้ในตัว (เช่น '2024-03-01') หรือ (2) GROUP BY ทั้ง year และ month แยกกัน
+      ทั้งสองวิธีทำให้เดือนของแต่ละปีถูกนับแยกกันอย่างถูกต้อง
+
+flashcards:
+  - id: c1
+    front: EXTRACT ต่างจาก DATE_TRUNC ยังไง
+    back: EXTRACT ดึงตัวเลขส่วนหนึ่งออกมา (เช่นเลขเดือน) DATE_TRUNC ตัดวันที่ทั้งก้อนให้เหลือความละเอียดที่กำหนด
+  - id: c2
+    front: DATEDIFF('day', a, b) นับทิศทางไหน
+    back: นับจาก a ไป b เสมอ สลับตำแหน่งแล้วเครื่องหมายจะกลับกัน
