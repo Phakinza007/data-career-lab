@@ -1,0 +1,87 @@
+---
+track: da
+module: viz
+order: 2
+title: วาดกราฟด้วย matplotlib และ seaborn
+minutes: 30
+prereqs: [da/viz/01-choosing-charts]
+---
+
+## จากเลือกกราฟถูก ไปสู่การวาดจริง
+
+บทที่แล้วเรียนวิธี**เลือก**ชนิดกราฟให้ตรงกับคำถาม บทนี้มาเรียนวิธี**วาด**กราฟเหล่านั้นจริงๆ ด้วย Python
+สองไลบรารีที่ใช้บ่อยที่สุดในงาน DA คือ **matplotlib** (ไลบรารีพื้นฐาน ควบคุมได้ละเอียดทุกอย่าง) และ
+**seaborn** (สร้างอยู่บน matplotlib อีกที เขียนสั้นกว่าและมี default styling ที่อ่านง่ายกว่าสำหรับกราฟสถิติทั่วไป)
+
+## matplotlib พื้นฐาน
+
+`matplotlib.pyplot` (นิยมเรียกย่อว่า `plt`) มีฟังก์ชันวาดกราฟพื้นฐานที่ครอบคลุมเกือบทุกชนิดกราฟที่เจอในบทที่แล้ว:
+
+| ฟังก์ชัน | ใช้วาดกราฟแบบไหน |
+| --- | --- |
+| `plt.plot(x, y)` | กราฟเส้น — ดูเทรนด์ตามเวลา |
+| `plt.bar(x, y)` | กราฟแท่ง — เทียบค่าระหว่างหมวดหมู่ |
+| `plt.hist(data, bins=...)` | histogram — ดูการกระจายของตัวแปรเดียว |
+| `plt.scatter(x, y)` | scatter plot — ดูความสัมพันธ์ระหว่างตัวแปรตัวเลขสองตัว |
+
+ตัวอย่างกราฟเส้นแสดงรายได้รายเดือน:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+orders = pd.read_csv("data/orders.csv")
+items = pd.read_csv("data/order_items.csv")
+items['line'] = items['quantity'] * items['unit_price']
+merged = items.merge(orders, on='order_id')
+completed = merged[merged['status'] == 'completed'].copy()
+completed['month'] = pd.to_datetime(completed['order_date']).dt.to_period('M').astype(str)
+monthly = completed[completed['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+plt.plot(monthly.index, monthly.values)
+plt.title('รายได้รวมรายเดือน ปี 2025')
+plt.xlabel('เดือน')
+plt.ylabel('รายได้ (บาท)')
+plt.xticks(rotation=45)
+```
+
+สังเกตว่านอกจาก `plt.plot(...)` แล้ว มีอีก 3 บรรทัดสำหรับ `title`/`xlabel`/`ylabel` — บรรทัดพวกนี้ไม่ได้เปลี่ยนข้อมูลที่แสดงเลย
+แต่ทำให้คนอ่านรู้ทันทีว่ากราฟนี้กำลังบอกอะไร โดยไม่ต้องเดาหรือถามเพิ่ม
+
+## seaborn: ทางลัดสำหรับกราฟสถิติ
+
+`seaborn` (นิยมเรียกย่อว่า `sns`) ทำสิ่งเดียวกับ matplotlib ได้ในโค้ดที่สั้นกว่า โดยเฉพาะเมื่อข้อมูลอยู่ในรูป
+DataFrame อยู่แล้ว — แค่บอกว่าคอลัมน์ไหนไปแกนไหน:
+
+| matplotlib | seaborn (เทียบเท่ากัน) |
+| --- | --- |
+| `plt.plot(x, y)` | `sns.lineplot(data=df, x=..., y=...)` |
+| `plt.bar(x, y)` | `sns.barplot(data=df, x=..., y=...)` |
+| `plt.hist(data, bins=...)` | `sns.histplot(data=df, x=..., bins=...)` |
+| `plt.scatter(x, y)` | `sns.scatterplot(data=df, x=..., y=...)` |
+| (ไม่มีฟังก์ชันตรงๆ ใน matplotlib) | `sns.boxplot(data=df, x=..., y=...)` — box plot เทียบหลายกลุ่ม |
+
+```python
+import pandas as pd
+import seaborn as sns
+
+products = pd.read_csv("data/products.csv")
+
+sns.histplot(data=products, x='price', bins=20)
+```
+
+โค้ดข้างบนสั้นกว่า `plt.hist(products['price'], bins=20)` แค่นิดเดียว แต่ seaborn จะจัดสี ขอบแท่ง และสไตล์
+โดยรวมให้ดูเป็นมืออาชีพขึ้นโดยอัตโนมัติ — ยิ่งเห็นชัดขึ้นเมื่อกราฟซับซ้อนขึ้น เช่น การแยกสีตามกลุ่ม (`hue=...`)
+หรือ box plot ที่เทียบหลายหมวดหมู่พร้อมกัน
+
+**ข้อควรระวัง:** `import seaborn as sns` ต้องมีเสมอก่อนเรียกใช้ `sns.xxx()` — ถ้าลืม จะได้ `NameError`
+ทันที (โค้ดรันไม่ผ่านเลย ไม่ใช่แค่กราฟดูแปลก) เพราะ seaborn ไม่ได้ถูก import มาพร้อมกับ pandas หรือ matplotlib
+
+## title และ label ไม่ใช่ของแต่ง
+
+กราฟที่ไม่มี title/label ยังคง "ถูก" ในแง่ข้อมูล แต่ไม่มีประโยชน์ในการสื่อสาร เพราะคนอ่านต้องเดาเองว่าแกน x
+คืออะไร แกน y คืออะไร หน่วยอะไร — title ที่ดีควรบอกว่ากราฟนี้ตอบคำถามอะไร ไม่ใช่แค่ก็อปปี้ชื่อคอลัมน์มาใส่ เช่น
+"รายได้รวมรายเดือน ปี 2025" สื่อความหมายได้ดีกว่า "monthly" มาก
+
+ในบทนี้ โจทย์ฝึกจะเน้นที่การ**เตรียมข้อมูล**ให้พร้อมสำหรับแต่ละชนิดกราฟ (aggregate ให้ถูกคอลัมน์ ถูกรูปทรง)
+เพราะนี่คือทักษะที่ตรวจได้จริงและเป็นด่านแรกก่อนจะวาดกราฟได้ถูกต้องเสมอ — ส่วนโค้ดวาดกราฟจริงจะอยู่ในตัวอย่างที่ทำให้ดู

@@ -1,0 +1,455 @@
+goals:
+  - เข้าใจ mean/median/mode และรู้ว่าเมื่อไหร่ควรใช้ตัวไหน
+  - คำนวณ variance/std เพื่อบอกว่าข้อมูลกระจายมากหรือน้อย
+  - หา quartiles (Q1/Q3) และ IQR
+  - ใช้ IQR หา outlier ด้วย fence
+
+examples:
+  - id: x1
+    title: ราคาสินค้าเฉลี่ย vs ค่ากลาง ต่างกันแค่ไหน
+    lang: python
+    prompt: |
+      ทีมสินค้าอยากรู้ว่าราคาสินค้า "โดยทั่วไป" อยู่ที่เท่าไหร่ ลองดูทั้ง mean และ median เทียบกัน
+    steps:
+      - text: |
+          หาค่าเฉลี่ย (mean) ของราคาสินค้าด้วย `.mean()`
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          mean_price = products['price'].mean()
+          mean_price
+      - text: |
+          หาค่ากลาง (median) ด้วย `.median()` แล้วเทียบกับ mean — สังเกตว่าต่างกันเยอะมาก
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          mean_price = products['price'].mean()
+          median_price = products['price'].median()
+          mean_price, median_price
+    pitfall:
+      text: |
+        หลายคนคิดว่า mean กับ median ควรใกล้เคียงกันเสมอ แต่ข้อมูลราคาสินค้าชุดนี้เบ้ขวา (มีสินค้าราคาแพงมากอยู่ไม่กี่ชิ้น
+        ที่ดึงค่าเฉลี่ยขึ้นไปสูง) mean (2296.0) กับ median (1014.0) จึงต่างกันเกินเท่าตัว — ถ้ารายงานแค่ mean ตัวเดียว
+        ผู้บริหารอาจเข้าใจผิดว่าสินค้า "ทั่วไป" ราคาแพงกว่าความเป็นจริงมาก
+        โค้ดข้างล่างแสดงให้เห็นชัดๆ ว่าค่าที่ปัดเป็นจำนวนเต็มของทั้งคู่ไม่เท่ากันเลย
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        mean_price = products['price'].mean()
+        median_price = products['price'].median()
+        round(mean_price) == round(median_price)
+  - id: x2
+    title: หา outlier ของราคาสินค้าด้วย IQR fence
+    lang: python
+    prompt: |
+      ทีมสินค้าสงสัยว่ามีสินค้าราคา "ผิดปกติ" (แพงเกินไป) ปนอยู่ในร้านหรือไม่ ลองใช้กฎ IQR มาเช็ค
+    steps:
+      - text: |
+          หา Q1 (เปอร์เซ็นไทล์ที่ 25) และ Q3 (เปอร์เซ็นไทล์ที่ 75) ด้วย `.quantile()` แล้วคำนวณ IQR = Q3 - Q1
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          q1_price = products['price'].quantile(0.25)
+          q3_price = products['price'].quantile(0.75)
+          iqr_price = q3_price - q1_price
+          q1_price, q3_price, iqr_price
+      - text: |
+          fence ด้านบนสำหรับหา outlier คือ `Q3 + 1.5 * IQR` — ราคาไหนเกินเส้นนี้ถือว่าผิดปกติ
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          q1_price = products['price'].quantile(0.25)
+          q3_price = products['price'].quantile(0.75)
+          iqr_price = q3_price - q1_price
+          upper_fence = q3_price + 1.5 * iqr_price
+          n_outliers = (products['price'] > upper_fence).sum()
+          upper_fence, n_outliers
+    pitfall:
+      text: |
+        ถ้าลืมคูณ 1.5 แล้วใช้ Q3 เฉยๆ เป็น fence จะได้เส้นแบ่งที่ต่ำเกินไป ทำให้สินค้าที่ราคาแค่ "แพงกว่าค่ามัธยฐานหน่อย"
+        (ไม่ได้ผิดปกติจริง) ถูกนับเป็น outlier ไปด้วยเยอะเกินจำเป็น — ตัวคูณ 1.5 คือส่วนสำคัญของสูตร ไม่ใช่ตัวเลือก
+      code: |
+        import pandas as pd
+
+        products = pd.read_csv("data/products.csv")
+        q1_price = products['price'].quantile(0.25)
+        q3_price = products['price'].quantile(0.75)
+        wrong_fence = q3_price
+        n_flagged_wrong = (products['price'] > wrong_fence).sum()
+        n_flagged_wrong
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      หาส่วนเบี่ยงเบนมาตรฐาน (standard deviation) ของยอดขายต่อออเดอร์ (เฉพาะออเดอร์ที่ status เป็น completed)
+      โดยยอดขายต่อออเดอร์คือผลรวมของ quantity * unit_price ในแต่ละ order_id
+      เก็บผลลัพธ์ไว้ในตัวแปร std_order_rev เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      std_order_rev = order_rev.___()
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      std_order_rev = order_rev.std()
+    check: |
+      check_value(std_order_rev, _sol["std_order_rev"], name="std_order_rev", tol=0.01)
+    hints:
+      - "std ย่อมาจาก standard deviation มีเมธอดตรงตัวใน pandas"
+  - id: f2
+    lang: python
+    prompt: |
+      เติมสูตร upper fence สำหรับหา outlier ของราคาสินค้า (`Q3 + ___ * IQR`) เก็บผลไว้ในตัวแปร upper_fence
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1_price = products['price'].quantile(0.25)
+      q3_price = products['price'].quantile(0.75)
+      iqr_price = q3_price - q1_price
+      upper_fence = q3_price + ___ * iqr_price
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1_price = products['price'].quantile(0.25)
+      q3_price = products['price'].quantile(0.75)
+      iqr_price = q3_price - q1_price
+      upper_fence = q3_price + 1.5 * iqr_price
+    check: |
+      check_value(upper_fence, _sol["upper_fence"], name="upper_fence", tol=0.01)
+    hints:
+      - "ตัวคูณมาตรฐานของกฎ IQR fence คือ 1.5"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      ราคาเฉลี่ย (mean) ของสินค้าทั้งหมด เก็บไว้ในตัวแปร mean_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      mean_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      mean_price = products['price'].mean()
+    check: |
+      check_value(mean_price, _sol["mean_price"], name="mean_price")
+    hints:
+      - "`.mean()` หาค่าเฉลี่ยของคอลัมน์ตัวเลข"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      ค่ากลาง (median) ของราคาสินค้าทั้งหมด เก็บไว้ในตัวแปร median_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      median_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      median_price = products['price'].median()
+    check: |
+      check_value(median_price, _sol["median_price"], name="median_price")
+    hints:
+      - "`.median()` หาค่ากลางของคอลัมน์ตัวเลข"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      ส่วนเบี่ยงเบนมาตรฐาน (standard deviation) ของราคาสินค้าทั้งหมด เก็บไว้ในตัวแปร std_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      std_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      std_price = products['price'].std()
+    check: |
+      check_value(std_price, _sol["std_price"], name="std_price", tol=0.01)
+    hints:
+      - "`.std()` ค่าเริ่มต้นของ pandas ใช้ ddof=1 (sample standard deviation) ตรงกับที่โจทย์ต้องการพอดี"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      หาเปอร์เซ็นไทล์ที่ 25 (Q1) และเปอร์เซ็นไทล์ที่ 75 (Q3) ของราคาสินค้า เก็บไว้ในตัวแปร q1_price และ q3_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1_price = ___
+      q3_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1_price = products['price'].quantile(0.25)
+      q3_price = products['price'].quantile(0.75)
+    check: |
+      check_value(q1_price, _sol["q1_price"], name="q1_price")
+      check_value(q3_price, _sol["q3_price"], name="q3_price")
+    hints:
+      - "`.quantile(0.25)` และ `.quantile(0.75)` ให้ Q1 และ Q3 ตามลำดับ"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      IQR (interquartile range) ของราคาสินค้า (Q3 - Q1) เก็บไว้ในตัวแปร iqr_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      iqr_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1_price = products['price'].quantile(0.25)
+      q3_price = products['price'].quantile(0.75)
+      iqr_price = q3_price - q1_price
+    check: |
+      check_value(iqr_price, _sol["iqr_price"], name="iqr_price")
+    hints:
+      - "IQR = Q3 - Q1"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ค่ากลาง (median) ของยอดขายต่อออเดอร์ (เฉพาะออเดอร์ที่ status เป็น completed โดยยอดต่อออเดอร์คือผลรวมของ
+      quantity * unit_price ในแต่ละ order_id) เก็บไว้ในตัวแปร median_order_rev
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      median_order_rev = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      median_order_rev = order_rev.median()
+    check: |
+      check_value(median_order_rev, _sol["median_order_rev"], name="median_order_rev")
+    hints:
+      - "merge order_items กับ orders ด้วย order_id ก่อน กรองเฉพาะ status == 'completed' แล้ว groupby('order_id') รวมยอด"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      ยอดขายต่อออเดอร์ (completed orders เท่านั้น) เบ้ขวาหรือไม่ (ตรวจจาก mean > median) เก็บผลบูลีนไว้ในตัวแปร
+      is_right_skewed
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      is_right_skewed = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      is_right_skewed = order_rev.mean() > order_rev.median()
+    check: |
+      check_value(is_right_skewed, _sol["is_right_skewed"], name="is_right_skewed")
+    hints:
+      - "ข้อมูลเบ้ขวาจะมี mean มากกว่า median เพราะค่าสูงผิดปกติบางค่าดึง mean ขึ้นไป"
+  - id: e8
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ที่ยอดขาย (completed orders เท่านั้น) เกิน upper IQR fence (Q3 + 1.5*IQR ของยอดต่อออเดอร์)
+      เก็บไว้ในตัวแปร n_outliers
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      n_outliers = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      q1 = order_rev.quantile(0.25)
+      q3 = order_rev.quantile(0.75)
+      iqr = q3 - q1
+      upper_fence = q3 + 1.5 * iqr
+      n_outliers = int((order_rev > upper_fence).sum())
+    check: |
+      check_value(n_outliers, _sol["n_outliers"], name="n_outliers")
+    hints:
+      - "คำนวณ Q1, Q3, IQR ของ order_rev ก่อน แล้วนับจำนวนค่าที่มากกว่า Q3 + 1.5*IQR"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ค่า skewness ของราคาสินค้า (ใช้ `.skew()`) เก็บไว้ในตัวแปร skew_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      skew_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      skew_price = products['price'].skew()
+    check: |
+      check_value(skew_price, _sol["skew_price"], name="skew_price", tol=0.001)
+    hints:
+      - "pandas Series มีเมธอด `.skew()` ให้ใช้ตรงๆ"
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      lower IQR fence ของยอดขายต่อออเดอร์ (completed orders เท่านั้น, สูตร Q1 - 1.5*IQR — ค่านี้จะติดลบ เพราะ
+      ยอดขายเป็นลบไม่ได้จริง จึงไม่มี outlier ด้านล่างที่มีความหมาย) เก็บไว้ในตัวแปร lower_fence
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      lower_fence = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+      q1 = order_rev.quantile(0.25)
+      q3 = order_rev.quantile(0.75)
+      iqr = q3 - q1
+      lower_fence = q1 - 1.5 * iqr
+    check: |
+      check_value(lower_fence, _sol["lower_fence"], name="lower_fence", tol=0.01)
+    hints:
+      - "สูตรเดียวกับ upper fence แต่ลบแทนบวก: Q1 - 1.5*IQR"
+
+quiz:
+  - id: q1
+    question: ทำไม median ถึงทนทานต่อ outlier มากกว่า mean
+    choices:
+      - text: เพราะ median ดูแค่ตำแหน่งกลางของข้อมูลที่เรียงแล้ว ไม่สนขนาดของค่าที่อยู่ปลายสุด
+        correct: true
+        why: median ขึ้นอยู่กับตำแหน่ง (ranking) เท่านั้น ต่อให้ค่าที่มากที่สุดจะมากขึ้นอีกแค่ไหน median ก็ไม่เปลี่ยน
+      - text: เพราะ median คำนวณจากผลรวมของทุกค่าเหมือน mean แต่หารด้วยตัวเลขที่ต่างกัน
+        why: median ไม่ได้คำนวณจากผลรวมเลย มันคือค่ากลางของข้อมูลที่เรียงแล้ว
+      - text: เพราะ median จะตัดค่า outlier ทิ้งก่อนคำนวณเสมอ
+        why: median ไม่ได้ตัดข้อมูลใดๆ ทิ้ง แค่ไม่ได้รับผลกระทบจากขนาดของค่าปลายๆ
+      - text: เพราะ mean กับ median ทนทานต่อ outlier เท่ากันอยู่แล้ว
+        why: ทั้งสองไม่เท่ากัน mean ไวต่อ outlier กว่า median มาก
+  - id: q2
+    question: IQR คำนวณยังไง
+    choices:
+      - text: "Q3 - Q1"
+        correct: true
+        why: IQR (interquartile range) คือช่วงระหว่างเปอร์เซ็นไทล์ที่ 75 กับ 25
+      - text: "Q3 + Q1"
+        why: เป็นการบวก ไม่ใช่การลบ ผลลัพธ์ไม่ใช่ IQR
+      - text: max - min
+        why: นั่นคือ range ไม่ใช่ IQR — range ไวต่อ outlier มากกว่า IQR
+      - text: mean - median
+        why: นั่นวัดความเบ้ (skew) คร่าวๆ ไม่ใช่ IQR
+  - id: q3
+    question: ข้อมูลที่เบ้ขวา (right-skewed) ค่า mean เทียบกับ median จะเป็นแบบไหน
+    choices:
+      - text: mean มากกว่า median
+        correct: true
+        why: หางยาวไปทางขวา (ค่าสูงผิดปกติบางค่า) ดึงค่าเฉลี่ยขึ้นไปสูงกว่า median
+      - text: mean น้อยกว่า median
+        why: นั่นคือลักษณะของข้อมูลเบ้ซ้าย (left-skewed) ไม่ใช่เบ้ขวา
+      - text: mean เท่ากับ median เสมอ
+        why: mean กับ median เท่ากันพอดีเกิดขึ้นเฉพาะข้อมูลที่สมมาตร ไม่ใช่ข้อมูลเบ้
+      - text: บอกไม่ได้ ขึ้นอยู่กับจำนวนข้อมูล
+        why: ทิศทางของความเบ้กำหนดความสัมพันธ์ระหว่าง mean กับ median ได้ ไม่เกี่ยวกับจำนวนข้อมูล
+  - id: q4
+    question: fence สำหรับหา outlier ด้านบนด้วยกฎ IQR คำนวณจากอะไร
+    choices:
+      - text: "Q3 + 1.5 × IQR"
+        correct: true
+        why: นี่คือสูตรมาตรฐานของ upper fence ในกฎ IQR
+      - text: "Q3 เฉยๆ"
+        why: ใช้ Q3 ตรงๆ โดยไม่คูณ 1.5 จะทำให้เส้นแบ่งต่ำเกินไป นับ outlier เกินจริง
+      - text: "mean + 3 × std"
+        why: นั่นคือกฎ z-score ไม่ใช่กฎ IQR
+      - text: "Q3 × 1.5"
+        why: สูตรที่ถูกต้องคือ Q3 บวกด้วย 1.5 เท่าของ IQR ไม่ใช่ Q3 คูณ 1.5
+
+summary:
+  - mean ไวต่อ outlier แต่ median ทนทานกว่า เพราะดูแค่ตำแหน่งกลาง — ข้อมูลเบ้ขวาจะมี mean > median เสมอ
+  - variance/std บอกว่าข้อมูลกระจายมากหรือน้อยรอบค่าเฉลี่ย
+  - IQR (Q3 - Q1) วัดการกระจายของข้อมูล 50% ตรงกลาง ทนทานต่อ outlier มากกว่า range (max - min)
+  - ใช้ IQR fence (Q3 + 1.5*IQR) หา outlier ด้านบนได้ โดยไม่ต้องสมมติว่าข้อมูลเป็นการแจกแจงปกติ
+
+interview:
+  - id: i1
+    q: ทำไมนักวิเคราะห์มักดู median ควบคู่กับ mean เสมอเวลารายงานตัวเลข
+    a: |
+      เพราะ mean เพียงตัวเดียวอาจทำให้เข้าใจผิดได้ถ้าข้อมูลเบ้ (skewed) หรือมี outlier — เช่นรายได้เฉลี่ยต่อออเดอร์
+      อาจถูกดึงสูงขึ้นไปมากจากออเดอร์ขนาดใหญ่ไม่กี่ออเดอร์ ทำให้ตัวเลข mean ดูดีเกินความเป็นจริงของ "ออเดอร์ทั่วไป"
+
+      การดู median ควบคู่กันช่วยให้เห็นภาพที่สมดุลขึ้น: ถ้า mean กับ median ใกล้กัน ข้อมูลค่อนข้างสมมาตร แต่ถ้าต่างกันมาก
+      (แบบราคาสินค้าหรือยอดขายในร้านนี้) ก็เป็นสัญญาณว่าต้องระวังการตีความ และอาจต้องดู distribution ทั้งหมดเพิ่มเติม
+  - id: i2
+    q: เจอ outlier ในข้อมูลควรทำยังไง
+    a: |
+      ไม่ควรลบทิ้งทันทีโดยไม่ตรวจสอบ — ขั้นแรกต้องหาที่มาก่อนเสมอว่า outlier นี้เกิดจากอะไร อาจเป็นข้อผิดพลาดในการ
+      บันทึกข้อมูล (เช่น ใส่จำนวนผิดหลัก) หรืออาจเป็นเหตุการณ์จริงที่มีความหมายทางธุรกิจ (เช่น ลูกค้าองค์กรสั่งซื้อจำนวนมาก)
+
+      ถ้าเป็นข้อผิดพลาดจริง ค่อยแก้ไขหรือตัดออก แต่ถ้าเป็นค่าจริงที่มีความหมาย ควรเก็บไว้วิเคราะห์แยกต่างหาก หรือใช้สถิติ
+      ที่ทนทานต่อ outlier (เช่น median แทน mean) แทนการลบข้อมูลทิ้งไปเฉยๆ
+
+flashcards:
+  - id: c1
+    front: mean กับ median ต่างกันยังไงเรื่องความทนทานต่อ outlier
+    back: mean ไวต่อ outlier เพราะคำนวณจากผลรวมของทุกค่า ส่วน median ทนทานกว่าเพราะดูแค่ตำแหน่งกลางของข้อมูลที่เรียงแล้ว
+  - id: c2
+    front: สูตร upper fence สำหรับหา outlier ด้วยกฎ IQR
+    back: "Q3 + 1.5 × IQR (ถ้าอยากได้ fence ด้านล่างใช้ Q1 - 1.5 × IQR แทน)"

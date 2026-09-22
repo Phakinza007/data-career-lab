@@ -1,0 +1,322 @@
+title: "ชุดฝึกท้าย module: Visualization และ storytelling"
+exercises:
+  - id: p1
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมยอดขายรายเดือนปี 2025 (completed) เพื่อเอาไปวาดกราฟเส้น เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      result = r25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['line'].sum()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - กรองปี 2025 และ completed ก่อน group by เดือน
+  - id: p2
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมรายได้แยกตามหมวดสินค้า เรียงมากไปน้อย เพื่อเอาไปวาดกราฟแท่ง เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rev_cat = rev.merge(products[['product_id', 'category']], on='product_id')
+      result = rev_cat.groupby('category')['line'].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - merge order_items กับ products เพื่อได้ category แล้ว sort_values
+  - id: p3
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมจำนวนลูกค้าแยกตามช่องทางสมัคร เพื่อเอาไปวาดกราฟแท่ง/วงกลม เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers['channel'].value_counts()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.value_counts()` นับจำนวนแต่ละค่า"
+  - id: p4
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลราคาและต้นทุนสินค้า (สองคอลัมน์) เพื่อเอาไปวาด scatter plot เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[['price', 'cost']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - เลือกสองคอลัมน์ price, cost ตรงๆ
+  - id: p5
+    level: basic
+    lang: python
+    prompt: |
+      เตรียม Q1/median/Q3 ของราคาสินค้าแยกตามหมวด เพื่อเอาไปวาด box plot เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category')['price'].describe()[['25%', '50%', '75%']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`.describe()` ให้สถิติสรุปทุกตัวรวม 25%/50%/75%"
+  - id: p6
+    level: applied
+    lang: python
+    prompt: |
+      หา 3 เดือนของปี 2025 ที่ทำรายได้สูงสุด เรียงมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      monthly = r25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['line'].sum()
+      result = monthly.sort_values(ascending=False).head(3)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - หา monthly revenue ก่อน (เหมือน p1) แล้ว sort_values().head(3)
+  - id: p7
+    level: applied
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างราคาสินค้ากับต้นทุน เก็บไว้ในตัวแปร r_price_cost
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = products['price'].corr(products['cost'])
+    check: |
+      check_value(r_price_cost, _sol["r_price_cost"], name="r_price_cost", tol=0.0005)
+    hints:
+      - "`.corr()`"
+  - id: p8
+    level: applied
+    lang: python
+    prompt: |
+      หารายได้เดือน พ.ย. 2025 และ ต.ค. 2025 พร้อมคำนวณ % เปลี่ยนแปลง (MoM) เก็บไว้ในตัวแปร nov_revenue, oct_revenue, mom_pct
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      monthly = r25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['line'].sum()
+      nov_revenue = monthly['2025-11']
+      oct_revenue = monthly['2025-10']
+      mom_pct = (nov_revenue - oct_revenue) / oct_revenue * 100
+    check: |
+      check_value(nov_revenue, _sol["nov_revenue"], name="nov_revenue")
+      check_value(oct_revenue, _sol["oct_revenue"], name="oct_revenue")
+      check_value(mom_pct, _sol["mom_pct"], name="mom_pct", tol=0.05)
+    hints:
+      - "MoM% = (เดือนนี้ - เดือนก่อน) / เดือนก่อน * 100"
+  - id: p9
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อของ (paying customers) และจำนวนลูกค้า 20% อันดับต้นตามรายได้ เก็บไว้ในตัวแปร n_paying_customers, top20_n
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_rev = rev.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+      n_paying_customers = len(cust_rev)
+      top20_n = int(n_paying_customers * 0.2)
+    check: |
+      check_value(n_paying_customers, _sol["n_paying_customers"], name="n_paying_customers")
+      check_value(top20_n, _sol["top20_n"], name="top20_n")
+    hints:
+      - "top20_n = int(จำนวนลูกค้าทั้งหมด * 0.2)"
+  - id: p10
+    level: applied
+    lang: python
+    prompt: |
+      % ของรายได้รวมที่ลูกค้า 20% อันดับต้นสร้างขึ้น เก็บไว้ในตัวแปร top20_share_pct
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_rev = rev.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+      top20_n = int(len(cust_rev) * 0.2)
+      top20_share_pct = cust_rev.iloc[:top20_n].sum() / cust_rev.sum() * 100
+    check: |
+      check_value(top20_share_pct, _sol["top20_share_pct"], name="top20_share_pct", tol=0.05)
+    hints:
+      - หารายได้สะสมของ top20_n คนแรกด้วยรายได้รวมทั้งหมด
+  - id: p11
+    level: applied
+    lang: python
+    prompt: |
+      ยอดออเดอร์เฉลี่ยต่อเดือนช่วง พ.ย.-ธ.ค. เทียบกับเดือนอื่นๆ (นับทุกปี, completed) และ % ที่สูงกว่า
+      เก็บไว้ในตัวแปร nov_dec_avg, other_avg, pct_higher
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      allc = orders[orders['status'] == 'completed'].assign(month=lambda d: d.order_date.str[5:7])
+      cnt_by_month = allc.groupby('month').size()
+      nov_dec_avg = cnt_by_month.loc[['11', '12']].mean()
+      other_avg = cnt_by_month.drop(['11', '12']).mean()
+      pct_higher = (nov_dec_avg - other_avg) / other_avg * 100
+    check: |
+      check_value(nov_dec_avg, _sol["nov_dec_avg"], name="nov_dec_avg", tol=0.1)
+      check_value(other_avg, _sol["other_avg"], name="other_avg", tol=0.1)
+      check_value(pct_higher, _sol["pct_higher"], name="pct_higher", tol=0.1)
+    hints:
+      - "ใช้ order_date[5:7] (เลขเดือน) group ทุกปีรวมกัน"
+  - id: p12
+    level: challenge
+    lang: python
+    prompt: |
+      แบ่งราคาสินค้าเป็นช่วง [0,500,1000,5000,10000,30000] แล้วนับจำนวนสินค้าในแต่ละช่วง เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      bins = pd.cut(products['price'], bins=[0, 500, 1000, 5000, 10000, 30000])
+      result = bins.value_counts().sort_index()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`pd.cut(...).value_counts()`"
+  - id: p13
+    level: challenge
+    lang: python
+    prompt: |
+      เตรียมตารางรวมรายได้และจำนวนออเดอร์แยกตามหมวดสินค้า (สองคอลัมน์ revenue, n_orders) เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rev_cat = rev.merge(products[['product_id', 'category']], on='product_id')
+      result = rev_cat.groupby('category').agg(revenue=('line', 'sum'), n_orders=('order_id', 'nunique'))
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`.agg(revenue=('line','sum'), n_orders=('order_id','nunique'))`"
+  - id: p14
+    level: challenge
+    lang: python
+    prompt: |
+      หาจำนวนลูกค้าน้อยที่สุด (เรียงตามรายได้มากไปน้อย) ที่รวมกันแล้วสร้างรายได้อย่างน้อย 50% ของรายได้รวม
+      เก็บไว้ในตัวแปร n_for_half_revenue
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_rev = rev.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+      cum_share = cust_rev.cumsum() / cust_rev.sum()
+      n_for_half_revenue = int((cum_share >= 0.5).values.argmax()) + 1
+    check: |
+      check_value(n_for_half_revenue, _sol["n_for_half_revenue"], name="n_for_half_revenue")
+    hints:
+      - หา cumulative sum ของรายได้ (เรียงมากไปน้อยแล้ว) หารด้วยผลรวมทั้งหมด แล้วหาตำแหน่งแรกที่ >= 0.5
+  - id: p15
+    level: challenge
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างส่วนลด (discount_pct เติมค่าว่างด้วย 0) กับยอดขายต่อออเดอร์ (completed)
+      เก็บไว้ในตัวแปร r_discount_rev
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      ord_disc = orders[orders['status'] == 'completed'][['order_id', 'discount_pct']].copy()
+      ord_disc['discount_pct'] = ord_disc['discount_pct'].fillna(0)
+      merged = ord_disc.merge(order_rev.rename('revenue'), on='order_id')
+      r_discount_rev = merged['discount_pct'].corr(merged['revenue'])
+    check: |
+      check_value(r_discount_rev, _sol["r_discount_rev"], name="r_discount_rev", tol=0.005)
+    hints:
+      - เติม NaN ของ discount_pct ด้วย 0 ก่อน
+  - id: p16
+    level: challenge
+    lang: python
+    prompt: |
+      ยอดขายรายเดือนเฉลี่ยของปี 2025 และจำนวนเดือนที่ยอดขายสูงกว่าค่าเฉลี่ยนี้ เก็บไว้ในตัวแปร avg_monthly_2025, n_above_avg
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      monthly = r25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['line'].sum()
+      avg_monthly_2025 = monthly.mean()
+      n_above_avg = int((monthly > avg_monthly_2025).sum())
+    check: |
+      check_value(avg_monthly_2025, _sol["avg_monthly_2025"], name="avg_monthly_2025", tol=1)
+      check_value(n_above_avg, _sol["n_above_avg"], name="n_above_avg")
+    hints:
+      - หา monthly revenue ก่อน (เหมือน p1) แล้ว .mean() และนับจำนวนเดือนที่เกินค่าเฉลี่ย

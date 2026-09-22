@@ -1,0 +1,352 @@
+title: "ชุดฝึกท้าย module: สถิติสำหรับ DA"
+exercises:
+  - id: p1
+    level: basic
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของสินค้าทั้งหมด เก็บไว้ในตัวแปร mean_price
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      mean_price = products['price'].mean()
+    check: |
+      check_value(mean_price, _sol["mean_price"], name="mean_price")
+    hints:
+      - ทบทวนบทที่ 1 (descriptive statistics)
+  - id: p2
+    level: basic
+    lang: python
+    prompt: |
+      median ของยอดขายต่อออเดอร์ (เฉพาะ completed) เก็บไว้ในตัวแปร median_order_rev
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      median_order_rev = order_rev.median()
+    check: |
+      check_value(median_order_rev, _sol["median_order_rev"], name="median_order_rev")
+    hints:
+      - merge order_items กับ orders กรอง completed แล้ว group by order_id
+  - id: p3
+    level: basic
+    lang: python
+    prompt: |
+      IQR ของราคาสินค้า (products['price']) เก็บไว้ในตัวแปร iqr_price
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      q1, q3 = products['price'].quantile(0.25), products['price'].quantile(0.75)
+      iqr_price = q3 - q1
+    check: |
+      check_value(iqr_price, _sol["iqr_price"], name="iqr_price")
+    hints:
+      - IQR คือ Q3 - Q1
+  - id: p4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ (completed) ที่มียอดขายสูงกว่า upper fence ของ IQR เก็บไว้ในตัวแปร n_outliers
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      q1, q3 = order_rev.quantile(0.25), order_rev.quantile(0.75)
+      iqr = q3 - q1
+      upper = q3 + 1.5 * iqr
+      n_outliers = int((order_rev > upper).sum())
+    check: |
+      check_value(n_outliers, _sol["n_outliers"], name="n_outliers")
+    hints:
+      - upper fence คือ Q3 + 1.5*IQR
+  - id: p5
+    level: basic
+    lang: python
+    prompt: |
+      skewness ของยอดขายต่อออเดอร์ (completed) เก็บไว้ในตัวแปร skew_order_rev
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      skew_order_rev = order_rev.skew()
+    check: |
+      check_value(skew_order_rev, _sol["skew_order_rev"], name="skew_order_rev", tol=0.001)
+    hints:
+      - "`.skew()` คำนวณ skewness ให้ตรงๆ"
+  - id: p6
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนออเดอร์ (completed) ที่มี z-score ของยอดขายเกิน 3 ในค่าสัมบูรณ์ (|z|>3) เก็บไว้ในตัวแปร n_outliers_z
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_outliers_z = int((z.abs() > 3).sum())
+    check: |
+      check_value(n_outliers_z, _sol["n_outliers_z"], name="n_outliers_z")
+    hints:
+      - z-score คือ (x - mean) / std
+  - id: p7
+    level: applied
+    lang: python
+    prompt: |
+      สุ่มตัวอย่างยอดขายต่อออเดอร์ (completed) ด้วย rng = np.random.default_rng(42), sample(size=200, replace=False)
+      หา mean และ std ของตัวอย่าง เก็บไว้ในตัวแปร sample_mean, sample_std
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      sample_std = sample.std(ddof=1)
+    check: |
+      check_value(sample_mean, _sol["sample_mean"], name="sample_mean", tol=0.01)
+      check_value(sample_std, _sol["sample_std"], name="sample_std", tol=0.01)
+    hints:
+      - ต้องใช้ seed=42, size=200, replace=False ให้ตรงกัน ผลถึงจะตรวจผ่าน
+  - id: p8
+    level: applied
+    lang: python
+    prompt: |
+      หาช่วงความเชื่อมั่น 95% (t-distribution, df=199) ของตัวอย่างในข้อ p7 เก็บไว้ในตัวแปร ci_low, ci_high
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+      ci_high = sample_mean + tcrit * se
+    check: |
+      check_value(ci_low, _sol["ci_low"], name="ci_low", tol=0.1)
+      check_value(ci_high, _sol["ci_high"], name="ci_high", tol=0.1)
+    hints:
+      - "CI = sample_mean ± t_crit * standard_error"
+  - id: p9
+    level: applied
+    lang: python
+    prompt: |
+      ทดสอบ one-sample t-test ว่ายอดขายต่อออเดอร์เฉลี่ย (จากตัวอย่างในข้อ p7) ต่างจาก 5000 บาทอย่างมีนัยสำคัญไหม
+      เก็บ p-value ไว้ในตัวแปร p_value
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      t_stat, p_value = stats.ttest_1samp(sample, 5000)
+    check: |
+      check_value(p_value, _sol["p_value"], name="p_value", tol=0.001)
+    hints:
+      - "`scipy.stats.ttest_1samp(sample, 5000)`"
+  - id: p10
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณ z-statistic ของการทดสอบสองสัดส่วน (two-proportion z-test) เปรียบเทียบ purchase rate ของ variant A กับ B
+      เก็บไว้ในตัวแปร z_stat
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      events = pd.read_csv("data/events.csv")
+      exp = events[events['variant'].notna()]
+      sess = exp.groupby(['session_id', 'variant'])['event_type'].apply(lambda s: (s == 'purchase').any()).reset_index(name='purchased')
+      g = sess.groupby('variant')['purchased'].agg(['sum', 'count'])
+      nA, bA = g.loc['A', 'count'], g.loc['A', 'sum']
+      nB, bB = g.loc['B', 'count'], g.loc['B', 'sum']
+      pA, pB = bA / nA, bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se_pool = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se_pool
+    check: |
+      check_value(z_stat, _sol["z_stat"], name="z_stat", tol=0.005)
+    hints:
+      - ดูโค้ดเต็มในบทที่ 5 (A/B testing)
+  - id: p11
+    level: applied
+    lang: python
+    prompt: |
+      จากผลการทดสอบใน p10 การทดลอง A/B นี้มีนัยสำคัญทางสถิติที่ α=0.05 ไหม เก็บไว้ในตัวแปร is_significant
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      events = pd.read_csv("data/events.csv")
+      exp = events[events['variant'].notna()]
+      sess = exp.groupby(['session_id', 'variant'])['event_type'].apply(lambda s: (s == 'purchase').any()).reset_index(name='purchased')
+      g = sess.groupby('variant')['purchased'].agg(['sum', 'count'])
+      nA, bA = g.loc['A', 'count'], g.loc['A', 'sum']
+      nB, bB = g.loc['B', 'count'], g.loc['B', 'sum']
+      pA, pB = bA / nA, bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se_pool = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se_pool
+      p_value = 2 * (1 - stats.norm.cdf(abs(z_stat)))
+      is_significant = p_value < 0.05
+    check: |
+      check_value(is_significant, _sol["is_significant"], name="is_significant")
+    hints:
+      - แปลง z เป็น p-value ด้วย scipy.stats.norm.cdf แล้วเทียบกับ 0.05
+  - id: p12
+    level: applied
+    lang: python
+    prompt: |
+      หา sample ratio ของ A/B test (nA / (nA+nB)) เพื่อตรวจ sample ratio mismatch (SRM) เก็บไว้ในตัวแปร sample_ratio
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      exp = events[events['variant'].notna()]
+      sess = exp.groupby(['session_id', 'variant'])['event_type'].apply(lambda s: (s == 'purchase').any()).reset_index(name='purchased')
+      g = sess.groupby('variant')['purchased'].agg(['sum', 'count'])
+      nA, nB = g.loc['A', 'count'], g.loc['B', 'count']
+      sample_ratio = nA / (nA + nB)
+    check: |
+      check_value(sample_ratio, _sol["sample_ratio"], name="sample_ratio", tol=0.0001)
+    hints:
+      - ควรใกล้เคียง 0.5 ถ้าการสุ่มเข้ากลุ่มทำงานถูกต้อง
+  - id: p13
+    level: challenge
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างราคาสินค้ากับต้นทุน เก็บไว้ในตัวแปร r_price_cost
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = products['price'].corr(products['cost'])
+    check: |
+      check_value(r_price_cost, _sol["r_price_cost"], name="r_price_cost", tol=0.0005)
+    hints:
+      - "`.corr()` คำนวณ Pearson correlation"
+  - id: p14
+    level: challenge
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างส่วนลด (discount_pct เติมค่าว่างด้วย 0) กับยอดขายต่อออเดอร์ (completed) เก็บไว้ในตัวแปร r_discount_rev
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      ord_disc = orders[orders['status'] == 'completed'][['order_id', 'discount_pct']].copy()
+      ord_disc['discount_pct'] = ord_disc['discount_pct'].fillna(0)
+      merged = ord_disc.merge(order_rev.rename('revenue'), on='order_id')
+      r_discount_rev = merged['discount_pct'].corr(merged['revenue'])
+    check: |
+      check_value(r_discount_rev, _sol["r_discount_rev"], name="r_discount_rev", tol=0.005)
+    hints:
+      - เติม NaN ของ discount_pct ด้วย 0 ก่อนคำนวณ correlation
+  - id: p15
+    level: challenge
+    lang: python
+    prompt: |
+      threshold ยอดขาย (บาท) ที่ 3 standard deviations เหนือค่าเฉลี่ยของยอดขายต่อออเดอร์ (completed) เก็บไว้ในตัวแปร threshold_3sigma
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      order_rev = rev.groupby('order_id')['line'].sum()
+      threshold_3sigma = order_rev.mean() + 3 * order_rev.std()
+    check: |
+      check_value(threshold_3sigma, _sol["threshold_3sigma"], name="threshold_3sigma", tol=0.1)
+    hints:
+      - "threshold = mean + 3*std"
+  - id: p16
+    level: challenge
+    lang: python
+    prompt: |
+      chi-square statistic ของตาราง contingency สำหรับ A/B purchase (variant × purchased) เก็บไว้ในตัวแปร chi2_stat
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from scipy import stats
+
+      events = pd.read_csv("data/events.csv")
+      exp = events[events['variant'].notna()]
+      sess = exp.groupby(['session_id', 'variant'])['event_type'].apply(lambda s: (s == 'purchase').any()).reset_index(name='purchased')
+      ct = pd.crosstab(sess['variant'], sess['purchased'])
+      chi2_stat, p, dof, expected = stats.chi2_contingency(ct)
+    check: |
+      check_value(chi2_stat, _sol["chi2_stat"], name="chi2_stat", tol=0.01)
+    hints:
+      - "`scipy.stats.chi2_contingency(ตาราง crosstab)`"

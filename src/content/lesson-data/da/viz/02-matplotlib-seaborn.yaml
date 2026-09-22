@@ -1,0 +1,469 @@
+goals:
+  - ใช้ matplotlib วาดกราฟพื้นฐาน (plt.plot, plt.bar, plt.hist, plt.scatter)
+  - ใช้ seaborn วาดกราฟสถิติทั่วไปด้วย syntax ที่สั้นกว่าและ default styling ที่อ่านง่ายกว่า (sns.lineplot, sns.barplot, sns.histplot, sns.scatterplot, sns.boxplot)
+  - ใส่ title และ axis label ให้กราฟสื่อความหมายได้ด้วยตัวเอง ไม่ต้องให้คนอ่านเดาเอง
+
+examples:
+  - id: x1
+    title: กราฟเส้นรายได้รายเดือน ปี 2025 (matplotlib)
+    lang: python
+    prompt: |
+      อยากดูว่ารายได้รวมในแต่ละเดือนของปี 2025 เปลี่ยนแปลงยังไง (เฉพาะออเดอร์ที่ completed)
+    steps:
+      - text: |
+          เตรียมข้อมูล `monthly` ก่อน — merge order_items กับ orders เพื่อคำนวณยอดต่อออเดอร์ กรองเฉพาะ
+          completed แล้ว groupby ตามเดือน
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          merged = items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['month'] = pd.to_datetime(completed['order_date']).dt.to_period('M').astype(str)
+          monthly = completed[completed['month'].str.startswith('2025')].groupby('month')['line'].sum()
+          monthly
+      - text: |
+          วาดกราฟเส้นด้วย `plt.plot()` แล้วใส่ title/xlabel/ylabel ให้ครบ พร้อมหมุนป้ายแกน x
+          (`plt.xticks(rotation=45)`) เพราะป้ายเดือนยาว เขียนตรงๆ จะทับกัน
+        code: |
+          import pandas as pd
+          import matplotlib.pyplot as plt
+
+          orders = pd.read_csv("data/orders.csv")
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          merged = items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['month'] = pd.to_datetime(completed['order_date']).dt.to_period('M').astype(str)
+          monthly = completed[completed['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+          plt.plot(monthly.index, monthly.values)
+          plt.title('รายได้รวมรายเดือน ปี 2025')
+          plt.xlabel('เดือน')
+          plt.ylabel('รายได้ (บาท)')
+          plt.xticks(rotation=45)
+    pitfall:
+      text: |
+        pandas มีเมธอด `.plot()` ในตัวที่วาดกราฟให้เร็วๆ ได้เลยโดยไม่ต้องเรียก matplotlib ตรงๆ
+        เช่น `monthly.plot()` — โค้ดนี้รันผ่านไม่มี error แต่ได้กราฟที่ไม่มี title ไม่มีชื่อแกน y ที่สื่อความหมาย
+        (แกน x จะใช้ชื่อ index เดิมๆ) คนอ่านที่ไม่รู้บริบทจะไม่เข้าใจว่ากราฟนี้บอกอะไร ทั้งที่โค้ดเพิ่มอีกแค่ 3 บรรทัด
+        ก็ได้กราฟที่อ่านเข้าใจได้เองแล้ว (ดูขั้นตอนที่ 2 ด้านบน)
+      code: |
+        import pandas as pd
+
+        orders = pd.read_csv("data/orders.csv")
+        items = pd.read_csv("data/order_items.csv")
+        items['line'] = items['quantity'] * items['unit_price']
+        merged = items.merge(orders, on='order_id')
+        completed = merged[merged['status'] == 'completed'].copy()
+        completed['month'] = pd.to_datetime(completed['order_date']).dt.to_period('M').astype(str)
+        monthly = completed[completed['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+        monthly.plot()
+  - id: x2
+    title: กราฟแท่งรายได้แยกตามหมวดสินค้า (matplotlib)
+    lang: python
+    prompt: |
+      อยากเทียบว่าหมวดสินค้าไหนทำรายได้เยอะที่สุด (ทุกปี เฉพาะออเดอร์ completed)
+    steps:
+      - text: |
+          เตรียมข้อมูล `cat_rev` — merge ให้ถึงตาราง products เพื่อได้คอลัมน์ category แล้ว groupby รวมรายได้
+          เรียงจากมากไปน้อยก่อนวาด (เหตุผลว่าทำไมต้องเรียง ดูในขั้นตอน pitfall)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          items = pd.read_csv("data/order_items.csv")
+          products = pd.read_csv("data/products.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          merged = items.merge(orders, on='order_id').merge(products, on='product_id')
+          completed = merged[merged['status'] == 'completed']
+          cat_rev = completed.groupby('category')['line'].sum().sort_values(ascending=False)
+          cat_rev
+      - text: |
+          วาดด้วย `plt.bar()` — ส่ง index (ชื่อหมวด) เป็นแกน x และค่า (รายได้) เป็นแกน y
+        code: |
+          import pandas as pd
+          import matplotlib.pyplot as plt
+
+          orders = pd.read_csv("data/orders.csv")
+          items = pd.read_csv("data/order_items.csv")
+          products = pd.read_csv("data/products.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          merged = items.merge(orders, on='order_id').merge(products, on='product_id')
+          completed = merged[merged['status'] == 'completed']
+          cat_rev = completed.groupby('category')['line'].sum().sort_values(ascending=False)
+
+          plt.bar(cat_rev.index, cat_rev.values)
+          plt.title('รายได้รวมแยกตามหมวดสินค้า')
+          plt.xlabel('หมวดสินค้า')
+          plt.ylabel('รายได้ (บาท)')
+    pitfall:
+      text: |
+        ถ้าไม่เรียงก่อนวาด (ปล่อยตามลำดับ default ของ groupby ซึ่งเรียงตามตัวอักษร) โค้ดก็ยังรันผ่านไม่มี error
+        และตัวเลขก็ยังถูกต้องทุกประการ แต่คนอ่านกราฟจะเทียบ "หมวดไหนเยอะที่สุด" ได้ยากขึ้น เพราะแท่งที่สูงที่สุด
+        อาจอยู่ตรงกลางหรือปลายกราฟแทนที่จะอยู่ซ้ายสุด — การเรียงก่อนวาดเป็นสิ่งเล็กๆ ที่ทำให้กราฟอ่านเร็วขึ้นมาก
+      code: |
+        import pandas as pd
+        import matplotlib.pyplot as plt
+
+        orders = pd.read_csv("data/orders.csv")
+        items = pd.read_csv("data/order_items.csv")
+        products = pd.read_csv("data/products.csv")
+        items['line'] = items['quantity'] * items['unit_price']
+        merged = items.merge(orders, on='order_id').merge(products, on='product_id')
+        completed = merged[merged['status'] == 'completed']
+        cat_rev_unsorted = completed.groupby('category')['line'].sum()
+
+        plt.bar(cat_rev_unsorted.index, cat_rev_unsorted.values)
+  - id: x3
+    title: histogram และ scatter ด้วย seaborn
+    lang: python
+    prompt: |
+      อยากดูการกระจายของราคาสินค้า และความสัมพันธ์ระหว่างราคากับต้นทุน — สองคำถามนี้ตอบด้วย seaborn ได้สั้นกว่า
+      matplotlib ดิบๆ
+    steps:
+      - text: |
+          `sns.histplot(data=..., x='price', bins=20)` วาด histogram ได้ในบรรทัดเดียว โดยไม่ต้องคำนวณ bin เอง
+          (ต่างจาก `pd.cut()` ที่ต้องทำเองถ้าจะแบ่งช่วงแบบกำหนดเอง)
+        code: |
+          import pandas as pd
+          import seaborn as sns
+
+          products = pd.read_csv("data/products.csv")
+
+          sns.histplot(data=products, x='price', bins=20)
+      - text: |
+          `sns.scatterplot(data=..., x='price', y='cost')` วาด scatter plot ด้วยการบอกแค่ชื่อคอลัมน์สองคอลัมน์
+        code: |
+          import pandas as pd
+          import seaborn as sns
+
+          products = pd.read_csv("data/products.csv")
+
+          sns.scatterplot(data=products, x='price', y='cost')
+    pitfall:
+      text: |
+        ถ้าลืม `import seaborn as sns` แล้วเรียก `sns.histplot(...)` เลย จะได้ `NameError: name 'sns' is not
+        defined` ทันที — นี่เป็น error จริงที่โค้ดรันไม่ผ่านเลย ไม่ใช่แค่กราฟดูแปลกเหมือนสองตัวอย่างก่อนหน้า
+        เพราะ seaborn เป็นไลบรารีแยกต่างหาก ไม่ได้ถูก import ติดมากับ pandas หรือ matplotlib โดยอัตโนมัติ
+        ต้อง import เองเสมอก่อนเรียกใช้
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เติมชื่อคอลัมน์ให้ `sns.barplot` วาดกราฟแท่งจำนวนลูกค้าตามช่องทางสมัคร (แกน x คือช่องทาง แกน y คือจำนวน)
+      แล้วเก็บตารางข้อมูลที่เตรียมไว้ในตัวแปร result ด้วย เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      import seaborn as sns
+
+      customers = pd.read_csv("data/customers.csv")
+      channel_counts = customers['channel'].value_counts().reset_index()
+      channel_counts.columns = ['channel', 'count']
+      sns.barplot(data=channel_counts, x=___, y=___)
+      result = channel_counts
+    solution: |
+      import pandas as pd
+      import seaborn as sns
+
+      customers = pd.read_csv("data/customers.csv")
+      channel_counts = customers['channel'].value_counts().reset_index()
+      channel_counts.columns = ['channel', 'count']
+      sns.barplot(data=channel_counts, x='channel', y='count')
+      result = channel_counts
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "แกน x ควรเป็นคอลัมน์ที่เป็นหมวดหมู่ (ชื่อ 'channel') แกน y ควรเป็นคอลัมน์ตัวเลข (ชื่อ 'count')"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับป้อนให้ `plt.plot()` วาดกราฟเส้นรายได้รวมรายเดือนของปี 2025 (เฉพาะออเดอร์ completed)
+      เก็บไว้ในตัวแปร result เป็น Series ที่ index เป็นเดือนรูปแบบ YYYY-MM
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      merged = items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['month'] = pd.to_datetime(completed['order_date']).dt.to_period('M').astype(str)
+      result = completed[completed['month'].str.startswith('2025')].groupby('month')['line'].sum()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "merge order_items กับ orders ก่อนเพื่อเอาคอลัมน์ status/order_date มาด้วย แล้วค่อยกรอง completed"
+      - "`.dt.to_period('M').astype(str)` แปลงวันที่เป็นข้อความรูปแบบ YYYY-MM"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับป้อนให้ `plt.bar()` วาดกราฟแท่งรายได้รวมแยกตามหมวดสินค้า (ทุกปี เฉพาะออเดอร์ completed)
+      เรียงจากมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      merged = items.merge(orders, on='order_id').merge(products, on='product_id')
+      completed = merged[merged['status'] == 'completed']
+      result = completed.groupby('category')['line'].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือนตัวอย่าง x2 — merge ไปถึง products เพื่อได้คอลัมน์ category แล้วอย่าลืม sort_values(ascending=False)
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับป้อนให้ `sns.histplot(data=..., x='price')` ดูการกระจายของราคาสินค้า — เอาแค่คอลัมน์ price
+      พอ (ไม่ต้องแบ่ง bin เอง seaborn จัดการให้) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products['price']
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "seaborn อ่านข้อมูลจาก DataFrame/Series ได้ตรงๆ ไม่ต้อง pd.cut() แบ่งช่วงเองแบบ matplotlib"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับป้อนให้ `sns.scatterplot(data=..., x='price', y='cost')` ดูความสัมพันธ์ระหว่างราคากับ
+      ต้นทุน เก็บไว้ในตัวแปร result เป็น DataFrame สองคอลัมน์ price, cost
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[['price', 'cost']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "เลือกสองคอลัมน์ด้วย products[['price', 'cost']]"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับป้อนให้ `sns.boxplot` เทียบการกระจายราคาสินค้าในแต่ละหมวด — เอาแค่สองคอลัมน์ category
+      กับ price พอ เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[['category', 'price']]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "sns.boxplot(data=result, x='category', y='price') ต้องการแค่สองคอลัมน์นี้"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับกราฟแท่งจำนวนลูกค้าตามช่องทางสมัคร เรียงจากมากไปน้อย เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers['channel'].value_counts()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.value_counts()` เรียงจากมากไปน้อยให้อัตโนมัติอยู่แล้ว"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      เขียนข้อความ title ที่ดีสำหรับกราฟเส้นรายได้รายเดือนปี 2025 — ต้องมีคำที่บอกว่ากราฟนี้แสดง "รายได้"
+      หรือ "ยอดขาย" อะไร และต้องมีคำที่บ่งบอกช่วงเวลา (เช่น "เดือน" "ปี" หรือ "2025") เก็บไว้ในตัวแปร chart_title
+    starter: |
+      chart_title = ___
+    solution: |
+      chart_title = "รายได้รวมรายเดือน ปี 2025"
+    check: |
+      has_topic = ("รายได้" in chart_title) or ("ยอดขาย" in chart_title)
+      has_time = ("เดือน" in chart_title) or ("ปี" in chart_title) or ("2025" in chart_title)
+      check_true(has_topic, "chart_title ต้องมีคำว่า 'รายได้' หรือ 'ยอดขาย' บอกว่ากราฟนี้กำลังแสดงอะไร")
+      check_true(has_time, "chart_title ต้องมีคำที่บ่งบอกช่วงเวลา เช่น 'เดือน' 'ปี' หรือ '2025'")
+    hints:
+      - "title ที่ดีไม่ใช่แค่ชื่อคอลัมน์ ต้องบอกว่ากราฟนี้ตอบคำถามอะไร"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสรุปสำหรับดู 2 มุมมองพร้อมกัน: รายได้รวม และจำนวนออเดอร์ ของแต่ละหมวดสินค้า (เฉพาะออเดอร์
+      completed) เก็บไว้ในตัวแปร result เป็น DataFrame ที่ index เป็น category มีคอลัมน์ revenue กับ n_orders
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      merged = items.merge(orders, on='order_id').merge(products, on='product_id')
+      completed = merged[merged['status'] == 'completed']
+      result = completed.groupby('category').agg(revenue=('line', 'sum'), n_orders=('order_id', 'nunique'))
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "ใช้ named aggregation: .agg(revenue=('line', 'sum'), n_orders=('order_id', 'nunique'))"
+      - "`nunique()` บนคอลัมน์ order_id นับจำนวนออเดอร์ที่ไม่ซ้ำ (ออเดอร์เดียวอาจมีหลายแถวใน order_items)"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      เตรียมข้อมูลรายได้รายเดือนของปี 2024 และ 2025 รวมกัน ในรูปแบบ long format พร้อมสำหรับ
+      `sns.lineplot(data=result, x='month', y='revenue', hue='year')` เก็บไว้ในตัวแปร result เป็น DataFrame
+      มีคอลัมน์ year, month (เลข 1-12), revenue
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      merged = items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['year'] = pd.to_datetime(completed['order_date']).dt.year
+      completed['month'] = pd.to_datetime(completed['order_date']).dt.month
+      result = completed.groupby(['year', 'month'])['line'].sum().reset_index().rename(columns={'line': 'revenue'})
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "groupby ด้วย list สองคอลัมน์ ['year', 'month'] แล้ว .reset_index() เพื่อให้ year/month กลายเป็นคอลัมน์ปกติ"
+      - "long format คือหนึ่งแถวต่อหนึ่ง (year, month) ไม่ใช่ pivot ให้แต่ละปีเป็นคอลัมน์แยกกัน"
+
+quiz:
+  - id: q1
+    question: seaborn สร้างอยู่บนไลบรารีอะไร
+    choices:
+      - text: matplotlib
+        correct: true
+        why: seaborn เป็น wrapper ที่สร้างอยู่บน matplotlib อีกที ไม่ใช่ไลบรารีวาดกราฟแยกอิสระ
+      - text: numpy
+        why: numpy เป็นไลบรารีคำนวณเชิงตัวเลข ไม่ได้เกี่ยวกับการวาดกราฟโดยตรง
+      - text: pandas
+        why: pandas เป็นไลบรารีจัดการข้อมูล seaborn อ่านข้อมูลจาก pandas ได้สะดวกแต่ไม่ได้ "สร้างอยู่บน" pandas
+      - text: เป็นไลบรารีอิสระ ไม่เกี่ยวกับ matplotlib เลย
+        why: ไม่จริง seaborn เรียกใช้ matplotlib เป็นเครื่องมือวาดภาพจริงเบื้องหลังเสมอ
+  - id: q2
+    question: ข้อดีหลักของ seaborn เทียบกับ matplotlib ดิบๆ คืออะไร
+    choices:
+      - text: syntax สั้นกว่าและมี default styling ที่อ่านง่ายกว่าสำหรับกราฟสถิติทั่วไป
+        correct: true
+        why: seaborn ออกแบบมาให้ทำงานกับ DataFrame ได้ตรงๆ และตั้งค่าสีสไตล์ให้อ่านง่ายโดยไม่ต้องปรับเอง
+      - text: วาดกราฟได้เร็วกว่าในแง่ performance การประมวลผล
+        why: ไม่เกี่ยวกับความเร็วในการประมวลผล seaborn ยังคงเรียก matplotlib เบื้องหลังอยู่ดี
+      - text: รองรับชนิดกราฟที่ matplotlib วาดไม่ได้เลย
+        why: กราฟส่วนใหญ่ที่ seaborn วาดได้ ก็วาดด้วย matplotlib ดิบๆ ได้เหมือนกัน แค่ต้องเขียนโค้ดเองมากกว่า
+      - text: ไม่ต้อง import matplotlib เลย
+        why: seaborn ยังพึ่งพา matplotlib อยู่เบื้องหลังเสมอ แค่ผู้ใช้ไม่ต้องเรียก plt เองโดยตรงก็ได้
+  - id: q3
+    question: กราฟที่ไม่มี title/labels มีปัญหาอะไร
+    choices:
+      - text: คนอ่านไม่รู้ว่ากราฟกำลังบอกอะไร ต้องเดาหรือถามเพิ่ม
+        correct: true
+        why: title/label ไม่ได้เปลี่ยนข้อมูล แต่ทำให้กราฟสื่อสารได้ด้วยตัวเองโดยไม่ต้องพึ่งคำอธิบายปากเปล่า
+      - text: ทำให้ตัวเลขที่แสดงผิดพลาดไปด้วย
+        why: ตัวเลข/ข้อมูลในกราฟยังถูกต้องเหมือนเดิม ปัญหาคือการสื่อสารกับคนอ่าน ไม่ใช่ความถูกต้องของข้อมูล
+      - text: ทำให้โค้ดรัน error
+        why: กราฟที่ไม่มี title/labels ยังรันผ่านได้ปกติไม่มี error เลย แค่สื่อความหมายได้แย่กว่า
+      - text: ไม่มีปัญหาอะไร ถ้าคนวาดเข้าใจข้อมูลอยู่แล้ว
+        why: กราฟส่วนใหญ่ทำขึ้นเพื่อให้คนอื่นอ่านต่อ ไม่ใช่แค่คนวาดเข้าใจเองคนเดียว
+  - id: q4
+    question: "`sns.histplot` กับ `plt.hist` ต่างกันยังไงโดยหลักการ"
+    choices:
+      - text: ทำสิ่งเดียวกัน (วาด histogram) แค่ syntax และ default styling ต่างกัน seaborn อ่านข้อมูลจาก DataFrame ได้สะดวกกว่า
+        correct: true
+        why: ทั้งคู่วาด histogram เหมือนกัน seaborn แค่ห่อ matplotlib ให้เขียนสั้นลงและอ่าน DataFrame ได้ตรงๆ
+      - text: "`sns.histplot` คำนวณค่าทางสถิติต่างจาก `plt.hist` โดยสิ้นเชิง"
+        why: การนับความถี่ต่อช่วงยังใช้หลักการเดียวกัน ไม่ได้มีสูตรคำนวณที่ต่างกันโดยพื้นฐาน
+      - text: "`plt.hist` ใช้กับข้อมูลตัวเลขเท่านั้น ส่วน `sns.histplot` ใช้กับข้อความได้ด้วย"
+        why: ไม่ใช่ความต่างหลักที่ตั้งใจสื่อในบทนี้ ทั้งคู่ออกแบบมาสำหรับดูการกระจายของข้อมูลตัวเลขเป็นหลัก
+      - text: "`sns.histplot` ต้องแปลงข้อมูลเป็น NumPy array ก่อนเสมอ ส่วน `plt.hist` ไม่ต้อง"
+        why: ไม่จำเป็น ทั้งสองฟังก์ชันรับ pandas Series/DataFrame ได้โดยตรง
+
+summary:
+  - matplotlib คือไลบรารีพื้นฐานสำหรับวาดกราฟ (plt.plot/bar/hist/scatter) ส่วน seaborn เป็น wrapper ที่สร้างอยู่บน matplotlib อีกที ทำให้กราฟสถิติทั่วไปเขียนสั้นลงและมี default styling ที่ดีกว่า
+  - กราฟที่ดีต้องมี title และ axis label ที่บอกว่ากำลังแสดงอะไร ไม่ใช่แค่ชื่อคอลัมน์ดิบๆ
+  - โจทย์ในบทนี้ตรวจแค่ข้อมูลที่เตรียมไว้ป้อนกราฟ (data prep) เพราะทักษะที่สำคัญที่สุดคือการสรุปข้อมูลให้ถูกต้องก่อนวาดกราฟ
+
+interview:
+  - id: i1
+    q: ทำไมการใส่ title/axis labels ที่ชัดเจนถึงสำคัญพอๆ กับตัวข้อมูลที่ถูกต้อง
+    a: |
+      ข้อมูลที่ถูกต้องแต่สื่อสารไม่ได้ ก็เหมือนไม่มีประโยชน์ในทางปฏิบัติ — คนอ่านกราฟ (เช่นผู้บริหาร) มักไม่มีเวลา
+      ไล่ดูโค้ดหรือถามที่มาของแต่ละแกน ถ้ากราฟไม่มี title/label ที่ชัดเจน คนอ่านต้องเดาเอง หรือกลับมาถามคนทำอีกที
+      ซึ่งทำให้ insight ที่ควรจะสื่อสารได้เร็วกลับช้าลงหรือถูกตีความผิด title/label ที่ดีทำให้กราฟ "ยืนได้ด้วยตัวเอง"
+      แม้จะถูกส่งต่อไปโดยไม่มีคนอธิบายประกอบ
+  - id: i2
+    q: ถ้าต้องเลือกระหว่าง matplotlib กับ seaborn สำหรับงานสำรวจข้อมูลเร็วๆ (exploratory analysis) จะเลือกอะไรและทำไม
+    a: |
+      สำหรับงานสำรวจข้อมูลเร็วๆ ที่ข้อมูลอยู่ในรูป DataFrame อยู่แล้ว seaborn มักเป็นตัวเลือกที่เร็วกว่า เพราะเขียน
+      โค้ดสั้นกว่าและได้กราฟที่อ่านง่ายโดยไม่ต้องปรับสไตล์เอง (เช่น sns.boxplot เทียบหลายกลุ่ม หรือ sns.histplot
+      ที่จัดการ bin ให้อัตโนมัติ) แต่ถ้าต้องการควบคุมรายละเอียดที่ seaborn ไม่รองรับตรงๆ หรือทำกราฟที่ไม่ธรรมดา
+      (custom layout ซับซ้อน) ก็ยังต้องพึ่ง matplotlib โดยตรง — สองไลบรารีนี้ใช้ร่วมกันได้เสมอ ไม่ต้องเลือกอย่างใดอย่างหนึ่งตลอดไป
+
+flashcards:
+  - id: c1
+    front: seaborn สร้างอยู่บนไลบรารีอะไร
+    back: matplotlib — seaborn เป็น wrapper ที่ทำให้กราฟสถิติทั่วไปเขียนสั้นลงและมี default styling ที่ดีกว่า
+  - id: c2
+    front: title ของกราฟที่ดีควรเป็นแบบไหน
+    back: ต้องบอกว่ากราฟนี้กำลังแสดงอะไร (เช่น "รายได้รวมรายเดือน ปี 2025") ไม่ใช่แค่ชื่อคอลัมน์ดิบๆ เช่น "monthly"

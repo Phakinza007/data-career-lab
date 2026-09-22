@@ -1,0 +1,943 @@
+goals:
+  - ทดสอบความต่างของ purchase rate สองกลุ่มด้วย two-proportion z-test (และ chi-square เป็นทางเลือก)
+  - เช็ค sample ratio mismatch (SRM) ก่อนเชื่อผลการทดลองใดๆ
+  - อ่าน funnel ทีละขั้นแทนที่จะดูแค่ metric สุดท้าย
+  - รู้จักกับดักการหยุดทดลองเร็วเกินไป (ตัวอย่างไม่พอ)
+
+examples:
+  - id: x1
+    title: ทดสอบ purchase rate ระหว่าง variant A กับ B ด้วย two-proportion z-test (ทำมือ)
+    lang: python
+    prompt: |
+      ทีมโปรดักต์ทดลองหน้า checkout เวอร์ชันใหม่ (variant B) เทียบกับของเดิม (variant A)
+      อยากรู้ว่า purchase rate ของ B ที่สูงกว่า A เป็นความต่างจริง หรือแค่ความบังเอิญจากการสุ่มตัวอย่าง
+    steps:
+      - text: |
+          สร้างตารางระดับ session ก่อนเสมอ: กรองเฉพาะ event ที่มี variant (คือผู้เข้าทดลองจริง) จัดกลุ่มตาม
+          session_id + variant แล้วเช็คว่า session นั้นมี event `purchase` เกิดขึ้นหรือไม่ ได้ nA/bA ของ A
+          และ nB/bB ของ B (n = จำนวน session ทั้งหมด, b = จำนวนที่ซื้อ) แล้วคำนวณ purchase rate pA, pB
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+          nB = (sessions['variant'] == 'B').sum()
+          bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+          pA = bA / nA
+          pB = bB / nB
+          pA, pB
+      - text: |
+          คำนวณ two-proportion z-test มือ: หา p_pool (สัดส่วนรวมสมมติว่าสองกลุ่มไม่ต่างกันจริง),
+          standard error (se) แล้วหา z = (pB - pA) / se — ยิ่ง |z| มากกว่าประมาณ 1.96 (ที่ α=0.05)
+          ยิ่งมั่นใจว่าต่างกันจริง ไม่ใช่บังเอิญ ต่อด้วย p-value สองด้านจาก scipy.stats.norm
+        code: |
+          import pandas as pd
+          import numpy as np
+          import scipy.stats as stats
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+          nB = (sessions['variant'] == 'B').sum()
+          bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+          pA = bA / nA
+          pB = bB / nB
+
+          p_pool = (bA + bB) / (nA + nB)
+          se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+          z_stat = (pB - pA) / se
+          p_value = stats.norm.sf(abs(z_stat)) * 2
+          uplift_pct = (pB - pA) / pA * 100
+          z_stat, p_value, uplift_pct
+    pitfall:
+      text: |
+        เห็น pB (8.76%) มากกว่า pA (7.15%) แล้วรีบสรุปว่า B ชนะเลยโดยไม่ทดสอบนัยสำคัญ — สัดส่วนสองกลุ่ม
+        ที่มาจากการสุ่มตัวอย่าง แทบไม่มีทางเท่ากันเป๊ะอยู่แล้วแม้ของจริงจะไม่ต่างกันเลย เช่น โยนเหรียญสองกอง
+        กองละ 20 ครั้ง ได้หัว 9 กับ 11 ครั้ง (45% vs 55%) ก็ไม่ได้แปลว่าเหรียญกองหนึ่ง "ดีกว่า" อีกกอง —
+        ต้องเทียบว่าความต่างนั้นใหญ่กว่าที่สุ่มมาบังเอิญได้แค่ไหน (หน้าที่ของ z-test/p-value) ก่อนสรุปผู้ชนะ
+  - id: x2
+    title: ยืนยันด้วยวิธีอื่น — chi-square test บนตาราง 2×2
+    lang: python
+    prompt: |
+      ผลจาก two-proportion z-test บอกว่าต่างกันอย่างมีนัยสำคัญ ลองตรวจสอบด้วยวิธีอื่นคือ chi-square test
+      บนตาราง contingency 2×2 (แถว = variant, คอลัมน์ = ไม่ซื้อ/ซื้อ) ดูว่าได้ข้อสรุปตรงกันไหม
+    steps:
+      - text: |
+          สร้างตาราง contingency 2×2 จากจำนวน session ที่ไม่ซื้อ/ซื้อของแต่ละ variant
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+          nB = (sessions['variant'] == 'B').sum()
+          bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+
+          table = [[nA - bA, bA], [nB - bB, bB]]
+          table
+      - text: |
+          รัน scipy.stats.chi2_contingency บนตาราง แล้วเทียบ chi2 กับ z² จาก two-proportion z-test —
+          ทั้งสองวิธีทดสอบสมมติฐานเดียวกันด้วยคณิตศาสตร์คนละมุม ควรให้ข้อสรุปตรงกัน (ใกล้เคียงกันมาก
+          แต่ไม่เท่ากันเป๊ะเพราะ chi-square มี continuity correction)
+        code: |
+          import pandas as pd
+          import numpy as np
+          import scipy.stats as stats
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+          nB = (sessions['variant'] == 'B').sum()
+          bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+          pA = bA / nA
+          pB = bB / nB
+
+          p_pool = (bA + bB) / (nA + nB)
+          se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+          z_stat = (pB - pA) / se
+
+          table = [[nA - bA, bA], [nB - bB, bB]]
+          chi2_stat, p_chi, dof, expected = stats.chi2_contingency(table)
+          z_stat ** 2, chi2_stat, p_chi
+  - id: x3
+    title: เช็ค sample ratio mismatch (SRM) ก่อนเชื่อผล
+    lang: python
+    prompt: |
+      ก่อนเชื่อผลข้างบน ควรเช็คก่อนว่าการสุ่มแบ่งผู้เข้าทดลองสอง variant ได้สัดส่วนตามที่ตั้งใจไหม (ปกติควร
+      ใกล้ 50/50) ถ้าเบี้ยวไปมาก (เช่น 46/54) แปลว่าการสุ่มเข้ากลุ่มอาจมีบั๊ก และผลการทดลองทั้งหมดเชื่อไม่ได้
+      เลยไม่ว่า p-value จะสวยแค่ไหน
+    steps:
+      - text: |
+          นับจำนวน session ของแต่ละ variant แล้วหาสัดส่วนของ A ต่อทั้งหมด (sample ratio)
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          nB = (sessions['variant'] == 'B').sum()
+          sample_ratio = nA / (nA + nB)
+          sample_ratio
+      - text: |
+          เทียบกับเกณฑ์คร่าวๆ ว่าใกล้ 50/50 พอไหม (เช่น อยู่นอกช่วงประมาณ 0.47–0.53 ควรเริ่มสงสัยว่ามี SRM)
+          — ในเคสนี้ sample_ratio ≈ 0.5001 ใกล้ 50/50 มาก แปลว่าไม่มี SRM การสุ่มทำงานตามที่ตั้งใจ
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          ev = events[events['variant'].notna()]
+          sessions = (
+              ev.groupby(['session_id', 'variant'])['event_type']
+              .apply(lambda s: (s == 'purchase').any())
+              .rename('purchased')
+              .reset_index()
+          )
+
+          nA = (sessions['variant'] == 'A').sum()
+          nB = (sessions['variant'] == 'B').sum()
+          sample_ratio = nA / (nA + nB)
+          has_srm = not (0.47 <= sample_ratio <= 0.53)
+          sample_ratio, has_srm
+    pitfall:
+      text: |
+        ข้ามการเช็คนี้ไปเลยแล้วเชื่อ p-value ตรงๆ — ถ้าระบบสุ่มเข้ากลุ่มมีบั๊ก (เช่น cache, redirect,
+        หรือ bot บาง segment ตกไปกลุ่มใดกลุ่มหนึ่งมากผิดปกติ) กลุ่มสองกลุ่มอาจมีองค์ประกอบผู้ใช้ต่างกัน
+        ไปตั้งแต่แรก แล้วผลต่างที่วัดได้ก็ไม่ได้สะท้อนผลของตัวแปรที่ทดลองล้วนๆ อีกต่อไป SRM คือสัญญาณเตือน
+        ที่ต้องเช็คก่อนดู p-value เสมอ ไม่ใช่แค่ตอนผลออกมาดูแปลกๆ เท่านั้น
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      คำนวณ p_pool (สัดส่วนรวม สมมติว่า variant A กับ B ไม่ต่างกันจริง) เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+
+      result = (bA + bB) / ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+
+      result = (bA + bB) / (nA + nB)
+    check: |
+      check_value(result, _sol["result"], tol=0.0001)
+    hints:
+      - p_pool คือสัดส่วนรวมของ "ผู้ซื้อทั้งหมด" หาร "ผู้เข้าทดลองทั้งหมด" (รวมทั้งสองกลุ่มเข้าด้วยกัน)
+  - id: f2
+    lang: python
+    prompt: |
+      คำนวณ sample ratio ของ variant A (สำหรับเช็ค SRM) เก็บไว้ในตัวแปร result เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      nB = (sessions['variant'] == 'B').sum()
+
+      result = nA / ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      nB = (sessions['variant'] == 'B').sum()
+
+      result = nA / (nA + nB)
+    check: |
+      check_value(result, _sol["result"], tol=0.0001)
+    hints:
+      - sample ratio ของ A คือจำนวน session ของ A หาร จำนวน session ทั้งหมด (A รวม B)
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จากตารางระดับ session (กรองเฉพาะ event ที่มี variant แล้วเช็คว่าซื้อหรือไม่ต่อ session) หา purchase
+      rate ของ variant A เก็บไว้ในตัวแปร pA
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      pA = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      pA = bA / nA
+    check: |
+      check_value(pA, _sol["pA"], tol=0.0005)
+    hints:
+      - purchase rate = จำนวน session ที่ซื้อ หาร จำนวน session ทั้งหมดของ variant นั้น
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      เหมือน e1 แต่เปลี่ยนเป็น variant B หา purchase rate เก็บไว้ในตัวแปร pB
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      pB = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pB = bB / nB
+    check: |
+      check_value(pB, _sol["pB"], tol=0.0005)
+    hints:
+      - เหมือน e1 แต่กรองด้วย variant == 'B'
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      หา relative uplift ของ B เทียบกับ A เป็นเปอร์เซ็นต์ (`(pB - pA) / pA * 100`) เก็บไว้ในตัวแปร uplift_pct
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+
+      uplift_pct = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+
+      uplift_pct = (pB - pA) / pA * 100
+    check: |
+      check_value(uplift_pct, _sol["uplift_pct"], tol=0.05)
+    hints:
+      - แทนค่า pA, pB ลงในสูตรตรงๆ ได้เลย
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณ z-statistic ของ two-proportion z-test (หา p_pool, standard error แล้วหา z =
+      (pB - pA) / se) เก็บไว้ในตัวแปร z_stat
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+
+      z_stat = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se
+    check: |
+      check_value(z_stat, _sol["z_stat"], tol=0.005)
+    hints:
+      - "p_pool = (bA + bB) / (nA + nB)"
+      - "se = sqrt(p_pool * (1 - p_pool) * (1/nA + 1/nB))"
+  - id: e5
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณ p-value สองด้าน (two-sided) ของ z_stat ด้านบน ด้วย scipy.stats.norm เก็บไว้ในตัวแปร p_value
+    starter: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se
+
+      p_value = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se
+
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+    check: |
+      check_value(p_value, _sol["p_value"], tol=0.00002)
+    hints:
+      - "two-sided p-value = norm.sf(abs(z)) * 2 (หรือ 2 * (1 - norm.cdf(abs(z))) ก็ได้ผลเท่ากัน)"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ผลจาก e5 มีนัยสำคัญที่ α=0.05 หรือไม่ (p_value < 0.05) เก็บคำตอบ True/False ไว้ในตัวแปร is_significant
+    starter: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+
+      is_significant = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z_stat = (pB - pA) / se
+      p_value = stats.norm.sf(abs(z_stat)) * 2
+
+      is_significant = bool(p_value < 0.05)
+    check: |
+      check_value(is_significant, _sol["is_significant"])
+    hints:
+      - เทียบ p_value กับ 0.05 ตรงๆ ด้วย <
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณ chi-square statistic จากตาราง contingency 2×2 (`[[nA-bA, bA], [nB-bB, bB]]`) ด้วย
+      `scipy.stats.chi2_contingency` เก็บไว้ในตัวแปร chi2_stat
+    starter: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      table = [[nA - bA, bA], [nB - bB, bB]]
+
+      chi2_stat = ___
+    solution: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      bA = sessions.loc[sessions['variant'] == 'A', 'purchased'].sum()
+      nB = (sessions['variant'] == 'B').sum()
+      bB = sessions.loc[sessions['variant'] == 'B', 'purchased'].sum()
+      table = [[nA - bA, bA], [nB - bB, bB]]
+
+      chi2_stat, p_chi, dof, expected = stats.chi2_contingency(table)
+    check: |
+      check_value(chi2_stat, _sol["chi2_stat"], tol=0.01)
+    hints:
+      - "`scipy.stats.chi2_contingency(table)` คืนค่าเป็น tuple (chi2, p, dof, expected) — เอาตัวแรก"
+  - id: e8
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณ sample ratio ของ variant A (`nA / (nA + nB)`) เพื่อเช็ค sample ratio mismatch (SRM)
+      เก็บไว้ในตัวแปร sample_ratio
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      sample_ratio = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+
+      nA = (sessions['variant'] == 'A').sum()
+      nB = (sessions['variant'] == 'B').sum()
+      sample_ratio = nA / (nA + nB)
+    check: |
+      check_value(sample_ratio, _sol["sample_ratio"], tol=0.0001)
+    hints:
+      - นับจำนวน session ของแต่ละ variant ก่อน แล้วหาสัดส่วนของ A ต่อทั้งหมด
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ในบรรดา session ที่ไปถึงขั้น checkout แล้ว มีกี่เปอร์เซ็นต์ที่ไปถึง purchase ต่อ (checkout→purchase
+      conversion) คำนวณแยกตาม variant เก็บไว้ในตัวแปร conv_A และ conv_B (ปัด 4 ตำแหน่ง)
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+
+      conv_A = ___
+      conv_B = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+
+      checkout_A = ev[(ev['variant'] == 'A') & (ev['event_type'] == 'checkout')]['session_id'].nunique()
+      purchase_A = ev[(ev['variant'] == 'A') & (ev['event_type'] == 'purchase')]['session_id'].nunique()
+      checkout_B = ev[(ev['variant'] == 'B') & (ev['event_type'] == 'checkout')]['session_id'].nunique()
+      purchase_B = ev[(ev['variant'] == 'B') & (ev['event_type'] == 'purchase')]['session_id'].nunique()
+
+      conv_A = round(purchase_A / checkout_A, 4)
+      conv_B = round(purchase_B / checkout_B, 4)
+    check: |
+      check_value(conv_A, _sol["conv_A"], tol=0.0005)
+      check_value(conv_B, _sol["conv_B"], tol=0.0005)
+    hints:
+      - "นับจำนวน session ที่ไม่ซ้ำ (nunique) ที่มี event_type เป็น checkout และ purchase แยกตาม variant"
+      - "conversion = purchase หาร checkout (ไม่ใช่หาร n ทั้งหมดเหมือน purchase rate)"
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      ถ้าทีมหยุดทดลองตอน session สะสมถึง 40% ของทั้งหมด (n=6400 จาก 16000 เรียง session ตามเวลาที่เข้ามา
+      จริงก่อน-หลัง) two-sided p-value ของ two-proportion z-test ณ จุดนั้นจะเป็นเท่าไร เก็บไว้ในตัวแปร
+      p_at_40pct
+    starter: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+      first_time = ev.groupby('session_id')['event_time'].min().rename('first_time').reset_index()
+      sessions_sorted = (
+          sessions.merge(first_time, on='session_id')
+          .sort_values('first_time', kind='mergesort')
+          .reset_index(drop=True)
+      )
+
+      p_at_40pct = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+      first_time = ev.groupby('session_id')['event_time'].min().rename('first_time').reset_index()
+      sessions_sorted = (
+          sessions.merge(first_time, on='session_id')
+          .sort_values('first_time', kind='mergesort')
+          .reset_index(drop=True)
+      )
+
+      n_checkpoint = int(len(sessions_sorted) * 0.4)
+      sub = sessions_sorted.iloc[:n_checkpoint]
+
+      nA = (sub['variant'] == 'A').sum()
+      bA = sub.loc[sub['variant'] == 'A', 'purchased'].sum()
+      nB = (sub['variant'] == 'B').sum()
+      bB = sub.loc[sub['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z = (pB - pA) / se
+      p_at_40pct = stats.norm.sf(abs(z)) * 2
+    check: |
+      check_value(p_at_40pct, _sol["p_at_40pct"], tol=0.001)
+    hints:
+      - "เรียง session ตาม first_time ก่อน แล้วตัดเอาแค่ 40% แรกด้วย .iloc[:n_checkpoint]"
+      - "ทำ two-proportion z-test แบบเดียวกับ e4/e5 แต่ใช้ข้อมูลแค่ช่วง 40% แรก"
+  - id: e11
+    level: challenge
+    lang: python
+    prompt: |
+      จริงหรือเท็จ: การหยุดทดลองที่จุด 40% (จาก e10) จะทำให้สรุปผิดว่า "ไม่มีนัยสำคัญ" ทั้งที่ผลเต็มตัวอย่าง
+      (p ≈ 0.000161) แสดงว่ามีผลจริง เก็บคำตอบ True/False ไว้ในตัวแปร would_miss_effect
+    starter: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+      first_time = ev.groupby('session_id')['event_time'].min().rename('first_time').reset_index()
+      sessions_sorted = (
+          sessions.merge(first_time, on='session_id')
+          .sort_values('first_time', kind='mergesort')
+          .reset_index(drop=True)
+      )
+      n_checkpoint = int(len(sessions_sorted) * 0.4)
+      sub = sessions_sorted.iloc[:n_checkpoint]
+      nA = (sub['variant'] == 'A').sum()
+      bA = sub.loc[sub['variant'] == 'A', 'purchased'].sum()
+      nB = (sub['variant'] == 'B').sum()
+      bB = sub.loc[sub['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z = (pB - pA) / se
+      p_at_40pct = stats.norm.sf(abs(z)) * 2
+
+      would_miss_effect = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      import scipy.stats as stats
+
+      events = pd.read_csv("data/events.csv")
+      ev = events[events['variant'].notna()]
+      sessions = (
+          ev.groupby(['session_id', 'variant'])['event_type']
+          .apply(lambda s: (s == 'purchase').any())
+          .rename('purchased')
+          .reset_index()
+      )
+      first_time = ev.groupby('session_id')['event_time'].min().rename('first_time').reset_index()
+      sessions_sorted = (
+          sessions.merge(first_time, on='session_id')
+          .sort_values('first_time', kind='mergesort')
+          .reset_index(drop=True)
+      )
+      n_checkpoint = int(len(sessions_sorted) * 0.4)
+      sub = sessions_sorted.iloc[:n_checkpoint]
+      nA = (sub['variant'] == 'A').sum()
+      bA = sub.loc[sub['variant'] == 'A', 'purchased'].sum()
+      nB = (sub['variant'] == 'B').sum()
+      bB = sub.loc[sub['variant'] == 'B', 'purchased'].sum()
+      pA = bA / nA
+      pB = bB / nB
+      p_pool = (bA + bB) / (nA + nB)
+      se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+      z = (pB - pA) / se
+      p_at_40pct = stats.norm.sf(abs(z)) * 2
+
+      would_miss_effect = bool(p_at_40pct > 0.05)
+    check: |
+      check_value(would_miss_effect, _sol["would_miss_effect"])
+    hints:
+      - "ถ้า p_at_40pct > 0.05 แปลว่า ณ จุดนั้นจะสรุปว่า \"ไม่มีนัยสำคัญ\" ทั้งที่ผลเต็มมีนัยสำคัญจริง"
+
+quiz:
+  - id: q1
+    question: two-proportion z-test ใช้เปรียบเทียบอะไรระหว่างสองกลุ่ม
+    choices:
+      - text: สัดส่วน (proportion) สองกลุ่ม เช่น purchase rate ของ variant A กับ B
+        correct: true
+        why: two-proportion z-test ออกแบบมาสำหรับเทียบสัดส่วน/อัตรา (เช่น อัตราการซื้อ) ระหว่างสองกลุ่มโดยเฉพาะ
+      - text: ค่าเฉลี่ย (mean) สองกลุ่ม เช่น ยอดใช้จ่ายเฉลี่ย
+        why: เทียบค่าเฉลี่ยใช้ two-sample t-test แทน ไม่ใช่ two-proportion z-test
+      - text: ความแปรปรวน (variance) สองกลุ่ม
+        why: การเทียบความแปรปรวนมีวิธีเฉพาะ (เช่น F-test) ไม่ใช่สิ่งที่ two-proportion z-test ทดสอบ
+      - text: จำนวนแถวทั้งหมดของสองกลุ่ม
+        why: จำนวนแถว (n) เป็นแค่ส่วนหนึ่งของสูตร ไม่ใช่สิ่งที่ทดสอบโดยตรง
+  - id: q2
+    question: sample ratio mismatch (SRM) คืออะไร
+    choices:
+      - text: สัดส่วนผู้เข้าทดลองสองกลุ่มเบี้ยวไปจากที่ตั้งใจ (เช่น ควรเป็น 50/50 แต่ได้ 46/54) บ่งชี้ว่าการสุ่มเข้ากลุ่มมีปัญหา
+        correct: true
+        why: SRM คือสัญญาณว่า randomization อาจมีบั๊ก ทำให้สองกลุ่มมีองค์ประกอบต่างกันไปตั้งแต่แรก
+      - text: ผลต่างของ purchase rate ระหว่างสองกลุ่มที่มากเกินไป
+        why: นั่นคือผลของการทดลอง (effect size) ไม่ใช่ SRM ซึ่งเป็นเรื่องสัดส่วนขนาดกลุ่ม ไม่ใช่ผลลัพธ์
+      - text: การที่ p-value ออกมาน้อยกว่า 0.05 โดยไม่คาดคิด
+        why: นั่นคือผลของ significance test ไม่เกี่ยวกับสัดส่วนขนาดของสองกลุ่มที่เข้าทดลอง
+      - text: การที่ตัวอย่างมีขนาดเล็กเกินไปจนวัดผลไม่ได้
+        why: นั่นคือปัญหาเรื่อง statistical power/sample size ไม่ใช่ SRM ซึ่งเป็นเรื่องสัดส่วนระหว่างกลุ่ม
+  - id: q3
+    question: ทำไมควรดู funnel ทีละขั้นแทนที่จะดูแค่ purchase rate รวม
+    choices:
+      - text: อาจเจอว่าขั้นไหนของ funnel ที่ variant ทำได้ดี/แย่กว่าจริงๆ เช่น เข้าถึง checkout น้อยกว่าแต่ปิดการขายได้ดีกว่า
+        correct: true
+        why: การดูแค่ metric สุดท้ายอาจซ่อน insight ที่เกิดขึ้นระหว่างทาง เช่นในเคสนี้ B เข้าถึง checkout น้อยกว่าแต่ปิดการขายดีกว่ามาก
+      - text: purchase rate รวมคำนวณผิดพลาดได้ง่ายกว่า funnel ทีละขั้น
+        why: ทั้งสองแบบคำนวณได้แม่นยำพอกัน ประเด็นอยู่ที่ข้อมูลเชิงลึกที่เห็นได้มากกว่า ไม่ใช่ความแม่นยำ
+      - text: funnel ทีละขั้นใช้ได้กับ A/B test ที่มี variant เดียวเท่านั้น
+        why: ใช้ได้กับกี่ variant ก็ได้ ไม่ได้จำกัดแค่กรณีเดียว
+      - text: purchase rate รวมไม่จำเป็นต้องดูเลยถ้าดู funnel แล้ว
+        why: ทั้งสองมุมมองเสริมกัน purchase rate รวมยังเป็นตัวชี้วัดหลักที่ใช้สรุปผลได้
+  - id: q4
+    question: การหยุดทดลองก่อนกำหนดเพราะเห็นว่ายังไม่มีนัยสำคัญ มีความเสี่ยงอะไร
+    choices:
+      - text: อาจพลาดผลจริงที่ยังไม่ทันแสดงตัวเพราะตัวอย่างยังน้อยไป (statistical power ไม่พอ)
+        correct: true
+        why: ตัวอย่างในบทเรียนนี้แสดงชัดว่า p-value ที่ 40% ของ session (0.0692) ยังไม่มีนัยสำคัญ แต่พอครบ 100% กลับมีนัยสำคัญชัดเจน
+      - text: ไม่มีความเสี่ยงใดๆ เพราะ p-value ที่ได้ยังถูกต้องเสมอ
+        why: p-value ที่คำนวณ ณ ตัวอย่างที่ยังไม่ครบ อาจยังไม่สะท้อนผลจริงเพราะ statistical power ยังไม่พอ
+      - text: ทำให้ได้ผลบวกลวง (false positive) เสมอ
+        why: ในกรณีนี้ความเสี่ยงคือได้ผลลบลวง/สรุปว่าไม่มีผล (miss a real effect) ไม่ใช่ false positive
+      - text: ทำให้ต้องเก็บข้อมูลเพิ่มโดยไม่จำเป็น
+        why: ตรงข้าม ปัญหาคือเก็บข้อมูล "น้อยเกินไป" ไม่ใช่มากเกินไป
+  - id: q5
+    question: chi-square test กับ two-proportion z-test บนข้อมูลเดียวกัน ควรให้ข้อสรุปแบบไหน
+    choices:
+      - text: ควรสอดคล้องกัน เพราะทั้งคู่ทดสอบสมมติฐานเดียวกันด้วยวิธีต่างกัน
+        correct: true
+        why: ในตัวอย่างนี้ z²≈14.24 ใกล้เคียงกับ chi2≈14.018 มาก และทั้งสอง p-value ก็สรุปไปทางเดียวกัน
+      - text: ควรให้ผลตรงข้ามกันเสมอ เพื่อใช้เช็คไขว้
+        why: ถ้าให้ผลตรงข้ามกันแปลว่ามีข้อผิดพลาดในการคำนวณ ไม่ใช่พฤติกรรมปกติที่ควรเกิดขึ้น
+      - text: ใช้เทียบกันไม่ได้เลยเพราะเป็นสถิติคนละตัว
+        why: แม้สูตรจะต่างกัน แต่ทั้งคู่ทดสอบสมมติฐานเดียวกัน (สัดส่วนสองกลุ่มต่างกันหรือไม่) เทียบผลสรุปกันได้
+      - text: chi-square เชื่อถือได้มากกว่า z-test เสมอ
+        why: ทั้งสองวิธีมีความน่าเชื่อถือใกล้เคียงกันสำหรับข้อมูลแบบนี้ ไม่มีวิธีไหนดีกว่าเสมอไป
+
+summary:
+  - two-proportion z-test เทียบสัดส่วนสองกลุ่ม (เช่น purchase rate) ด้วย p_pool, standard error และ z-statistic
+  - chi-square test บนตาราง 2×2 คืออีกวิธีที่ทดสอบสมมติฐานเดียวกัน ควรให้ข้อสรุปสอดคล้องกับ z-test
+  - ก่อนเชื่อผล A/B test ต้องเช็ค sample ratio mismatch (SRM) ก่อนเสมอ ไม่ว่า p-value จะสวยแค่ไหน
+  - ดู funnel ทีละขั้นแทนที่จะดูแค่ metric สุดท้าย อาจเจอ insight ที่ metric รวมซ่อนไว้
+  - หยุดทดลองก่อนกำหนดเพราะตัวอย่างยังไม่พอ เสี่ยงพลาดผลจริงที่ยังไม่ทันแสดงตัว ควรกำหนดขนาดตัวอย่างล่วงหน้า
+
+interview:
+  - id: i1
+    q: ก่อนเชื่อผล A/B test ควรเช็คอะไรก่อนดูที่ p-value
+    a: |
+      ควรเช็ค sample ratio mismatch (SRM) ก่อนเสมอ คือดูว่าสัดส่วนผู้เข้าทดลองสองกลุ่มใกล้เคียงกับที่ตั้งใจไหม
+      (ปกติควรใกล้ 50/50 ถ้าออกแบบมาแบบนั้น) ถ้าสัดส่วนเบี้ยวไปมาก (เช่น 46/54) แปลว่าระบบสุ่มเข้ากลุ่มอาจมีบั๊ก
+      ทำให้สองกลุ่มมีองค์ประกอบผู้ใช้ต่างกันไปตั้งแต่แรก ซึ่งจะทำให้ผลการทดสอบทั้งหมด (ไม่ว่า p-value จะสวย
+      แค่ไหน) เชื่อถือไม่ได้ นอกจากนี้ควรดู funnel ทีละขั้นด้วย ไม่ใช่แค่ metric สุดท้าย เพื่อให้เข้าใจว่าความ
+      ต่างเกิดขึ้นตรงไหนจริงๆ
+  - id: i2
+    q: อธิบาย sample ratio mismatch และทำไมมันอันตราย
+    a: |
+      SRM คือสถานการณ์ที่สัดส่วนผู้เข้าทดลองสองกลุ่มไม่ตรงกับที่ออกแบบไว้ เช่น ตั้งใจแบ่ง 50/50 แต่ข้อมูลจริง
+      ออกมา 46/54 มันอันตรายเพราะมักเป็นสัญญาณว่ากระบวนการสุ่มเข้ากลุ่ม (randomization) มีบั๊ก เช่น cache,
+      redirect, หรือ bot บาง segment ตกไปกลุ่มใดกลุ่มหนึ่งมากผิดปกติ — ถ้าเป็นแบบนั้น สองกลุ่มอาจมีองค์ประกอบ
+      ผู้ใช้ต่างกันไปตั้งแต่แรก (ไม่ใช่สุ่มจริง) ทำให้ผลต่างที่วัดได้อาจไม่ได้มาจากตัวแปรที่ทดลองเลย แม้ p-value
+      จะดูมีนัยสำคัญก็ตาม จึงต้องเช็คก่อนเชื่อผลทุกครั้ง
+  - id: i3
+    q: ทีมอยากหยุดทดลองเร็วเพราะเห็นตัวเลขดีขึ้นแล้ว ควรแนะนำยังไง
+    a: |
+      ควรแนะนำให้กำหนดขนาดตัวอย่าง (sample size) ที่ต้องการล่วงหน้าก่อนเริ่มทดลอง (power analysis) แล้วรอ
+      จนเก็บข้อมูลครบตามแผน เพราะ p-value ที่เห็นระหว่างทางอาจยังไม่สะท้อนผลจริง (ตัวอย่างยังน้อยไป สถิติยัง
+      ไม่นิ่ง) — ถ้าจำเป็นต้องดูผลระหว่างทางจริงๆ ควรใช้วิธี sequential testing ที่ออกแบบมาสำหรับกรณีนี้
+      โดยเฉพาะ แทนที่จะหยุดทันทีที่เห็นตัวเลขดูดีหรือ p < 0.05 ครั้งแรก ซึ่งเพิ่มความเสี่ยงทั้งพลาดผลจริง
+      (ถ้าหยุดเร็วไป) และได้ผลบวกลวง (ถ้า peek บ่อยเกินไป)
+
+flashcards:
+  - id: c1
+    front: sample ratio mismatch (SRM) คืออะไร
+    back: สัดส่วนผู้เข้าทดลองสองกลุ่มเบี้ยวไปจากที่ตั้งใจ (เช่น ควรเป็น 50/50 แต่ได้ 46/54) บ่งชี้ว่าการสุ่มเข้ากลุ่มมีปัญหา ต้องเช็คก่อนเชื่อ p-value เสมอ
+  - id: c2
+    front: สูตร two-proportion z-test มีหน้าตาประมาณไหน
+    back: "z = (pB - pA) / se โดย se = sqrt(p_pool*(1-p_pool)*(1/nA+1/nB)) และ p_pool = (bA+bB)/(nA+nB)"
+  - id: c3
+    front: ทำไมการหยุดทดลองก่อนกำหนดถึงเสี่ยงพลาดผลจริง
+    back: ตัวอย่างที่ยังน้อยทำให้ statistical power ไม่พอ p-value ระหว่างทางอาจยังไม่มีนัยสำคัญ ทั้งที่ผลจริงมีอยู่แล้วแค่ยังไม่ทันแสดงตัวให้เห็น

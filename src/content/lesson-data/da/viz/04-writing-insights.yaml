@@ -1,0 +1,486 @@
+goals:
+  - เข้าใจโครงสร้างของ insight ที่ดี (สิ่งที่เปลี่ยน + ขนาดที่เปลี่ยน + เทียบกับอะไร + แล้วไง)
+  - คำนวณ insight จริงจากข้อมูล ไม่ใช่แค่บรรยายกราฟเฉยๆ (Pareto และ seasonal effect)
+  - เลือก baseline ที่เหมาะสมเวลาเปรียบเทียบตัวเลข เพราะเปลี่ยน baseline ผลลัพธ์เปลี่ยนได้มาก
+
+examples:
+  - id: x1
+    title: "Insight แบบ Pareto: ลูกค้า 20% แรกสร้างรายได้เท่าไร"
+    lang: python
+    prompt: |
+      ผู้บริหารถามว่า "ลูกค้ากลุ่มไหนสำคัญที่สุด" อยากได้คำตอบที่มีตัวเลขชัดเจน ไม่ใช่แค่คำบรรยายกว้างๆ
+      ว่า "ลูกค้าบางกลุ่มสำคัญกว่ากลุ่มอื่น"
+    steps:
+      - text: |
+          รวมยอดสั่งซื้อ (เฉพาะออเดอร์ที่ completed) เป็นรายได้ต่อลูกค้าหนึ่งคน เก็บไว้ในตัวแปร `cust_rev`
+          เรียงจากมากไปน้อย
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          completed = orders[orders['status'] == 'completed']
+          items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+          items['line'] = items['quantity'] * items['unit_price']
+
+          cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+          cust_rev.head()
+      - text: |
+          หาว่าลูกค้ากลุ่ม 20% แรก (เรียงรายได้มากไปน้อย) มีกี่คน และสร้างรายได้กี่ % ของรายได้รวมทั้งหมด
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          completed = orders[orders['status'] == 'completed']
+          items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+          items['line'] = items['quantity'] * items['unit_price']
+
+          cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+          top20_n = int(len(cust_rev) * 0.20)
+          top20_share_pct = round(cust_rev.head(top20_n).sum() / cust_rev.sum() * 100, 2)
+          top20_n, top20_share_pct
+      - text: |
+          ประกอบตัวเลขที่ได้เป็นประโยค insight ที่มีครบ 4 ส่วน: "อะไรเปลี่ยน" (การกระจายรายได้ไม่เท่ากัน)
+          + "เท่าไร" (58.75% จาก 20% ของลูกค้า) + "เทียบกับอะไร" (รายได้รวมทั้งหมด) + "แล้วไง"
+          (การรักษาลูกค้ากลุ่มนี้ไว้สำคัญกว่าการหาลูกค้าใหม่จำนวนมาก)
+        code: |
+          n_paying_customers = 2707
+          top20_n = 541
+          top20_share_pct = 58.75
+
+          insight = (
+              f"รายได้กระจุกตัวสูง: ลูกค้ากลุ่ม 20% แรก ({top20_n} คน จาก {n_paying_customers} คน) "
+              f"สร้างรายได้ถึง {top20_share_pct}% ของรายได้รวม ดังนั้นการรักษาลูกค้ากลุ่มนี้ไว้ "
+              f"สำคัญกว่าการพยายามหาลูกค้าใหม่จำนวนมาก"
+          )
+          insight
+    pitfall:
+      text: |
+        การเขียนแค่ "ลูกค้าบางกลุ่มสร้างรายได้เยอะกว่ากลุ่มอื่น" โดยไม่มีตัวเลขกำกับเลย เป็นประโยคที่จริง
+        แต่ไม่มีประโยชน์ เพราะผู้อ่านไม่รู้ว่า "เยอะกว่า" นั้นหมายถึงเยอะกว่านิดหน่อยหรือกระจุกตัวรุนแรงขนาด
+        58.75% — insight ที่ใช้งานได้จริงต้องมีขนาด (ตัวเลข) กำกับเสมอ
+  - id: x2
+    title: "Insight ตามฤดูกาล: ยอดออเดอร์ พ.ย.-ธ.ค. สูงกว่าปกติแค่ไหน"
+    lang: python
+    prompt: |
+      ผู้บริหารสังเกตว่าช่วงปลายปีขายดีกว่าปกติ อยากได้ตัวเลขที่ชัดเจนเพื่อใช้วางแผนสต็อกและกำลังคนปีหน้า
+    steps:
+      - text: |
+          นับจำนวนออเดอร์ completed ต่อเดือน (รวมทุกปีที่มีในข้อมูล เข้าด้วยกันตามเลขเดือน 1-12)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          completed = orders[orders['status'] == 'completed'].copy()
+          completed['order_date'] = pd.to_datetime(completed['order_date'])
+          completed['month'] = completed['order_date'].dt.month
+
+          monthly_by_month = completed.groupby('month').size()
+          monthly_by_month
+      - text: |
+          เทียบค่าเฉลี่ยของเดือน พ.ย./ธ.ค. กับค่าเฉลี่ยของอีก 10 เดือนที่เหลือ (baseline คือ "เดือนอื่นๆ
+          ทั้งหมด" ไม่ใช่แค่เดือนใดเดือนหนึ่ง)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          completed = orders[orders['status'] == 'completed'].copy()
+          completed['order_date'] = pd.to_datetime(completed['order_date'])
+          completed['month'] = completed['order_date'].dt.month
+
+          monthly_by_month = completed.groupby('month').size()
+          nov_dec_avg = round(monthly_by_month.loc[[11, 12]].mean(), 1)
+          other_avg = round(monthly_by_month.drop([11, 12]).mean(), 1)
+          pct_higher = round((nov_dec_avg - other_avg) / other_avg * 100, 1)
+          nov_dec_avg, other_avg, pct_higher
+      - text: |
+          ประกอบเป็นประโยค insight ที่ระบุ baseline ชัดเจนและมี "แล้วไง"
+        code: |
+          nov_dec_avg = 809.0
+          other_avg = 461.4
+          pct_higher = 75.3
+
+          insight = (
+              f"ยอดออเดอร์เดือน พ.ย.-ธ.ค. สูงกว่าเดือนอื่นๆ เฉลี่ย {pct_higher}% "
+              f"({nov_dec_avg} เทียบกับ {other_avg} ออเดอร์/เดือน) "
+              f"ทีมควรเตรียมสต็อกและกำลังคนฝ่ายจัดส่งให้เพียงพอล่วงหน้าก่อนเข้าช่วงปลายปี"
+          )
+          insight
+    pitfall:
+      text: |
+        ถ้าเทียบเดือน พ.ย.-ธ.ค. กับแค่เดือนที่ใกล้ที่สุดเดือนเดียว (เช่น ต.ค.) แทนที่จะเทียบกับค่าเฉลี่ย
+        ของเดือนอื่นๆ ทั้งหมด ตัวเลข % ที่ได้อาจดูสูงหรือต่ำผิดปกติไปตามความบังเอิญของเดือนนั้นเดือนเดียว
+        — เวลาเขียน insight ที่เปรียบเทียบ ต้องระบุเสมอว่า baseline ที่ใช้เทียบคืออะไร
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      หา % ของรายได้รวม (completed order) ที่ลูกค้ากลุ่ม 20% แรก (เรียงรายได้มากไปน้อย) สร้างขึ้น
+      ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร top20_share_pct เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+
+      cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+      top20_n = int(len(cust_rev) * 0.20)
+      top20 = cust_rev.head(top20_n)
+
+      top20_share_pct = round(top20.sum() / ___.sum() * 100, 2)
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+
+      cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+      top20_n = int(len(cust_rev) * 0.20)
+      top20 = cust_rev.head(top20_n)
+
+      top20_share_pct = round(top20.sum() / cust_rev.sum() * 100, 2)
+    check: |
+      check_value(top20_share_pct, _sol["top20_share_pct"], name="top20_share_pct", tol=0.01)
+    hints:
+      - "ตัวหารต้องเป็นรายได้ **รวมทั้งหมด** ของลูกค้าทุกคน ไม่ใช่แค่กลุ่ม top20 — คือตัวแปร cust_rev เต็มๆ"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่เคยมีออเดอร์สถานะ completed อย่างน้อย 1 ครั้ง (paying customers) เก็บไว้ในตัวแปร
+      n_paying_customers
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      n_paying_customers = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      completed = orders[orders['status'] == 'completed']
+      n_paying_customers = completed['customer_id'].nunique()
+    check: |
+      check_value(n_paying_customers, _sol["n_paying_customers"], name="n_paying_customers")
+    hints:
+      - "กรองออเดอร์ที่ status == 'completed' ก่อน แล้วนับ customer_id ที่ไม่ซ้ำด้วย .nunique()"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จากลูกค้าที่เคยมีออเดอร์ completed ทั้งหมด กลุ่ม 20% แรกที่มีรายได้สะสมสูงสุด (เรียงมากไปน้อย)
+      มีกี่คน เก็บไว้ในตัวแปร top20_n
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      top20_n = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      cust_rev = items.groupby('customer_id')['line'].sum()
+
+      top20_n = int(len(cust_rev) * 0.20)
+    check: |
+      check_value(top20_n, _sol["top20_n"], name="top20_n")
+    hints:
+      - "จำนวนลูกค้าที่จ่ายเงินทั้งหมด คือจำนวนแถวหลัง groupby('customer_id')"
+      - "20% ของจำนวนนั้น ใช้ int(...) ตัดเศษทิ้ง (ไม่ต้องปัดเศษ)"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      % ของรายได้รวม (completed order) ที่ลูกค้ากลุ่ม 20% แรก (เรียงรายได้มากไปน้อย) สร้างขึ้น
+      ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร top20_share_pct
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      top20_share_pct = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+
+      top20_n = int(len(cust_rev) * 0.20)
+      top20_share_pct = round(cust_rev.head(top20_n).sum() / cust_rev.sum() * 100, 2)
+    check: |
+      check_value(top20_share_pct, _sol["top20_share_pct"], name="top20_share_pct", tol=0.05)
+    hints:
+      - เหมือนตัวอย่าง x1 ขั้นที่ 2
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ค่าเฉลี่ยจำนวนออเดอร์ completed ต่อเดือน ของเดือน พ.ย. และ ธ.ค. (รวมทุกปีที่มีในข้อมูล)
+      ปัด 1 ตำแหน่ง เก็บไว้ในตัวแปร nov_dec_avg
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      nov_dec_avg = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      completed = orders[orders['status'] == 'completed'].copy()
+      completed['order_date'] = pd.to_datetime(completed['order_date'])
+      completed['month'] = completed['order_date'].dt.month
+
+      monthly_by_month = completed.groupby('month').size()
+      nov_dec_avg = round(monthly_by_month.loc[[11, 12]].mean(), 1)
+    check: |
+      check_value(nov_dec_avg, _sol["nov_dec_avg"], name="nov_dec_avg", tol=0.1)
+    hints:
+      - "ดึงเลขเดือนด้วย `pd.to_datetime(...).dt.month` แล้ว groupby('month').size() รวมทุกปีเข้าด้วยกัน"
+      - "`.loc[[11, 12]]` เลือกเฉพาะเดือน 11 และ 12 แล้ว `.mean()` หาค่าเฉลี่ย"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      ค่าเฉลี่ยจำนวนออเดอร์ completed ต่อเดือน ของเดือนอื่นๆ ทั้งหมด (ไม่ใช่ พ.ย./ธ.ค., รวมทุกปี)
+      ปัด 1 ตำแหน่ง เก็บไว้ในตัวแปร other_avg
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      other_avg = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      completed = orders[orders['status'] == 'completed'].copy()
+      completed['order_date'] = pd.to_datetime(completed['order_date'])
+      completed['month'] = completed['order_date'].dt.month
+
+      monthly_by_month = completed.groupby('month').size()
+      other_avg = round(monthly_by_month.drop([11, 12]).mean(), 1)
+    check: |
+      check_value(other_avg, _sol["other_avg"], name="other_avg", tol=0.1)
+    hints:
+      - "`.drop([11, 12])` ตัดเดือน พ.ย./ธ.ค. ออก เหลือ 10 เดือนที่เหลือไว้หาค่าเฉลี่ย"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      เดือน พ.ย./ธ.ค. มีจำนวนออเดอร์เฉลี่ยต่อเดือนสูงกว่าเดือนอื่นๆ กี่ % ปัด 1 ตำแหน่ง
+      เก็บไว้ในตัวแปร pct_higher
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      pct_higher = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      completed = orders[orders['status'] == 'completed'].copy()
+      completed['order_date'] = pd.to_datetime(completed['order_date'])
+      completed['month'] = completed['order_date'].dt.month
+
+      monthly_by_month = completed.groupby('month').size()
+      nov_dec_avg = monthly_by_month.loc[[11, 12]].mean()
+      other_avg = monthly_by_month.drop([11, 12]).mean()
+      pct_higher = round((nov_dec_avg - other_avg) / other_avg * 100, 1)
+    check: |
+      check_value(pct_higher, _sol["pct_higher"], name="pct_higher", tol=0.1)
+    hints:
+      - "สูตร % ที่สูงกว่า คือ (ค่าที่สูงกว่า - baseline) / baseline * 100 โดย baseline คือ other_avg"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      เขียนประโยค insight สั้นๆ 1 ประโยคสรุปสิ่งที่พบเรื่อง Pareto (ลูกค้ากลุ่ม 20% แรก จำนวน 541 คน
+      สร้างรายได้ 58.75% ของรายได้รวมทั้งหมด) เก็บไว้ในตัวแปร insight_pareto (string) — ประโยคต้องมีทั้ง
+      ตัวเลข 541 และตัวเลข 58.75 (หรือ 58.7 หลังปัดเศษ) อยู่ในประโยคด้วย
+    starter: |
+      insight_pareto = ___
+    solution: |
+      insight_pareto = (
+          "รายได้กระจุกตัวสูง: ลูกค้ากลุ่ม 20% แรก (541 คน) สร้างรายได้ถึง 58.75% ของรายได้รวมทั้งหมด "
+          "ดังนั้นการรักษาลูกค้ากลุ่มนี้ไว้สำคัญกว่าการหาลูกค้าใหม่จำนวนมาก"
+      )
+    check: |
+      check_true(
+          ("58.75" in insight_pareto or "58.7" in insight_pareto) and "541" in insight_pareto,
+          "ประโยค insight_pareto ต้องมีตัวเลข 58.75 (หรือ 58.7 หลังปัดเศษ) และตัวเลข 541 อยู่ด้วย",
+      )
+    hints:
+      - "ใส่ทั้งสองตัวเลขลงในประโยคเดียวกันตรงๆ ก็พอ ไม่ต้องคำนวณใหม่"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่น้อยที่สุด (เรียงรายได้ completed order มากไปน้อย) ที่รวมกันแล้วสร้างรายได้อย่างน้อย
+      50% ของรายได้รวมทั้งหมด (ตัวเลขนี้ไม่เท่ากับ top20_n — ต้องคำนวณใหม่ ห้าม hardcode) เก็บไว้ในตัวแปร
+      n_for_half_revenue
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      n_for_half_revenue = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      items = order_items.merge(completed[['order_id', 'customer_id']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      cust_rev = items.groupby('customer_id')['line'].sum().sort_values(ascending=False)
+
+      total_rev = cust_rev.sum()
+      cum_share = cust_rev.cumsum() / total_rev
+      n_for_half_revenue = int((cum_share >= 0.5).values.argmax()) + 1
+    check: |
+      check_value(n_for_half_revenue, _sol["n_for_half_revenue"], name="n_for_half_revenue")
+    hints:
+      - "`.cumsum()` หาผลรวมสะสมทีละแถวของ Series ที่เรียงมากไปน้อยแล้ว"
+      - "`(เงื่อนไข).values.argmax()` หาตำแหน่งแรกที่เงื่อนไขเป็น True (นับจาก 0) บวก 1 เพื่อได้จำนวนคน"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      เขียนประโยค insight สั้นๆ 1 ประโยคสรุปสิ่งที่พบเรื่อง seasonal effect (ยอดออเดอร์เดือน พ.ย./ธ.ค.
+      สูงกว่าเดือนอื่นๆ 75.3%) เก็บไว้ในตัวแปร insight_seasonal (string) — ประโยคต้องมีตัวเลขใกล้เคียง 75.3
+      (คลาดเคลื่อนได้ไม่เกิน 0.5) และต้องมีคำว่า "พ.ย." หรือ "ธ.ค." อยู่ด้วย
+    starter: |
+      insight_seasonal = ___
+    solution: |
+      insight_seasonal = (
+          "ยอดออเดอร์เดือน พ.ย.-ธ.ค. สูงกว่าเดือนอื่นๆ เฉลี่ย 75.3% "
+          "ทีมควรเตรียมสต็อกและกำลังคนฝ่ายจัดส่งให้เพียงพอล่วงหน้าก่อนเข้าช่วงปลายปี"
+      )
+    check: |
+      _acceptable = [f"{74.8 + i * 0.1:.1f}" for i in range(11)]
+      check_true(
+          any(v in insight_seasonal for v in _acceptable)
+          and ("พ.ย." in insight_seasonal or "ธ.ค." in insight_seasonal),
+          "ประโยค insight_seasonal ต้องมีตัวเลขใกล้เคียง 75.3 (คลาดเคลื่อนได้ไม่เกิน 0.5) และคำว่า พ.ย. หรือ ธ.ค.",
+      )
+    hints:
+      - "ใส่ตัวเลข 75.3 ตรงๆ ลงในประโยค พร้อมคำว่า พ.ย. หรือ ธ.ค. ก็พอ"
+
+quiz:
+  - id: q1
+    question: โครงสร้างของ insight ที่ดีต้องมีอะไรบ้าง
+    choices:
+      - text: สิ่งที่เปลี่ยน + ขนาดที่เปลี่ยน (ตัวเลข) + เทียบกับอะไร (baseline) + ทำไมสำคัญ/ควรทำอะไรต่อ
+        correct: true
+        why: ครบทั้ง 4 ส่วนนี้ insight ถึงจะใช้ตัดสินใจได้จริง ขาดส่วนไหนไปจะอ่อนลงทันที
+      - text: มีกราฟสวยๆ ประกอบเสมอ
+        why: กราฟช่วยให้เข้าใจง่ายขึ้น แต่ไม่ใช่ส่วนที่จำเป็นของโครงสร้างประโยค insight เอง
+      - text: ต้องยาวอย่างน้อย 3 ย่อหน้า
+        why: ความยาวไม่ใช่ตัวชี้วัดคุณภาพ insight ที่ดีมักสั้นและตรงประเด็นด้วยซ้ำ
+      - text: ต้องมีแค่ตัวเลขเปอร์เซ็นต์เท่านั้น
+        why: ตัวเลขอย่างเดียวไม่พอ ยังต้องมี baseline ที่เทียบและ "แล้วไง" ด้วย
+  - id: q2
+    question: "\"ยอดขายเดือนนี้ดีขึ้น\" เป็น insight ที่ดีไหม"
+    choices:
+      - text: ยังไม่ดี ขาดตัวเลขและ baseline ที่เทียบ
+        correct: true
+        why: ประโยคนี้ไม่มีตัวเลขว่าดีขึ้นเท่าไร และไม่ได้บอกว่าเทียบกับเดือนไหนหรือฐานอะไร
+      - text: ดีแล้ว เพราะสรุปสั้นและตรงประเด็น
+        why: สั้นก็จริง แต่ไม่มีตัวเลขและ baseline เลย อ่านแล้วยังตัดสินใจอะไรไม่ได้
+      - text: ดีแล้ว เพราะผู้บริหารชอบประโยคสั้นๆ
+        why: ความสั้นไม่ใช่ปัญหา ปัญหาคือไม่มีตัวเลขและจุดเทียบที่ชัดเจน
+      - text: ดีแล้ว ถ้าใส่กราฟประกอบไปด้วย
+        why: ต่อให้มีกราฟประกอบ ตัวประโยคเองก็ยังขาดตัวเลขและ baseline อยู่ดี
+  - id: q3
+    question: เวลาเปรียบเทียบตัวเลข ควรระบุ baseline ที่ใช้เทียบด้วยเสมอ เพราะอะไร
+    choices:
+      - text: ตัวเลข % ที่เปลี่ยนแปลงขึ้นอยู่กับว่าเทียบกับอะไร เปลี่ยน baseline ผลลัพธ์เปลี่ยนได้มาก
+        correct: true
+        why: ข้อมูลชุดเดียวกัน ถ้าเปลี่ยนฐานที่ใช้เทียบ ตัวเลข % ที่ได้อาจต่างกันมาก จึงต้องระบุ baseline เสมอ
+      - text: เพราะกฎของบริษัทกำหนดไว้เฉยๆ
+        why: ไม่ใช่แค่กฎ แต่เป็นเหตุผลเชิงสถิติที่ทำให้ตัวเลขตีความได้ถูกต้อง
+      - text: เพราะทำให้ประโยคยาวขึ้นดูน่าเชื่อถือ
+        why: ไม่เกี่ยวกับความยาวประโยค แต่เกี่ยวกับว่าตัวเลขตีความได้ถูกต้องหรือไม่
+      - text: ไม่จำเป็น ตัวเลข % ความหมายเดียวกันเสมอไม่ว่าจะเทียบกับอะไร
+        why: ผิด ตัวเลข % เดียวกันอาจสื่อความหมายต่างกันมากถ้า baseline ต่างกัน
+  - id: q4
+    question: Pareto principle (80/20) ในบริบทลูกค้า มักหมายถึงอะไร
+    choices:
+      - text: ลูกค้าส่วนน้อยมักสร้างรายได้ส่วนใหญ่
+        correct: true
+        why: เป็นรูปแบบที่พบบ่อยในข้อมูลจริง เช่นลูกค้า 20% แรกสร้างรายได้มากกว่า 50% ของรายได้ทั้งหมด
+      - text: ลูกค้า 80% ซื้อของเหมือนกันทุกคน
+        why: ไม่เกี่ยวกับพฤติกรรมการซื้อที่เหมือนกัน แต่เกี่ยวกับการกระจายตัวของรายได้
+      - text: ต้องมีลูกค้าอย่างน้อย 80 คนถึงจะวิเคราะห์ได้
+        why: ไม่เกี่ยวกับจำนวนลูกค้าขั้นต่ำ แต่เป็นสัดส่วนของรายได้ที่กระจุกตัว
+      - text: ลูกค้าใหม่มักซื้อมากกว่าลูกค้าเก่าเสมอ
+        why: ไม่เกี่ยวกับลูกค้าใหม่/เก่า แต่เกี่ยวกับว่าลูกค้ากลุ่มเล็กสร้างรายได้ส่วนใหญ่
+
+summary:
+  - insight ที่ดีต้องมีครบ 4 ส่วน คือสิ่งที่เปลี่ยน + ขนาดที่เปลี่ยน (ตัวเลข) + เทียบกับอะไร (baseline) + แล้วไง
+  - "ตัวอย่างจริง Pareto: ลูกค้า 20% แรก (541 จาก 2,707 คน) สร้างรายได้ถึง 58.75% ของรายได้ทั้งหมด"
+  - "ตัวอย่างจริง seasonal effect: ยอดออเดอร์เดือน พ.ย./ธ.ค. สูงกว่าเดือนอื่นๆ เฉลี่ย 75.3%"
+  - เปลี่ยน baseline ที่ใช้เทียบ ตัวเลข % ที่ได้เปลี่ยนไปด้วย ต้องระบุ baseline ให้ชัดเจนเสมอ
+
+interview:
+  - id: i1
+    q: ได้กราฟยอดขายรายเดือนมา จะเขียน insight สั้นๆ ให้ผู้บริหารยังไง (ยกตัวอย่างประโยคจริง)
+    a: |
+      เริ่มจากดูว่าเดือนไหนเปลี่ยนแปลงชัดเจนที่สุด แล้วคำนวณ % การเปลี่ยนแปลงเทียบกับเดือนก่อนหน้าหรือ
+      ค่าเฉลี่ยที่เหมาะสม จากนั้นเขียนให้ครบ 4 ส่วน เช่น "ยอดขายเดือน พ.ย. สูงกว่าเดือน ต.ค. 60.73%
+      (จาก 1,281,420 เป็น 2,059,592 บาท) ซึ่งสอดคล้องกับช่วงโปรโมชันปลายปี ควรพิจารณาขยายแคมเปญลักษณะนี้
+      ในเดือนถัดไป" — มีทั้งตัวเลข เปอร์เซ็นต์ baseline ที่เทียบ และข้อเสนอแนะต่อท้าย ไม่ใช่แค่บอกว่า
+      "ยอดขายดีขึ้น"
+  - id: i2
+    q: ทำไม insight ที่ดีต้องมี "แล้วไง" (so what) ไม่ใช่แค่บรรยายตัวเลข
+    a: |
+      เพราะเป้าหมายสุดท้ายของการวิเคราะห์ข้อมูลคือช่วยให้คนตัดสินใจได้ ไม่ใช่แค่รายงานข้อเท็จจริง
+      ถ้าบอกแค่ "ลูกค้ากลุ่ม 20% แรกสร้างรายได้ 58.75%" แล้วจบ ผู้อ่านจะรู้ตัวเลขแต่ไม่รู้ว่าต้องทำอะไรต่อ
+      ส่วน "แล้วไง" คือสิ่งที่เชื่อมตัวเลขไปสู่การกระทำ เช่น "ควรทำโปรแกรมรักษาลูกค้ากลุ่มนี้เป็นพิเศษ"
+      ทำให้ insight มีประโยชน์ในการทำงานจริง ไม่ใช่แค่เกร็ดความรู้
+  - id: i3
+    q: เจอ Pareto pattern ในข้อมูลลูกค้า (20% สร้างรายได้ 60%) ควรแนะนำทีมธุรกิจให้ทำอะไรต่อ
+    a: |
+      ควรแนะนำให้เริ่มจากการระบุตัวตนของลูกค้ากลุ่ม 20% นี้ให้ชัดเจนก่อน (ใครบ้าง ซื้ออะไร ซื้อผ่านช่องทาง
+      ไหน) แล้วออกแบบโปรแกรมดูแลรักษาลูกค้ากลุ่มนี้เป็นพิเศษ เช่น loyalty program หรือบริการ VIP
+      เพราะการสูญเสียลูกค้ากลุ่มนี้ไปกระทบรายได้รวมมากกว่าลูกค้ากลุ่มอื่นมาก ในขณะเดียวกันก็ควรระวังไม่ให้
+      งบการตลาดทั้งหมดไหลไปหาลูกค้าใหม่จำนวนมากโดยละเลยการดูแลลูกค้าเดิมกลุ่มนี้
+
+flashcards:
+  - id: c1
+    front: โครงสร้างของ insight ที่ดีมีอะไรบ้าง
+    back: สิ่งที่เปลี่ยน + ขนาดที่เปลี่ยน (ตัวเลข) + เทียบกับอะไร (baseline) + แล้วไง (so what)
+  - id: c2
+    front: Pareto principle ในบริบทลูกค้าหมายถึงอะไร
+    back: ลูกค้าส่วนน้อย (เช่น 20%) มักสร้างรายได้ส่วนใหญ่ (เช่น 58.75%) ให้ธุรกิจ
+  - id: c3
+    front: ทำไมต้องระบุ baseline ที่ใช้เปรียบเทียบเสมอ
+    back: เพราะตัวเลข % เปลี่ยนแปลงขึ้นอยู่กับว่าเทียบกับอะไร เปลี่ยน baseline ผลลัพธ์เปลี่ยนได้มาก

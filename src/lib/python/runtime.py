@@ -18,6 +18,26 @@ import traceback
 
 MAX_ROWS = 20
 MAX_TEXT = 20_000
+
+
+def _register_thai_font():
+    """ลงทะเบียนฟอนต์ไทย (Noto Sans Thai) ให้ matplotlib กันตัวอักษรไทยในกราฟกลายเป็นกล่องว่าง"""
+    font_path = os.path.join(os.path.dirname(__file__), "NotoSansThai.ttf")
+    if not os.path.exists(font_path):
+        return
+    try:
+        import matplotlib.font_manager as fm
+        import matplotlib.pyplot as plt
+
+        fm.fontManager.addfont(font_path)
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = ["Noto Sans Thai", "DejaVu Sans"]
+        plt.rcParams["axes.unicode_minus"] = False
+    except Exception:
+        pass
+
+
+_register_thai_font()
 CELL = "<cell>"
 CHECK = "<check>"
 

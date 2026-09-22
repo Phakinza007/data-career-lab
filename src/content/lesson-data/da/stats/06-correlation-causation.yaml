@@ -1,0 +1,404 @@
+goals:
+  - เข้าใจ Pearson correlation coefficient และวิธีตีความค่า r
+  - เข้าใจว่า correlation ไม่ได้แปลว่ามีความสัมพันธ์เชิงเหตุ-ผล (causation) เสมอไป
+  - รู้จัก confounding variable (ตัวแปรกวน) ที่ทำให้สองตัวแปรดูสัมพันธ์กันทั้งที่ไม่ได้เป็นเหตุเป็นผลกันโดยตรง
+
+examples:
+  - id: x1
+    title: ราคาสินค้ากับต้นทุนสัมพันธ์กันแค่ไหน
+    lang: python
+    prompt: |
+      ทีมการเงินสังเกตว่าสินค้าที่ต้นทุนสูงมักขายแพง เลยอยากรู้ว่าราคาขาย (price) กับต้นทุน (cost) ของสินค้า
+      สัมพันธ์กันแรงแค่ไหน แล้วสรุปได้เลยไหมว่าต้นทุนเป็นตัว "ทำให้" ราคาสูงขึ้นโดยตรง
+    steps:
+      - text: |
+          หา Pearson correlation ระหว่าง `price` กับ `cost` ด้วย `.corr()`
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          r_price_cost = products['price'].corr(products['cost'])
+          r_price_cost
+      - text: |
+          `r` ใกล้ 1 มาก แต่ก่อนสรุปว่าต้นทุนเป็นเหตุของราคา ลองดูราคาเฉลี่ยแยกตามหมวดสินค้า (category) ก่อน —
+          ถ้าแต่ละหมวดมีช่วงราคา/ต้นทุนของตัวเองชัดเจน แสดงว่า category อาจเป็นตัวแปรกวนที่กำหนดทั้งคู่พร้อมกัน
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          mean_price_by_cat = products.groupby('category')['price'].mean()
+          mean_cost_by_cat = products.groupby('category')['cost'].mean()
+          mean_price_by_cat, mean_cost_by_cat
+    pitfall:
+      text: |
+        กับดักคือการสรุปตรงๆ ว่า "ต้นทุนสูงทำให้ราคาสูง" (หรือกลับกัน) จากค่า r ตัวเดียวโดยไม่เช็คอะไรเพิ่ม —
+        ในความเป็นจริง สินค้าแต่ละหมวด (category) มีทั้งช่วงราคาและอัตราส่วนต้นทุนต่อราคาเป็นของตัวเองอยู่แล้ว
+        ตั้งแต่ตอนออกแบบข้อมูล นั่นแปลว่า category คือตัวแปรกวนที่ขับเคลื่อนทั้ง price และ cost พร้อมกัน ไม่ใช่ว่า
+        cost ไปกำหนด price โดยตรงเพียงอย่างเดียว (การสรุปเหตุ-ผลจากค่า correlation อย่างเดียวโดยไม่ดูกลไกเบื้องหลัง
+        คือสิ่งที่ควรเลี่ยง)
+
+  - id: x2
+    title: ส่วนลดกับยอดต่อออเดอร์สัมพันธ์กันจริงไหม
+    lang: python
+    prompt: |
+      ทีมการตลาดเชื่อว่าส่วนลด (discount_pct) น่าจะทำให้ลูกค้าซื้อของมากขึ้น (ยอดต่อออเดอร์สูงขึ้น) ลองเช็คด้วย
+      correlation ว่าข้อมูลจริงสนับสนุนความเชื่อนี้ไหม
+    steps:
+      - text: |
+          หายอดต่อออเดอร์ (เฉพาะ completed orders) แล้วดึง discount_pct ต่อออเดอร์มาเทียบ โดยเติมค่าว่าง (ไม่มีส่วนลด)
+          ด้วย 0 ก่อน
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          merged = order_items.merge(orders, on="order_id")
+          completed = merged[merged["status"] == "completed"].copy()
+          completed["line"] = completed["quantity"] * completed["unit_price"]
+          order_rev = completed.groupby("order_id")["line"].sum()
+
+          orders_completed = orders[orders["status"] == "completed"].copy()
+          orders_completed["discount_pct"] = orders_completed["discount_pct"].fillna(0)
+          discount = orders_completed.set_index("order_id")["discount_pct"]
+          discount, order_rev
+      - text: |
+          หา Pearson correlation ระหว่างส่วนลดกับยอดต่อออเดอร์ — pandas จะจับคู่ค่าตาม order_id ให้อัตโนมัติ
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          merged = order_items.merge(orders, on="order_id")
+          completed = merged[merged["status"] == "completed"].copy()
+          completed["line"] = completed["quantity"] * completed["unit_price"]
+          order_rev = completed.groupby("order_id")["line"].sum()
+
+          orders_completed = orders[orders["status"] == "completed"].copy()
+          orders_completed["discount_pct"] = orders_completed["discount_pct"].fillna(0)
+          discount = orders_completed.set_index("order_id")["discount_pct"]
+          r_discount_rev = discount.corr(order_rev)
+          r_discount_rev
+    pitfall:
+      text: |
+        กับดักคือการเห็น r ใกล้ 0 แล้วรีบสรุปว่า "ส่วนลดไม่มีผลต่อยอดขายแน่นอน" — ทั้งที่ Pearson correlation
+        จับได้แค่ความสัมพันธ์**เชิงเส้น**เท่านั้น ถ้าผลของส่วนลดเป็นรูปแบบไม่เป็นเส้นตรง (เช่น ได้ผลดีเฉพาะบางช่วง)
+        หรือถูกปัจจัยอื่นกลบไว้ ค่า r ก็อาจใกล้ 0 ได้ทั้งที่ยังมีความสัมพันธ์เชิงเหตุ-ผลอยู่จริง การไม่เจอ correlation
+        ไม่เท่ากับการพิสูจน์ว่าไม่มีผลเชิงเหตุ-ผล
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เติม `___` ให้ครบเพื่อหา Pearson correlation ระหว่างราคาสินค้า (price) กับต้นทุน (cost) เก็บผลไว้ในตัวแปร
+      r_price_cost (blank ทั้งสองจุดคือ products)
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = ___['price'].corr(___['cost'])
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = products['price'].corr(products['cost'])
+    check: |
+      check_value(r_price_cost, _sol["r_price_cost"], name="r_price_cost", tol=0.0005)
+    hints:
+      - "ทั้งสองช่องว่างคือ DataFrame เดียวกัน: products"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างราคาสินค้า (price) กับต้นทุนสินค้า (cost) เก็บไว้ในตัวแปร r_price_cost
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = products['price'].corr(products['cost'])
+    check: |
+      check_value(r_price_cost, _sol["r_price_cost"], name="r_price_cost", tol=0.0005)
+    hints:
+      - "ใช้เมธอด `.corr()` ระหว่าง Series สองตัวได้ตรงๆ"
+
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จากค่า correlation ระหว่างราคากับต้นทุนที่คำนวณได้ ความสัมพันธ์นี้ถือว่า "แรง" หรือไม่ (ใช้กติกาง่ายๆ ว่า
+      |r| > 0.7 ถือว่าแรง) เก็บผลบูลีนไว้ในตัวแปร is_strong
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      is_strong = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      r_price_cost = products['price'].corr(products['cost'])
+      is_strong = abs(r_price_cost) > 0.7
+    check: |
+      check_value(is_strong, _sol["is_strong"], name="is_strong")
+    hints:
+      - "เทียบค่าสัมบูรณ์ของ r กับ 0.7 ด้วย abs()"
+
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      Pearson correlation ระหว่างส่วนลด (discount_pct ของออเดอร์ที่ completed เท่านั้น เติมค่าว่างด้วย 0) กับ
+      ยอดขายต่อออเดอร์ (ผลรวม quantity * unit_price ต่อ order_id) เก็บไว้ในตัวแปร r_discount_rev
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      r_discount_rev = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+
+      orders_completed = orders[orders["status"] == "completed"].copy()
+      orders_completed["discount_pct"] = orders_completed["discount_pct"].fillna(0)
+      discount = orders_completed.set_index("order_id")["discount_pct"]
+      r_discount_rev = discount.corr(order_rev)
+    check: |
+      check_value(r_discount_rev, _sol["r_discount_rev"], name="r_discount_rev", tol=0.005)
+    hints:
+      - "merge order_items กับ orders, กรอง completed, groupby('order_id') รวมยอด แล้วดึง discount_pct (fillna 0) มา set_index('order_id') ก่อนหา .corr()"
+
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จากค่า correlation ระหว่างส่วนลดกับยอดต่อออเดอร์ ความสัมพันธ์นี้ถือว่า "แรง" หรือไม่ (|r| > 0.7) เก็บผล
+      บูลีนไว้ในตัวแปร is_strong_discount
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      is_strong_discount = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum()
+
+      orders_completed = orders[orders["status"] == "completed"].copy()
+      orders_completed["discount_pct"] = orders_completed["discount_pct"].fillna(0)
+      discount = orders_completed.set_index("order_id")["discount_pct"]
+      r_discount_rev = discount.corr(order_rev)
+      is_strong_discount = abs(r_discount_rev) > 0.7
+    check: |
+      check_value(is_strong_discount, _sol["is_strong_discount"], name="is_strong_discount")
+    hints:
+      - "r_discount_rev ใกล้ 0 มาก ลองเทียบ abs() ของมันกับ 0.7 ดู"
+
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      p-value ของ Pearson correlation ระหว่างราคาสินค้ากับต้นทุน (ใช้ scipy.stats.pearsonr) ความสัมพันธ์นี้มีนัยสำคัญ
+      ทางสถิติที่ α=0.05 หรือไม่ เก็บผลบูลีนไว้ในตัวแปร price_cost_significant
+    starter: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      products = pd.read_csv("data/products.csv")
+      price_cost_significant = ___
+    solution: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      products = pd.read_csv("data/products.csv")
+      r, p_value = stats.pearsonr(products['price'], products['cost'])
+      price_cost_significant = p_value < 0.05
+    check: |
+      check_value(price_cost_significant, _sol["price_cost_significant"], name="price_cost_significant")
+    hints:
+      - "scipy.stats.pearsonr(x, y) คืนค่า (r, p_value) เป็นคู่"
+
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ราคาเฉลี่ยของสินค้าแยกตามหมวด (category) เก็บไว้ในตัวแปร result (Series ชื่อ price, index เป็น category) —
+      ใช้เพื่อโต้แย้งว่า category น่าจะเป็นตัวแปรกวนร่วมที่อยู่เบื้องหลัง correlation ของราคากับต้นทุน
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category')['price'].mean()
+    check: |
+      check_series(result, _sol["result"], name="result")
+    hints:
+      - "groupby('category') แล้ว ['price'].mean()"
+
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      ต้นทุนเฉลี่ยของสินค้าแยกตามหมวด (category) เก็บไว้ในตัวแปร result (Series ชื่อ cost, index เป็น category) —
+      แนวคิดเดียวกับ e6 แต่ดูฝั่งต้นทุนแทน
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby('category')['cost'].mean()
+    check: |
+      check_series(result, _sol["result"], name="result")
+    hints:
+      - "groupby('category') แล้ว ['cost'].mean()"
+
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จาก e6/e7 จะเห็นว่าทั้งราคาและต้นทุนต่างกันมากระหว่างหมวดสินค้า (เช่น Electronics มีทั้งช่วงราคาและช่วงต้นทุน
+      กว้างกว่าหมวดอื่นชัดเจน) แต่ correlation ระหว่าง price กับ cost ก็ยังแรงมากแม้จะมองแยกภายในหมวดเดียวกันด้วย
+      คำถามจริง-เท็จ: กรณีนี้น่าจะเป็นทั้ง "confounding ร่วม" (category ขับเคลื่อนทั้งคู่) และ "กลไกเชิงตรงบางส่วน"
+      (สูตรตั้งราคาที่อิงต้นทุนโดยตรง) ปนกันอยู่ ไม่ใช่คำอธิบายเดียวล้วนๆ เก็บผลบูลีนไว้ในตัวแปร both_factors_plausible
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      both_factors_plausible = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      # category ขับเคลื่อนทั้งราคาและต้นทุนพร้อมกัน (confounding) แต่ correlation ที่แรงมากขนาดนี้แม้มองในหมวด
+      # เดียวกันก็ยังบ่งชี้ว่ามีกลไกตั้งราคาที่อิงต้นทุนโดยตรงร่วมอยู่ด้วย — จึงเป็นทั้งสองปัจจัยพร้อมกัน ไม่ใช่ปัจจัยเดียว
+      both_factors_plausible = True
+    check: |
+      check_value(both_factors_plausible, _sol["both_factors_plausible"], name="both_factors_plausible")
+    hints:
+      - "โจทย์นี้เป็นข้อสรุปเชิงแนวคิด ไม่ต้องคำนวณอะไรเพิ่ม เก็บ True ตามที่อธิบายไว้ในโจทย์"
+
+quiz:
+  - id: q1
+    question: Pearson correlation coefficient วัดความสัมพันธ์แบบไหน
+    choices:
+      - text: ความสัมพันธ์เชิงเส้น (linear) เท่านั้น
+        correct: true
+        why: Pearson r ออกแบบมาเพื่อจับความสัมพันธ์แบบเส้นตรงโดยเฉพาะ ความสัมพันธ์รูปแบบอื่นอาจไม่ถูกจับได้เต็มที่
+      - text: ความสัมพันธ์ทุกรูปแบบ ไม่ว่าจะเป็นเส้นตรงหรือโค้งก็ตาม
+        why: Pearson จับได้แค่ความสัมพันธ์เชิงเส้น ความสัมพันธ์แบบโค้ง/ไม่เป็นเส้นตรงอาจได้ค่า r ใกล้ 0 ทั้งที่มีความสัมพันธ์จริง
+      - text: ความสัมพันธ์เชิงเหตุ-ผลระหว่างตัวแปรสองตัว
+        why: correlation ไม่ได้บอกเรื่องเหตุ-ผลเลย บอกแค่ว่าตัวเลขสองชุดเคลื่อนไหวไปด้วยกันแค่ไหน
+      - text: ความน่าจะเป็นที่ตัวแปรสองตัวจะเกิดพร้อมกัน
+        why: นั่นไม่ใช่สิ่งที่ correlation coefficient วัด
+  - id: q2
+    question: r ใกล้ 0 แปลว่าตัวแปรสองตัวไม่มีความสัมพันธ์กันแน่นอนไหม
+    choices:
+      - text: ไม่แน่นอน อาจมีความสัมพันธ์แบบไม่เป็นเส้นตรงที่ Pearson จับไม่ได้
+        correct: true
+        why: Pearson correlation จับได้เฉพาะความสัมพันธ์เชิงเส้น ความสัมพันธ์แบบโค้งหรือถูกปัจจัยอื่นกลบไว้อาจให้ r ใกล้ 0 ได้ทั้งที่มีความสัมพันธ์จริง
+      - text: แน่นอน r ใกล้ 0 พิสูจน์ได้ว่าไม่มีความสัมพันธ์ใดๆ เลย
+        why: r ใกล้ 0 พิสูจน์ได้แค่ว่าไม่มีความสัมพันธ์เชิงเส้นที่ชัดเจน ไม่ได้ตัดความเป็นไปได้ของความสัมพันธ์รูปแบบอื่น
+      - text: แปลว่าตัวแปรทั้งสองเป็นอิสระต่อกันทางสถิติเสมอ
+        why: correlation เป็นศูนย์ไม่ได้แปลว่าตัวแปรอิสระต่อกันเสมอไป (independence เป็นเงื่อนไขที่แรงกว่า)
+      - text: แปลว่าข้อมูลมีปัญหาหรือเก็บมาผิด
+        why: r ใกล้ 0 เป็นผลลัพธ์ทางสถิติปกติ ไม่ได้แปลว่าข้อมูลผิดพลาด
+  - id: q3
+    question: confounding variable (ตัวแปรกวน) คืออะไร
+    choices:
+      - text: ตัวแปรที่ส่งผลต่อทั้งสองตัวแปรที่กำลังดู ทำให้ดูเหมือนสัมพันธ์กันทั้งที่ไม่ได้เป็นเหตุเป็นผลกันโดยตรง
+        correct: true
+        why: นี่คือนิยามของ confounding variable — ตัวขับเคลื่อนร่วมที่ทำให้สองตัวแปรเคลื่อนไหวไปด้วยกัน
+      - text: ตัวแปรที่มีค่าขาดหายไปเยอะในข้อมูล (missing values)
+        why: นั่นเป็นปัญหาคุณภาพข้อมูล ไม่เกี่ยวกับ confounding
+      - text: ตัวแปรที่ทำให้ correlation coefficient คำนวณผิดพลาดทางคณิตศาสตร์
+        why: confounding ไม่ได้ทำให้การคำนวณ r ผิด แค่ทำให้การตีความว่าเป็นเหตุ-ผลผิดพลาด
+      - text: ตัวแปรที่ไม่มีผลต่อการวิเคราะห์เลยและตัดทิ้งได้เสมอ
+        why: ตรงข้ามเลย — confounding variable สำคัญมากต่อการตีความ ไม่ควรตัดทิ้งโดยไม่พิจารณา
+  - id: q4
+    question: เจอ correlation สูงมาก (เช่น r=0.99) ควรสรุปได้เลยไหมว่าอะไรเป็นเหตุอะไรเป็นผล
+    choices:
+      - text: ไม่ได้ ต้องพิจารณากลไก/ตัวแปรกวนก่อนเสมอ
+        correct: true
+        why: correlation ที่แรงแค่ไหนก็ไม่ได้พิสูจน์ทิศทางเหตุ-ผล ต้องดูกลไกเบื้องหลังและตรวจสอบตัวแปรกวนก่อน
+      - text: ได้เลย ยิ่ง r สูงยิ่งมั่นใจได้ว่าเป็นเหตุ-ผลกัน
+        why: ค่า r บอกความแรงของความสัมพันธ์ ไม่ได้บอกทิศทางเหตุ-ผล ต่อให้ r สูงมากก็อาจเป็นแค่ confounding
+      - text: ได้ ถ้า r มากกว่า 0.9 ถือว่าเป็นเกณฑ์มาตรฐานที่ยืนยันเหตุ-ผลได้
+        why: ไม่มีเกณฑ์ค่า r ใดที่ยืนยันเหตุ-ผลได้ ต้องอาศัยการทดลองหรือหลักฐานเชิงกลไกเสมอ
+      - text: ได้ เพราะ p-value ที่ต่ำมากพร้อมกับ r สูงเท่ากับพิสูจน์เหตุ-ผลแล้ว
+        why: p-value ต่ำบอกแค่ว่า correlation ที่เห็นไม่น่าจะเกิดจากบังเอิญ แต่ไม่ได้บอกเรื่องทิศทางเหตุ-ผลเลย
+  - id: q5
+    question: ตัวอย่างคลาสสิกของ correlation without causation คือยอดขายไอศกรีมกับจำนวนคนจมน้ำที่สัมพันธ์กัน ทั้งสองสัมพันธ์กันเพราะอะไร
+    choices:
+      - text: อุณหภูมิ/ฤดูร้อน (confounder) ทำให้ทั้งสองสูงพร้อมกัน ไม่ใช่ไอศกรีมทำให้จมน้ำ
+        correct: true
+        why: อากาศร้อนทำให้คนทั้งซื้อไอศกรีมและไปว่ายน้ำมากขึ้นพร้อมกัน อุณหภูมิจึงเป็นตัวแปรกวนที่แท้จริง
+      - text: ไอศกรีมทำให้ร่างกายเป็นตะคริวเวลาว่ายน้ำโดยตรง
+        why: ไม่มีกลไกทางชีวภาพที่สนับสนุนคำอธิบายนี้ นี่คือตัวอย่างของการด่วนสรุปเหตุ-ผลผิดๆ
+      - text: คนที่จมน้ำมักจะซื้อไอศกรีมมากินหลังจากรอด
+        why: ลำดับเวลาและตรรกะไม่สอดคล้องกับข้อมูลจริง และไม่ใช่คำอธิบายที่สมเหตุสมผล
+      - text: เป็นความบังเอิญล้วนๆ ไม่มีคำอธิบายใดๆ
+        why: มีคำอธิบายที่ชัดเจนคืออุณหภูมิ/ฤดูกาลเป็นตัวแปรกวน ไม่ใช่ความบังเอิญที่อธิบายไม่ได้
+
+summary:
+  - Pearson correlation (r) วัดความสัมพันธ์เชิงเส้นระหว่างตัวแปรตัวเลขสองตัว อยู่ในช่วง -1 ถึง 1
+  - correlation ไม่ได้แปลว่ามีเหตุ-ผล (correlation ≠ causation) — A อาจทำให้เกิด B, B อาจทำให้เกิด A หรือมี confounding variable ทำให้ทั้งคู่เกิดพร้อมกัน
+  - confounding variable คือตัวแปรที่ส่งผลต่อทั้งสองตัวแปรที่ดูอยู่พร้อมกัน ทำให้ดูสัมพันธ์กันทั้งที่ไม่ได้เป็นเหตุเป็นผลโดยตรง
+  - r ใกล้ 0 ก็ไม่ได้พิสูจน์ว่าไม่มีเหตุ-ผล เพราะ Pearson จับได้แค่ความสัมพันธ์เชิงเส้นเท่านั้น
+  - วิธีตรวจสอบเหตุ-ผลจริงที่แข็งแรงที่สุดคือ A/B test แบบสุ่ม รองลงมาคือควบคุมตัวแปรกวนที่สงสัยและใช้ domain knowledge ประกอบ
+
+interview:
+  - id: i1
+    q: อธิบายความแตกต่างระหว่าง correlation กับ causation ให้ผู้บริหารฟัง พร้อมยกตัวอย่าง
+    a: |
+      Correlation คือการที่ตัวเลขสองชุด "เคลื่อนไหวไปด้วยกัน" — เห็นแนวโน้มไปในทิศทางเดียวกันหรือตรงข้ามกันอย่างสม่ำเสมอ
+      ส่วน causation คือการที่ตัวหนึ่งเป็น "เหตุ" ที่ทำให้อีกตัวหนึ่งเกิดขึ้นจริงๆ ตัวเลขที่สัมพันธ์กันแรงไม่ได้แปลว่า
+      ตัวหนึ่งเป็นเหตุของอีกตัวหนึ่งเสมอไป
+
+      ตัวอย่างที่อธิบายง่าย: ยอดขายไอศกรีมกับจำนวนคนจมน้ำในแต่ละเดือนสัมพันธ์กันสูงมาก แต่ไม่ใช่เพราะไอศกรีมทำให้คน
+      จมน้ำ ทั้งสองสูงขึ้นพร้อมกันเพราะอากาศร้อน/ฤดูร้อน ซึ่งทำให้คนทั้งซื้อไอศกรีมและไปว่ายน้ำมากขึ้น — ในธุรกิจของเรา
+      ก็เจอแบบเดียวกัน เช่น ราคาสินค้ากับต้นทุนสัมพันธ์กันแรงมาก แต่ตัวขับเคลื่อนจริงคือหมวดหมู่สินค้าที่กำหนดทั้งคู่
+      ไปพร้อมกันตั้งแต่ต้น การจะสรุปว่าอะไรเป็นเหตุของอะไรต้องดูกลไกเบื้องหลัง ไม่ใช่ดูแค่ตัวเลข correlation ตัวเดียว
+  - id: i2
+    q: เจอสองตัวแปรที่สัมพันธ์กันแรงมาก จะตรวจสอบยังไงว่าเป็นเหตุ-ผลกันจริงหรือแค่ confounded
+    a: |
+      ขั้นแรกคือถ้าเป็นไปได้ ให้ทำ A/B test แบบสุ่มจริง — สุ่มกลุ่มตัวอย่างให้ได้รับ/ไม่ได้รับตัวแปรที่สงสัยว่าเป็นเหตุ
+      แล้ววัดผลที่ตามมา การสุ่มช่วยตัดผลของตัวแปรกวนออกไปได้ ถือเป็นวิธีที่แข็งแรงที่สุดในการพิสูจน์เหตุ-ผล
+
+      ถ้าทำ A/B test ไม่ได้ (ข้อมูลเป็น observational ล้วนๆ) ให้ลองควบคุมตัวแปรที่สงสัยว่าเป็นตัวกวน เช่น เทียบ
+      correlation ภายในแต่ละกลุ่มย่อยแยกกัน (เช่น แยกตาม category) ถ้าความสัมพันธ์ยังแรงอยู่แม้ควบคุมตัวแปรกวนแล้ว
+      ก็เป็นหลักฐานที่หนักแน่นขึ้นว่ามีกลไกเชิงตรงอยู่จริง สุดท้ายต้องใช้ domain knowledge ประกอบเสมอ — ถามว่ามีกลไก
+      ทางธุรกิจอะไรที่สมเหตุสมผลรองรับความสัมพันธ์เชิงเหตุ-ผลที่สงสัยไว้หรือไม่
+
+flashcards:
+  - id: c1
+    front: correlation กับ causation ต่างกันยังไงในประโยคเดียว
+    back: correlation บอกแค่ว่าตัวแปรสองตัวเคลื่อนไหวไปด้วยกัน ส่วน causation บอกว่าตัวหนึ่งเป็นเหตุที่ทำให้อีกตัวหนึ่งเกิดขึ้นจริง สัมพันธ์กันแรงแค่ไหนก็ไม่ได้พิสูจน์เหตุ-ผล
+  - id: c2
+    front: confounding variable คืออะไร
+    back: ตัวแปรที่ส่งผลต่อทั้งสองตัวแปรที่กำลังดูอยู่พร้อมกัน ทำให้สองตัวแปรนั้นดูสัมพันธ์กันทั้งที่ไม่ได้เป็นเหตุเป็นผลกันโดยตรง (เช่น อุณหภูมิที่ทำให้ทั้งยอดขายไอศกรีมและจำนวนคนจมน้ำสูงขึ้นพร้อมกัน)

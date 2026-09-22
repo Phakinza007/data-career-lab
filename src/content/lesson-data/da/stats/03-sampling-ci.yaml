@@ -1,0 +1,627 @@
+goals:
+  - เข้าใจว่าทำไมต้องสุ่มตัวอย่างแทนการดูข้อมูลทั้งประชากร
+  - คำนวณ standard error ของค่าเฉลี่ยตัวอย่าง
+  - สร้างช่วงความเชื่อมั่น (confidence interval) ด้วย t-distribution
+  - ตีความ confidence interval ให้ถูกต้อง ไม่ใช่แบบ "มีโอกาส 95% ที่ค่าเฉลี่ยจริงอยู่ในช่วงนี้"
+
+examples:
+  - id: x1
+    title: สุ่มตัวอย่างยอดขาย 200 ออเดอร์ แล้วดู standard error
+    lang: python
+    prompt: |
+      อยากรู้ยอดขายเฉลี่ยต่อออเดอร์ แต่แทนที่จะดูข้อมูลทั้งหมด (6232 ออเดอร์) ลองสุ่มมาดูแค่ 200 ออเดอร์ก่อน
+    steps:
+      - text: |
+          สร้างยอดขายต่อออเดอร์ (เฉพาะออเดอร์ที่ completed) แล้วสุ่มตัวอย่างมา 200 ออเดอร์ด้วย seed คงที่
+          (`np.random.default_rng(42)`) เพื่อให้สุ่มซ้ำได้ผลเดิมทุกครั้ง
+        code: |
+          import pandas as pd
+          import numpy as np
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+          sample[:5]
+      - text: |
+          หาค่าเฉลี่ยและส่วนเบี่ยงเบนมาตรฐานของตัวอย่าง แล้วคำนวณ standard error (`sample_std / sqrt(n)`)
+        code: |
+          import pandas as pd
+          import numpy as np
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+
+          sample_mean = sample.mean()
+          sample_std = sample.std(ddof=1)
+          se = sample_std / np.sqrt(200)
+          sample_mean, sample_std, se
+    pitfall:
+      text: |
+        สังเกตว่า `sample_mean` ที่ได้ (≈ 6233) สูงกว่าค่าเฉลี่ยจริงของประชากรทั้งหมด (`order_rev.mean()` ≈ 5220)
+        อยู่พอสมควร — ถ้ารายงานแค่ `sample_mean` ตัวเดียวโดยไม่บอก standard error หรือช่วงความเชื่อมั่นกำกับไว้เลย
+        จะทำให้คนอ่านเข้าใจผิดว่านี่คือค่าที่แม่นยำ ทั้งที่จริงมันแกว่งได้ตามตัวอย่างที่สุ่มมา
+      code: |
+        import pandas as pd
+        import numpy as np
+
+        orders = pd.read_csv("data/orders.csv")
+        order_items = pd.read_csv("data/order_items.csv")
+        merged = order_items.merge(orders, on='order_id')
+        completed = merged[merged['status'] == 'completed'].copy()
+        completed['line'] = completed['quantity'] * completed['unit_price']
+        order_rev = completed.groupby('order_id')['line'].sum()
+
+        rng = np.random.default_rng(42)
+        sample = rng.choice(order_rev.values, size=200, replace=False)
+        sample.mean() - order_rev.mean()
+  - id: x2
+    title: คำนวณ 95% confidence interval ด้วย t-distribution
+    lang: python
+    prompt: |
+      ต่อจากตัวอย่างที่แล้ว อยากรายงานเป็นช่วงที่น่าจะครอบคลุมยอดขายเฉลี่ยจริง แทนที่จะรายงานแค่ตัวเลขเดียว
+    steps:
+      - text: |
+          หาค่าวิกฤต (critical value) จาก t-distribution ที่ `df = n - 1 = 199` สำหรับความเชื่อมั่น 95%
+        code: |
+          import pandas as pd
+          import numpy as np
+          from scipy import stats
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+
+          tcrit = stats.t.ppf(0.975, df=199)
+          tcrit
+      - text: |
+          สร้างช่วง CI = `sample_mean ± tcrit * se` แล้วเช็คว่าค่าเฉลี่ยประชากรจริงอยู่ในช่วงนี้ไหม
+        code: |
+          import pandas as pd
+          import numpy as np
+          from scipy import stats
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+
+          sample_mean = sample.mean()
+          se = sample.std(ddof=1) / np.sqrt(200)
+          tcrit = stats.t.ppf(0.975, df=199)
+          ci_low = sample_mean - tcrit * se
+          ci_high = sample_mean + tcrit * se
+          ci_low, ci_high, order_rev.mean()
+    pitfall:
+      text: |
+        บางคนใช้ค่าวิกฤตจาก normal distribution (`1.96`) แทนค่าจาก t-distribution เพราะจำได้ขึ้นใจ
+        กับตัวอย่างขนาด 200 (`df=199`) ตัวเลขทั้งสองใกล้กันมาก (`1.972` vs `1.96`) เลยดูเหมือนไม่มีปัญหา
+        แต่ถ้าขนาดตัวอย่างเล็ก (เช่น `n=10`) ค่าวิกฤตจาก t-distribution กับ normal distribution จะต่างกันมาก
+        การใช้ `1.96` ผิดๆ ตอนตัวอย่างเล็กจะทำให้ CI แคบเกินจริง (มั่นใจเกินความเป็นจริง)
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เติม `___` ให้ครบในสูตร standard error (ส่วนเบี่ยงเบนมาตรฐานของตัวอย่าง หารด้วยรากที่สองของขนาดตัวอย่าง)
+      เก็บไว้ในตัวแปร se
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      sample_std = sample.std(ddof=1)
+      se = sample_std / ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      sample_std = sample.std(ddof=1)
+      se = sample_std / np.sqrt(200)
+    check: |
+      check_value(se, _sol["se"], name="se", tol=0.01)
+    hints:
+      - "ขนาดตัวอย่างคือ 200 ตัว ใช้ `np.sqrt(200)`"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      สุ่มตัวอย่างยอดขายต่อออเดอร์ (เฉพาะออเดอร์ที่ completed) มา 200 ออเดอร์ ด้วย `rng = np.random.default_rng(42)`
+      แล้วหาค่าเฉลี่ยของตัวอย่างนั้น เก็บไว้ในตัวแปร sample_mean
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+    check: |
+      check_value(sample_mean, _sol["sample_mean"], name="sample_mean", tol=0.01)
+    hints:
+      - "`sample.mean()` หาค่าเฉลี่ยของ array"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      หาส่วนเบี่ยงเบนมาตรฐาน (ddof=1) ของตัวอย่างเดียวกัน (seed 42, size 200) เก็บไว้ในตัวแปร sample_std
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_std = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_std = sample.std(ddof=1)
+    check: |
+      check_value(sample_std, _sol["sample_std"], name="sample_std", tol=0.01)
+    hints:
+      - "`.std(ddof=1)` คือส่วนเบี่ยงเบนมาตรฐานแบบตัวอย่าง (sample std) ซึ่งเป็นค่าเริ่มต้นของ pandas อยู่แล้ว แต่ที่นี่ sample เป็น numpy array ต้องใส่ ddof=1 เอง"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      หา standard error ของตัวอย่างเดียวกัน (ส่วนเบี่ยงเบนมาตรฐานของตัวอย่าง หารด้วยรากที่สองของขนาดตัวอย่าง 200)
+      เก็บไว้ในตัวแปร se
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_std = sample.std(ddof=1)
+      se = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_std = sample.std(ddof=1)
+      se = sample_std / np.sqrt(200)
+    check: |
+      check_value(se, _sol["se"], name="se", tol=0.01)
+    hints:
+      - "SE = sample_std / sqrt(n)"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      หาค่าวิกฤต (t-critical) สำหรับช่วงความเชื่อมั่น 95% เมื่อ `df = 199` (ขนาดตัวอย่าง 200 ลบ 1)
+      เก็บไว้ในตัวแปร tcrit
+    starter: |
+      from scipy import stats
+
+      tcrit = ___
+    solution: |
+      from scipy import stats
+
+      tcrit = stats.t.ppf(0.975, df=199)
+    check: |
+      check_value(tcrit, _sol["tcrit"], name="tcrit", tol=0.001)
+    hints:
+      - "95% CI สองด้าน ใช้ `stats.t.ppf(0.975, df=...)` (0.975 เพราะเผื่อ 2.5% ไว้แต่ละด้าน)"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณขอบล่างของ 95% confidence interval (`sample_mean - tcrit * se`) ของตัวอย่างเดียวกัน (seed 42, size 200)
+      เก็บไว้ในตัวแปร ci_low
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+    check: |
+      check_value(ci_low, _sol["ci_low"], name="ci_low", tol=0.1)
+    hints:
+      - "ขอบล่าง = sample_mean - tcrit * se"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      คำนวณขอบบนของ 95% confidence interval (`sample_mean + tcrit * se`) ของตัวอย่างเดียวกัน เก็บไว้ในตัวแปร ci_high
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_high = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_high = sample_mean + tcrit * se
+    check: |
+      check_value(ci_high, _sol["ci_high"], name="ci_high", tol=0.1)
+    hints:
+      - "ขอบบน = sample_mean + tcrit * se"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      หาค่าเฉลี่ยจริงของประชากรทั้งหมด (จาก order_rev ทั้งชุด อย่า hardcode ตัวเลข) แล้วเช็คว่าค่านี้อยู่ใน
+      95% CI ที่คำนวณจากตัวอย่าง (`[ci_low, ci_high]`) หรือไม่ เก็บผลลัพธ์ true/false ไว้ในตัวแปร mean_in_ci
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+      ci_high = sample_mean + tcrit * se
+
+      pop_mean = ___
+      mean_in_ci = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+      ci_high = sample_mean + tcrit * se
+
+      pop_mean = order_rev.mean()
+      mean_in_ci = bool(ci_low <= pop_mean <= ci_high)
+    check: |
+      check_value(mean_in_ci, _sol["mean_in_ci"], name="mean_in_ci")
+    hints:
+      - "ค่าเฉลี่ยจริงของประชากรคือ `order_rev.mean()` ไม่ใช่ตัวเลขที่จำมา"
+      - "ใช้ `ci_low <= pop_mean <= ci_high` เช็คว่าอยู่ในช่วงไหม แล้วห่อด้วย `bool(...)`"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      หาความกว้างของ 95% CI (`ci_high - ci_low`) ของตัวอย่างเดียวกัน เก็บไว้ในตัวแปร ci_width
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+      ci_high = sample_mean + tcrit * se
+      ci_width = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      sample_mean = sample.mean()
+      se = sample.std(ddof=1) / np.sqrt(200)
+      tcrit = stats.t.ppf(0.975, df=199)
+      ci_low = sample_mean - tcrit * se
+      ci_high = sample_mean + tcrit * se
+      ci_width = ci_high - ci_low
+    check: |
+      check_value(ci_width, _sol["ci_width"], name="ci_width", tol=0.1)
+    hints:
+      - "ความกว้าง = ci_high - ci_low"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ถ้าสุ่มตัวอย่างมา 800 ออเดอร์แทน 200 ออเดอร์ (ใช้ seed เดิม 42 แต่เปลี่ยน size เป็น 800) standard error
+      ของตัวอย่างใหม่นี้ (เก็บไว้ในตัวแปร se_800) จะเล็กกว่า standard error ของตัวอย่างขนาด 200 เดิม (se) หรือไม่
+      เก็บผลลัพธ์ true/false ไว้ในตัวแปร is_smaller
+    starter: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      se = sample.std(ddof=1) / np.sqrt(200)
+
+      rng_800 = np.random.default_rng(42)
+      sample_800 = rng_800.choice(order_rev.values, size=800, replace=False)
+      se_800 = ___
+      is_smaller = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+      se = sample.std(ddof=1) / np.sqrt(200)
+
+      rng_800 = np.random.default_rng(42)
+      sample_800 = rng_800.choice(order_rev.values, size=800, replace=False)
+      se_800 = sample_800.std(ddof=1) / np.sqrt(800)
+      is_smaller = bool(se_800 < se)
+    check: |
+      check_value(se_800, _sol["se_800"], name="se_800", tol=1.0)
+      check_value(is_smaller, _sol["is_smaller"], name="is_smaller")
+    hints:
+      - "ต้องสร้าง rng ใหม่ด้วย seed 42 อีกครั้งก่อนสุ่มขนาด 800 (ไม่ใช้ rng ตัวเดิมที่สุ่มไปแล้ว)"
+      - "ขนาดตัวอย่างใหญ่ขึ้น หารด้วย sqrt(n) ที่ใหญ่ขึ้น → SE เล็กลงเสมอ"
+
+quiz:
+  - id: q1
+    question: standard error ของค่าเฉลี่ยตัวอย่างคำนวณจากอะไร
+    choices:
+      - text: ส่วนเบี่ยงเบนมาตรฐานของตัวอย่าง หารด้วยรากที่สองของขนาดตัวอย่าง (sample_std / sqrt(n))
+        correct: true
+        why: นี่คือสูตร standard error มาตรฐาน — ยิ่งตัวอย่างใหญ่ ยิ่งหารด้วยตัวเลขที่มากขึ้น ทำให้ SE เล็กลง
+      - text: ส่วนเบี่ยงเบนมาตรฐานของตัวอย่างเฉยๆ ไม่ต้องหารอะไร
+        why: นั่นคือ sample std ไม่ใช่ standard error — standard error ต้องหารด้วย sqrt(n) เพิ่มด้วย
+      - text: ค่าเฉลี่ยของตัวอย่าง หารด้วยขนาดตัวอย่าง
+        why: standard error ไม่เกี่ยวกับค่าเฉลี่ย เกี่ยวกับความแปรปรวน (std) ของตัวอย่าง
+      - text: ผลต่างระหว่างค่ามากสุดกับค่าน้อยสุดของตัวอย่าง
+        why: นั่นคือ range ไม่ใช่ standard error
+  - id: q2
+    question: ถ้าขนาดตัวอย่างใหญ่ขึ้น (n มากขึ้น) standard error จะเป็นแบบไหน
+    choices:
+      - text: เล็กลง เพราะหารด้วย sqrt(n) ที่ใหญ่ขึ้น
+        correct: true
+        why: ตัวอย่างใหญ่ขึ้นทำให้ค่าเฉลี่ยตัวอย่างนิ่งขึ้น (แกว่งน้อยลง) SE จึงเล็กลงตามสูตร sample_std/sqrt(n)
+      - text: ใหญ่ขึ้น เพราะมีข้อมูลให้คำนวณมากขึ้น
+        why: ตรงข้ามกับความจริง — ตัวอย่างใหญ่ขึ้นทำให้ SE เล็กลง ไม่ใช่ใหญ่ขึ้น
+      - text: ไม่เปลี่ยนแปลง ขนาดตัวอย่างไม่มีผลต่อ SE
+        why: ขนาดตัวอย่างอยู่ในสูตร SE โดยตรง (หารด้วย sqrt(n)) จึงมีผลแน่นอน
+      - text: เปลี่ยนแปลงแบบสุ่ม ไม่มีทิศทางแน่นอน
+        why: มีทิศทางแน่นอนตามสูตรคณิตศาสตร์ — ยิ่ง n มาก SE ยิ่งน้อยเสมอ
+  - id: q3
+    question: การตีความ 95% confidence interval ที่ถูกต้องคือแบบไหน
+    choices:
+      - text: ถ้าสุ่มตัวอย่างและคำนวณ CI แบบนี้ซ้ำหลายครั้ง ประมาณ 95% ของช่วงที่ได้จะครอบคลุมค่าเฉลี่ยจริง
+        correct: true
+        why: ความเชื่อมั่น 95% อยู่ที่กระบวนการสุ่มตัวอย่างและคำนวณซ้ำๆ ไม่ใช่การพนันของช่วงใดช่วงหนึ่งเจาะจง
+      - text: มีโอกาส 95% ที่ค่าเฉลี่ยจริงของประชากรจะอยู่ในช่วงที่คำนวณได้ช่วงนี้
+        why: ค่าเฉลี่ยจริงของประชากรเป็นค่าคงที่ ไม่ใช่ตัวแปรสุ่ม จึงพูดถึง "โอกาส" ของมันแบบนี้ไม่ได้ทางสถิติ
+      - text: 95% ของข้อมูลทั้งหมดอยู่ในช่วงนี้
+        why: CI ไม่ได้บอกว่าข้อมูลกี่ % อยู่ในช่วง แต่บอกความเชื่อมั่นต่อค่าเฉลี่ยประชากร
+      - text: ค่าเฉลี่ยตัวอย่างถูกต้อง 95% ของเวลา
+        why: ไม่ใช่ความถูกต้องของค่าเฉลี่ยตัวอย่าง แต่เป็นเรื่องช่วงที่คำนวณได้ครอบคลุมค่าจริงหรือไม่
+  - id: q4
+    question: ทำไมต้องใช้ t-distribution แทน normal distribution ตอนคำนวณ CI จากตัวอย่าง
+    choices:
+      - text: เพราะไม่รู้ค่า population std ที่แท้จริง ต้องประมาณจากตัวอย่างเอง ซึ่งเพิ่มความไม่แน่นอนอีกชั้นหนึ่ง
+        correct: true
+        why: t-distribution มีหางที่กว้างกว่า normal เพื่อชดเชยความไม่แน่นอนจากการประมาณ std ด้วยตัวอย่าง
+      - text: เพราะ t-distribution คำนวณง่ายกว่า normal distribution
+        why: ไม่เกี่ยวกับความง่าย — เหตุผลคือการชดเชยความไม่แน่นอนจากการประมาณ std ด้วยตัวอย่าง
+      - text: เพราะข้อมูลยอดขายเป็นข้อมูลเชิงหมวดหมู่ (categorical)
+        why: ยอดขายเป็นข้อมูลตัวเลขต่อเนื่อง ไม่เกี่ยวกับชนิดข้อมูลเลย
+      - text: t-distribution ใช้ได้เฉพาะตอนขนาดตัวอย่างใหญ่มากเท่านั้น
+        why: ตรงข้ามกับความจริง — t-distribution ยิ่งสำคัญตอนตัวอย่างเล็ก ตอนตัวอย่างใหญ่มันใกล้เคียง normal อยู่แล้ว
+
+summary:
+  - เราสุ่มตัวอย่างแทนการดูข้อมูลทั้งประชากร แล้วใช้สถิติจากตัวอย่างมาประมาณค่าจริง
+  - standard error (sample_std / sqrt(n)) บอกว่าค่าเฉลี่ยตัวอย่างแกว่งได้มากแค่ไหน ยิ่ง n มาก SE ยิ่งเล็ก
+  - confidence interval สร้างจาก sample_mean ± t-critical × SE โดยใช้ t-distribution (ไม่ใช่ normal) เพราะไม่รู้ population std ที่แท้จริง
+  - การตีความ CI ที่ถูกต้องคือ "ถ้าสุ่มซ้ำหลายครั้ง ~95% ของช่วงจะครอบคลุมค่าเฉลี่ยจริง" ไม่ใช่ "มีโอกาส 95% ที่ค่าเฉลี่ยจริงอยู่ในช่วงนี้ช่วงเดียว"
+
+interview:
+  - id: i1
+    q: อธิบายว่า 95% confidence interval หมายความว่าอะไรให้คนที่ไม่ใช่สายสถิติฟัง
+    a: |
+      พูดง่ายๆ ว่า: "ถ้าเราสุ่มตัวอย่างขนาดเท่านี้มาคำนวณช่วงแบบนี้ซ้ำๆ กัน 100 ครั้ง จะมีประมาณ 95 ครั้ง
+      ที่ช่วงตัวเลขที่ได้ครอบคลุมค่าเฉลี่ยจริงของทั้งประชากรพอดี" — มันไม่ใช่การบอกว่า "มีโอกาส 95%
+      ที่ค่าเฉลี่ยจริงอยู่ในช่วงนี้ช่วงเดียว" เพราะค่าเฉลี่ยจริงเป็นตัวเลขคงที่ค่าหนึ่งอยู่แล้ว (แค่เราไม่รู้ค่ามัน)
+      สิ่งที่ไม่แน่นอนคือช่วงตัวเลขที่เราคำนวณได้จากตัวอย่างต่างหาก ไม่ใช่ค่าเฉลี่ยจริง
+  - id: i2
+    q: ทำไมขนาดตัวอย่างยิ่งใหญ่ ยิ่งมั่นใจในค่าประมาณมากขึ้น
+    a: |
+      เพราะ standard error (ความไม่แน่นอนของค่าเฉลี่ยตัวอย่าง) คำนวณจาก sample_std หารด้วยรากที่สองของขนาด
+      ตัวอย่าง (sqrt(n)) — ยิ่ง n ใหญ่ขึ้น ตัวหารก็ใหญ่ขึ้นตาม ทำให้ SE เล็กลง ค่าเฉลี่ยตัวอย่างจึงแกว่งน้อยลง
+      รอบๆ ค่าจริง และ confidence interval ที่ได้ก็จะแคบลง (แม่นยำกว่า) แต่ก็มีจุดคุ้มทุน เพราะ SE ลดลงตาม
+      sqrt(n) ไม่ใช่ตาม n ตรงๆ เพิ่มตัวอย่างจาก 100 เป็น 400 (4 เท่า) SE ลดลงแค่ครึ่งเดียว ไม่ใช่ 4 เท่า
+
+flashcards:
+  - id: c1
+    front: standard error คำนวณยังไง
+    back: sample_std หารด้วย sqrt(n) — ยิ่งขนาดตัวอย่าง (n) ใหญ่ขึ้น SE ยิ่งเล็กลง
+  - id: c2
+    front: การตีความ 95% confidence interval ที่ถูกต้องคืออะไร
+    back: "ถ้าสุ่มตัวอย่างและคำนวณ CI แบบนี้ซ้ำหลายครั้ง ~95% ของช่วงที่ได้จะครอบคลุมค่าเฉลี่ยจริง (ไม่ใช่ \"มีโอกาส 95% ที่ค่าเฉลี่ยจริงอยู่ในช่วงเดียวนี้\")"

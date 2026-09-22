@@ -1,0 +1,517 @@
+goals:
+  - dashboard ที่ดีตอบคำถามหลักได้ในสายตาเดียว ไม่ต้อง scroll หรือคลิกเพิ่ม
+  - KPI card + กราฟเทรนด์ + breakdown คือโครงสร้างที่ใช้บ่อยที่สุดในงานจริง
+  - รักษาความสม่ำเสมอ (สี, หน่วย, การปัดเศษ) ทั่วทั้ง dashboard เพื่อลดภาระการตีความ
+  - เข้าใจภาพรวมของเครื่องมือในงานจริง (Power BI, Tableau, Looker Studio) เทียบกับ matplotlib/seaborn
+
+examples:
+  - id: x1
+    title: "KPI card: รายได้เดือนนี้เทียบเดือนก่อนหน้า"
+    lang: python
+    prompt: |
+      ผู้บริหารอยากเห็นตัวเลขเดียวทุกเช้า: เดือนนี้ยอดขายดีขึ้นหรือแย่ลงเมื่อเทียบกับเดือนก่อน
+      นี่คือ KPI card ที่ง่ายและใช้บ่อยที่สุด
+    steps:
+      - text: |
+          เตรียมข้อมูลรายได้รายเดือนของปี 2025 (เฉพาะออเดอร์ที่ status เป็น completed) เหมือนที่เคยทำในบทก่อนๆ
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          completed = orders[orders['status'] == 'completed'].copy()
+          order_items = order_items.copy()
+          order_items['line'] = order_items['quantity'] * order_items['unit_price']
+          merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+          merged['month'] = merged['order_date'].str[:7]
+          monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+          monthly
+      - text: |
+          คำนวณ KPI การ์ด: รายได้เดือนล่าสุด (พ.ย. 2025) เทียบกับเดือนก่อนหน้า (ต.ค. 2025) เป็น % เปลี่ยนแปลง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          completed = orders[orders['status'] == 'completed'].copy()
+          order_items = order_items.copy()
+          order_items['line'] = order_items['quantity'] * order_items['unit_price']
+          merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+          merged['month'] = merged['order_date'].str[:7]
+          monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+          nov_revenue = monthly['2025-11']
+          oct_revenue = monthly['2025-10']
+          mom_pct = round((nov_revenue - oct_revenue) / oct_revenue * 100, 2)
+          nov_revenue, oct_revenue, mom_pct
+      - text: |
+          จัดเป็นข้อความสำหรับ KPI card — โชว์ตัวเลขดิบ**คู่กับ** % เปลี่ยนแปลงเสมอ (ของจริงจะใส่สีเขียว/แดง
+          กับลูกศรขึ้น/ลงกำกับด้วย เพื่อให้สายตากวาดผ่านแล้วรู้ทันทีว่าดีขึ้นหรือแย่ลง โดยไม่ต้องอ่านตัวเลข)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          completed = orders[orders['status'] == 'completed'].copy()
+          order_items = order_items.copy()
+          order_items['line'] = order_items['quantity'] * order_items['unit_price']
+          merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+          merged['month'] = merged['order_date'].str[:7]
+          monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+          nov_revenue = monthly['2025-11']
+          oct_revenue = monthly['2025-10']
+          mom_pct = round((nov_revenue - oct_revenue) / oct_revenue * 100, 2)
+
+          kpi_text = f"รายได้ พ.ย. 2025: {nov_revenue:,} บาท ({mom_pct:+.2f}% เทียบเดือนก่อน)"
+          kpi_text
+  - id: x2
+    title: "trend + breakdown ในหน้าเดียว ด้วย plt.subplots"
+    lang: python
+    prompt: |
+      อยากทำ dashboard หนึ่งหน้าที่โชว์ทั้งเทรนด์รายได้รายเดือน (ซ้าย) และรายได้แยกตามหมวดสินค้า (ขวา)
+      พร้อมกัน — นี่คือรูปแบบ "trend + breakdown ข้างกัน" ที่ dashboard จริงใช้บ่อยที่สุด
+    steps:
+      - text: |
+          สร้าง figure แบบ 1 แถว 2 คอลัมน์ด้วย `plt.subplots(1, 2)` — ช่องซ้ายเป็นกราฟเส้น (เทรนด์)
+          ช่องขวาเป็นกราฟแท่ง (breakdown ตามหมวดสินค้า เรียงมากไปน้อย)
+        code: |
+          import pandas as pd
+          import matplotlib.pyplot as plt
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          products = pd.read_csv("data/products.csv")
+
+          completed = orders[orders['status'] == 'completed'].copy()
+          order_items = order_items.copy()
+          order_items['line'] = order_items['quantity'] * order_items['unit_price']
+
+          by_month = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+          by_month['month'] = by_month['order_date'].str[:7]
+          monthly = by_month[by_month['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+          by_cat = order_items.merge(completed[['order_id']], on='order_id')
+          by_cat = by_cat.merge(products[['product_id', 'category']], on='product_id')
+          cat_rev = by_cat.groupby('category')['line'].sum().sort_values(ascending=False)
+
+          fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+          axes[0].plot(monthly.index, monthly.values, marker='o')
+          axes[0].set_title('เทรนด์: รายได้รายเดือน 2025')
+          axes[0].tick_params(axis='x', rotation=45)
+
+          axes[1].bar(cat_rev.index, cat_rev.values)
+          axes[1].set_title('breakdown: รายได้ตามหมวดสินค้า')
+          axes[1].tick_params(axis='x', rotation=45)
+
+          fig.tight_layout()
+      - text: |
+          เพิ่มหัวข้อรวมของทั้ง dashboard ด้วย `fig.suptitle(...)` เพื่อบอกภาพรวมว่าทั้งสองกราฟกำลังตอบ
+          คำถามชุดเดียวกัน (สรุปยอดขาย) ไม่ใช่สองเรื่องที่ไม่เกี่ยวกัน
+        code: |
+          import pandas as pd
+          import matplotlib.pyplot as plt
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          products = pd.read_csv("data/products.csv")
+
+          completed = orders[orders['status'] == 'completed'].copy()
+          order_items = order_items.copy()
+          order_items['line'] = order_items['quantity'] * order_items['unit_price']
+
+          by_month = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+          by_month['month'] = by_month['order_date'].str[:7]
+          monthly = by_month[by_month['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+          by_cat = order_items.merge(completed[['order_id']], on='order_id')
+          by_cat = by_cat.merge(products[['product_id', 'category']], on='product_id')
+          cat_rev = by_cat.groupby('category')['line'].sum().sort_values(ascending=False)
+
+          fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+          axes[0].plot(monthly.index, monthly.values, marker='o')
+          axes[0].set_title('เทรนด์: รายได้รายเดือน 2025')
+          axes[0].tick_params(axis='x', rotation=45)
+
+          axes[1].bar(cat_rev.index, cat_rev.values)
+          axes[1].set_title('breakdown: รายได้ตามหมวดสินค้า')
+          axes[1].tick_params(axis='x', rotation=45)
+
+          fig.suptitle('สรุปยอดขาย: เทรนด์รายเดือน (ซ้าย) และหมวดสินค้า (ขวา)')
+          fig.tight_layout()
+    pitfall:
+      text: |
+        ปัญหาที่พบบ่อยกว่าคือการยัดกราฟที่ไม่เกี่ยวข้องกันหลายใบลงในหน้าจอเดียว (เช่น รายได้, จำนวนลูกค้าใหม่,
+        อัตราการคืนสินค้า, เวลาตอบแชท ปนกันหมด) — บังคับให้ผู้อ่านต้องเสาะหาเองว่าอันไหนสำคัญกับคำถามที่ตัวเอง
+        มีอยู่ในหัว dashboard ที่ดีควรตอบคำถามหลัก**ชุดเดียว**ต่อหนึ่งหน้าจอ ถ้ามีหลายคำถามให้แยกเป็นหลายหน้า
+        หรือหลาย tab แทนที่จะยัดรวมกัน
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      คำนวณ % เปลี่ยนแปลงยอดขาย (MoM) ของเดือน พ.ย. เทียบ ต.ค. 2025 เก็บไว้ในตัวแปร mom_pct
+      (ปัด 2 ตำแหน่ง) — สูตร MoM คือ (เดือนนี้ - เดือนก่อน) หารด้วยเดือนก่อน คูณ 100 เติม ___ ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      this_month = monthly['2025-11']
+      last_month = monthly['2025-10']
+      mom_pct = round((this_month - last_month) / ___ * 100, 2)
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      this_month = monthly['2025-11']
+      last_month = monthly['2025-10']
+      mom_pct = round((this_month - last_month) / last_month * 100, 2)
+    check: |
+      check_value(mom_pct, _sol["mom_pct"], name="mom_pct", tol=0.05)
+    hints:
+      - "ตัวหารของสูตร % เปลี่ยนแปลงคือค่าฐานเสมอ นั่นคือเดือนก่อนหน้า (last_month) ไม่ใช่เดือนนี้"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      รายได้รวมของเดือน พ.ย. 2025 (เฉพาะออเดอร์ที่ completed) เก็บไว้ในตัวแปร nov_revenue
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      nov_revenue = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+      nov_revenue = monthly['2025-11']
+    check: |
+      check_value(nov_revenue, _sol["nov_revenue"], name="nov_revenue")
+    hints:
+      - "รวม quantity * unit_price ต่อออเดอร์ แล้ว groupby ตามเดือนจาก order_date"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      รายได้รวมของเดือน ต.ค. 2025 (เฉพาะออเดอร์ที่ completed) เก็บไว้ในตัวแปร oct_revenue
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      oct_revenue = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+      oct_revenue = monthly['2025-10']
+    check: |
+      check_value(oct_revenue, _sol["oct_revenue"], name="oct_revenue")
+    hints:
+      - เหมือน e1 แต่เปลี่ยนเดือนที่ดึงจาก monthly เป็น '2025-10'
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      % เปลี่ยนแปลงยอดขาย (MoM) ของเดือน พ.ย. เทียบ ต.ค. 2025 ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร mom_pct
+      เพื่อจะเอาไปโชว์เป็นตัวเลขคู่กับ nov_revenue บน KPI card
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      mom_pct = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      nov_revenue = monthly['2025-11']
+      oct_revenue = monthly['2025-10']
+      mom_pct = round((nov_revenue - oct_revenue) / oct_revenue * 100, 2)
+    check: |
+      check_value(mom_pct, _sol["mom_pct"], name="mom_pct", tol=0.05)
+    hints:
+      - "สูตร MoM: (เดือนนี้ - เดือนก่อน) / เดือนก่อน * 100"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จากค่า mom_pct ที่คำนวณได้ นี่คือการเปลี่ยนแปลงที่เป็นข่าวดี (ควรเน้นบน dashboard) หรือไม่?
+      เก็บผลไว้ในตัวแปร is_improvement (True/False)
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      is_improvement = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      nov_revenue = monthly['2025-11']
+      oct_revenue = monthly['2025-10']
+      mom_pct = round((nov_revenue - oct_revenue) / oct_revenue * 100, 2)
+      is_improvement = bool(mom_pct > 0)
+    check: |
+      check_value(is_improvement, _sol["is_improvement"], name="is_improvement")
+    hints:
+      - "ข่าวดีคือ % เปลี่ยนแปลงเป็นบวก (มากกว่า 0)"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      รายได้รวมของเดือน ธ.ค. 2025 เก็บไว้ในตัวแปร dec_revenue และ % เปลี่ยนแปลง (MoM) ของเดือน ธ.ค.
+      เทียบ พ.ย. 2025 ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร mom_pct_dec
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      dec_revenue = ___
+      mom_pct_dec = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      dec_revenue = monthly['2025-12']
+      nov_revenue = monthly['2025-11']
+      mom_pct_dec = round((dec_revenue - nov_revenue) / nov_revenue * 100, 2)
+    check: |
+      check_value(dec_revenue, _sol["dec_revenue"], name="dec_revenue")
+      check_value(mom_pct_dec, _sol["mom_pct_dec"], name="mom_pct_dec", tol=0.05)
+    hints:
+      - "วิธีเดียวกับ e1/e3 แค่เปลี่ยนเดือนเป็น '2025-12' เทียบกับ '2025-11'"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      รายได้เฉลี่ยต่อเดือนของทั้ง 12 เดือนในปี 2025 (ปัดเป็นจำนวนเต็ม) เก็บไว้ในตัวแปร avg_monthly_2025
+      เพื่อใช้เป็นเส้นฐาน (baseline) เทียบว่าเดือนไหน "ดีกว่าค่าเฉลี่ย" บ้างบน dashboard
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      avg_monthly_2025 = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      avg_monthly_2025 = round(monthly.mean())
+    check: |
+      check_value(avg_monthly_2025, _sol["avg_monthly_2025"], name="avg_monthly_2025", tol=1)
+    hints:
+      - "`.mean()` ของ Series รายเดือนทั้งหมด แล้ว round() ให้เป็นจำนวนเต็ม"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      มีกี่เดือนในปี 2025 (จาก 12 เดือน) ที่ทำรายได้สูงกว่าค่าเฉลี่ยรายเดือนของทั้งปี เก็บจำนวนไว้ในตัวแปร
+      n_above_avg (คำนวณค่าเฉลี่ยใหม่ในโจทย์นี้เอง ไม่ต้องอ้างอิงตัวแปรจากข้อก่อนหน้า)
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_above_avg = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      avg_monthly_2025 = monthly.mean()
+      n_above_avg = int((monthly > avg_monthly_2025).sum())
+    check: |
+      check_value(n_above_avg, _sol["n_above_avg"], name="n_above_avg")
+    hints:
+      - "เทียบ Series `monthly` กับ `.mean()` ของมันเองด้วย `>` แล้วนับด้วย `.sum()`"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      เตรียมตาราง 2 แถวสำหรับ KPI card สรุป: คอลัมน์ metric, value โดยแถวแรกคือ ("Nov revenue", รายได้
+      เดือน พ.ย. 2025) และแถวสองคือ ("MoM % change", % เปลี่ยนแปลงเดือน พ.ย. เทียบ ต.ค. 2025 ปัด 2 ตำแหน่ง
+      — ต้องตรงกับค่าที่คำนวณใน e1/e3) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      completed = orders[orders['status'] == 'completed'].copy()
+      order_items = order_items.copy()
+      order_items['line'] = order_items['quantity'] * order_items['unit_price']
+      merged = order_items.merge(completed[['order_id', 'order_date']], on='order_id')
+      merged['month'] = merged['order_date'].str[:7]
+      monthly = merged[merged['month'].str.startswith('2025')].groupby('month')['line'].sum()
+
+      nov_revenue = monthly['2025-11']
+      oct_revenue = monthly['2025-10']
+      mom_pct = round((nov_revenue - oct_revenue) / oct_revenue * 100, 2)
+
+      result = pd.DataFrame({
+          'metric': ['Nov revenue', 'MoM % change'],
+          'value': [nov_revenue, mom_pct],
+      })
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "สร้างด้วย `pd.DataFrame({'metric': [...], 'value': [...]})` ค่าต้องตรงกับ nov_revenue และ mom_pct"
+
+quiz:
+  - id: q1
+    question: หลักการสำคัญที่สุดของ dashboard ที่ดีคืออะไร
+    choices:
+      - text: ตอบคำถามหลักได้ทันทีที่เปิดดู โดยไม่ต้อง scroll หรือคลิกกรองเพิ่ม
+        correct: true
+        why: นี่คือเป้าหมายหลักของ dashboard — ถ้าผู้อ่านต้องขุดหาคำตอบเอง dashboard นั้นยังทำหน้าที่ไม่สำเร็จ
+      - text: ต้องมีกราฟให้ครบทุกชนิดที่ทำได้ในหนึ่งหน้า
+        why: ยิ่งมีกราฟที่ไม่เกี่ยวข้องกันเยอะ ยิ่งทำให้หาคำตอบยากขึ้น ไม่ใช่ง่ายขึ้น
+      - text: ต้องใช้สีสันให้มากที่สุดเพื่อความสวยงาม
+        why: ความสวยงามไม่ใช่เป้าหมายหลัก ความชัดเจนและตอบคำถามได้เร็วต่างหากที่สำคัญ
+      - text: ต้องอัปเดตข้อมูลแบบเรียลไทม์เสมอ
+        why: ความถี่ในการอัปเดตเป็นเรื่องรอง หลักการเรื่องโครงสร้างและความชัดเจนสำคัญกว่า
+  - id: q2
+    question: โครงสร้างที่ dashboard งานจริงใช้บ่อยที่สุดประกอบด้วยอะไรบ้าง
+    choices:
+      - text: KPI card (ตัวเลขสรุป+% เปลี่ยนแปลง) + กราฟเทรนด์ + breakdown ย่อย
+        correct: true
+        why: สามส่วนนี้ตอบคำถามคนละมุม — ตอนนี้เป็นยังไง, แนวโน้มไปทางไหน, มาจากส่วนไหนบ้าง
+      - text: ตารางข้อมูลดิบทั้งหมดแบบไม่ผ่านการสรุป
+        why: ตารางดิบไม่ตอบคำถามได้เร็ว ต้องสรุปเป็น KPI/เทรนด์/breakdown ก่อน
+      - text: กราฟวงกลมอย่างเดียวหลายๆ วง
+        why: กราฟวงกลมอ่านยากเมื่อมีหลายส่วน และไม่ครอบคลุมมุมมองเทรนด์กับ breakdown
+      - text: ข้อความสรุปแบบพารากราฟยาวๆ ไม่มีกราฟ
+        why: dashboard เน้นให้เห็นภาพและตัวเลขได้เร็ว ข้อความยาวขัดกับเป้าหมายนั้น
+  - id: q3
+    question: ทำไมความสม่ำเสมอของสี/หน่วย/การปัดเศษถึงสำคัญทั่วทั้ง dashboard
+    choices:
+      - text: ลดภาระการตีความของผู้อ่าน ทำให้เทียบกราฟต่างๆ ในหน้าเดียวกันได้เร็วขึ้น
+        correct: true
+        why: ถ้าความหมายของสีหรือหน่วยเปลี่ยนไปมาในแต่ละกราฟ ผู้อ่านต้องหยุดคิดใหม่ทุกครั้ง ทำให้อ่านช้าลง
+      - text: เพื่อให้ dashboard ดูมีสีสันสวยงามมากขึ้น
+        why: ความสม่ำเสมอเน้นเรื่องความชัดเจนในการสื่อสาร ไม่ใช่ความสวยงามเป็นหลัก
+      - text: เพราะเครื่องมือ BI บังคับให้ใช้สีเดียวกันทั้งไฟล์อยู่แล้ว
+        why: เครื่องมือ BI ส่วนใหญ่ปรับสี/หน่วยแยกกันได้อิสระ ความสม่ำเสมอเป็นวินัยของผู้สร้าง ไม่ใช่ข้อบังคับของเครื่องมือ
+      - text: ไม่สำคัญ ตราบใดที่ตัวเลขในแต่ละกราฟถูกต้อง
+        why: ตัวเลขถูกต้องอย่างเดียวไม่พอ ถ้าความหมายของสี/หน่วยไม่ตรงกัน ผู้อ่านจะตีความรวมกันผิดได้ง่าย
+
+summary:
+  - dashboard ที่ดีตอบคำถามหลักได้ทันทีที่เปิดดู ไม่ต้อง scroll หรือคลิกกรองเพิ่ม
+  - โครงสร้างที่ใช้บ่อย คือ KPI card (ตัวเลข+% เปลี่ยนแปลง) + กราฟเทรนด์ + breakdown ย่อย
+  - ความสม่ำเสมอของสี หน่วย และการปัดเศษทั่วทั้ง dashboard ลดภาระการตีความของผู้อ่าน
+  - เครื่องมืองานจริง (Power BI, Tableau, Looker Studio) ใช้แนวคิดเดียวกับที่ฝึกด้วย pandas/matplotlib เพียงแค่เปลี่ยนวิธีสร้างจากเขียนโค้ดเป็นลาก-วาง
+
+interview:
+  - id: i1
+    q: ถ้าต้องออกแบบ dashboard สรุปยอดขายให้ผู้บริหารดูทุกเช้า จะใส่อะไรบ้างและทำไม
+    a: |
+      เริ่มจาก KPI card ด้านบนสุด: ยอดขายเมื่อวาน/เดือนนี้ พร้อม % เปลี่ยนแปลงเทียบวันก่อน/เดือนก่อน
+      (แสดงทั้งตัวเลขดิบและ % คู่กันเสมอ พร้อมสีเขียว/แดงบอกทิศทาง) เพราะนี่คือคำถามแรกที่ผู้บริหารอยากรู้
+      เสมอ: "วันนี้ดีขึ้นหรือแย่ลง"
+
+      ต่อด้วยกราฟเทรนด์ (เส้น) แสดงยอดขายย้อนหลัง 30-90 วันหรือรายเดือนย้อนหลังทั้งปี เพื่อให้เห็นภาพว่า
+      ตัวเลขล่าสุดอยู่ในบริบทไหน เป็นจุดพีคหรือจุดต่ำผิดปกติหรือเปล่า
+
+      แล้วปิดท้ายด้วย breakdown อย่างน้อยหนึ่งมุม เช่น รายได้แยกตามหมวดสินค้าหรือช่องทางขาย (กราฟแท่ง
+      เรียงมากไปน้อย) เพื่อตอบว่าตัวเลขรวมที่เห็นมาจากส่วนไหนเป็นหลัก ถ้ามีที่ว่างอาจเพิ่มอีกหนึ่ง breakdown
+      (เช่น ตามภูมิภาคหรือลูกค้าใหม่/เก่า) แต่จะไม่ยัดเกิน 1 หน้าจอ และรักษาสี/หน่วย/การปัดเศษให้เหมือนกัน
+      ทั้งหน้า เพื่อให้ผู้บริหารกวาดตาดูรอบเดียวแล้วเข้าใจสถานการณ์ได้ทันที ไม่ต้องมาถามเพิ่ม
+
+flashcards:
+  - id: c1
+    front: หลักการข้อแรกของ dashboard ที่ดีคืออะไร
+    back: ตอบคำถามหลักได้ในสายตาเดียว ไม่ต้อง scroll หรือคลิกกรองเพิ่ม
+  - id: c2
+    front: โครงสร้าง dashboard ที่ใช้บ่อยที่สุดประกอบด้วยอะไร
+    back: KPI card (ตัวเลข+% เปลี่ยนแปลง) + กราฟเทรนด์ + breakdown ย่อย

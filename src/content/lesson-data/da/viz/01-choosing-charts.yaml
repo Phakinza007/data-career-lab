@@ -1,0 +1,448 @@
+goals:
+  - จับคู่คำถามกับชนิดกราฟที่ตอบได้ตรงที่สุด (เทรนด์ตามเวลา → เส้น, เทียบหมวดหมู่ → แท่ง, การกระจายของตัวแปรเดียว → histogram/box plot, ความสัมพันธ์ระหว่างตัวแปรตัวเลขสองตัว → scatter, สัดส่วนของทั้งหมด → แท่งซ้อน/วงกลม)
+  - รู้ข้อควรระวังของกราฟวงกลม (pie chart) เมื่อมีหลายส่วน และรู้ทางเลือกที่อ่านง่ายกว่า
+  - เตรียมข้อมูล (groupby/sort/pivot) ให้อยู่ในรูปที่พร้อมป้อนให้กราฟแต่ละชนิดวาดได้ทันที
+
+examples:
+  - id: x1
+    title: ยอดขายรายเดือนปี 2025 เปลี่ยนแปลงยังไง (เตรียมข้อมูลสำหรับกราฟเส้น)
+    lang: python
+    prompt: |
+      ผู้บริหารอยากเห็นว่ายอดขายรวมในปี 2025 มีทิศทางขึ้นหรือลงยังไงในแต่ละเดือน — คำถามแบบนี้เกี่ยวกับ
+      **เทรนด์ตามเวลา** จึงเหมาะกับกราฟเส้น ซึ่งกราฟเส้นต้องการข้อมูลที่เรียงตามแกนเวลาจากซ้ายไปขวา
+    steps:
+      - text: |
+          หายอดขายต่อออเดอร์ก่อน (เฉพาะออเดอร์ที่ `status == 'completed'`) ด้วยการ merge `order_items`
+          กับ `orders` แล้วคำนวณ `quantity * unit_price` ต่อแถว รวมต่อ `order_id`
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+
+          merged = order_items.merge(orders, on="order_id")
+          completed = merged[merged["status"] == "completed"].copy()
+          completed["line"] = completed["quantity"] * completed["unit_price"]
+          completed["month"] = pd.to_datetime(completed["order_date"]).dt.strftime("%Y-%m")
+          completed.head()
+      - text: |
+          ดึงเฉพาะปี 2025 แล้ว `groupby('month')` รวมยอดขาย — ได้ Series ที่ index เรียงตามเวลาอัตโนมัติ
+          (ตัวเลขนี้คือสิ่งที่จะเอาไปวาดกราฟเส้น ไม่ใช่ตัวกราฟเอง)
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+
+          merged = order_items.merge(orders, on="order_id")
+          completed = merged[merged["status"] == "completed"].copy()
+          completed["line"] = completed["quantity"] * completed["unit_price"]
+          completed["month"] = pd.to_datetime(completed["order_date"]).dt.strftime("%Y-%m")
+
+          monthly = completed[completed["month"].str.startswith("2025")].groupby("month")["line"].sum()
+          monthly   # 2025-01: 1362455 ... 2025-12: 2110990
+    pitfall:
+      text: |
+        ถ้าเผลอเรียง `monthly` ใหม่ตามยอดขาย (`sort_values(ascending=False)`) เหมือนที่จะทำกับกราฟแท่ง
+        โค้ดจะรันผ่านและตัวเลขยังถูกทุกตัว แต่ลำดับเดือนจะสลับไม่ตามเวลาแล้ว — เอาไปวาดกราฟเส้นจะได้เส้น
+        ที่กระโดดไปมาไม่มีความหมาย เพราะกราฟเส้นต้องพึ่งลำดับแกน x (เวลา) เป็นตัวเล่าเรื่อง ไม่ใช่แค่ค่าที่ถูก
+      code: |
+        import pandas as pd
+
+        order_items = pd.read_csv("data/order_items.csv")
+        orders = pd.read_csv("data/orders.csv")
+
+        merged = order_items.merge(orders, on="order_id")
+        completed = merged[merged["status"] == "completed"].copy()
+        completed["line"] = completed["quantity"] * completed["unit_price"]
+        completed["month"] = pd.to_datetime(completed["order_date"]).dt.strftime("%Y-%m")
+
+        monthly_wrong_order = completed[completed["month"].str.startswith("2025")].groupby("month")["line"].sum()
+        monthly_wrong_order = monthly_wrong_order.sort_values(ascending=False)
+        monthly_wrong_order
+  - id: x2
+    title: หมวดสินค้าไหนทำรายได้เยอะที่สุด (เตรียมข้อมูลสำหรับกราฟแท่ง)
+    lang: python
+    prompt: |
+      ทีมสินค้าอยากเทียบว่าหมวดไหนทำรายได้เยอะที่สุด — คำถามแบบนี้คือ**เทียบหมวดหมู่**ที่ไม่ต่อเนื่องกัน จึง
+      เหมาะกับกราฟแท่งมากกว่าวงกลม (มี 6 หมวด ขนาดต่างกันมาก วงกลมจะแยกเสี้ยวเล็กๆ ได้ยาก)
+    steps:
+      - text: |
+          หายอดขายต่อออเดอร์ (เฉพาะ completed) แล้ว merge กับ `products` เพื่อดึงคอลัมน์ `category` มาด้วย
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+          completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+          merged = order_items.merge(completed_orders, on="order_id")
+          merged["line"] = merged["quantity"] * merged["unit_price"]
+          merged = merged.merge(products[["product_id", "category"]], on="product_id")
+          merged.head()
+      - text: |
+          `groupby('category')` รวมยอด แล้ว `.sort_values(ascending=False)` เพื่อให้แท่งเรียงจากมากไปน้อย
+          (อ่านง่ายกว่าเรียงตามตัวอักษร)
+        code: |
+          import pandas as pd
+
+          order_items = pd.read_csv("data/order_items.csv")
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+          completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+          merged = order_items.merge(completed_orders, on="order_id")
+          merged["line"] = merged["quantity"] * merged["unit_price"]
+          merged = merged.merge(products[["product_id", "category"]], on="product_id")
+
+          cat_rev = merged.groupby("category")["line"].sum().sort_values(ascending=False)
+          cat_rev   # Electronics: 19200143 ... Books: 619888
+    pitfall:
+      text: |
+        ถ้าลืมใส่ `.sort_values(ascending=False)` ผลจาก `groupby('category')` จะเรียงตามตัวอักษร (Beauty,
+        Books, Electronics, ...) โดยอัตโนมัติ — โค้ดรันได้ปกติและตัวเลขถูกทุกตัว แต่เอาไปวาดกราฟแท่งจะทำให้
+        คนอ่านต้องกวาดสายตาหาแท่งที่สูงสุดเอง แทนที่จะเห็นคำตอบทันทีจากแท่งซ้ายสุด
+      code: |
+        import pandas as pd
+
+        order_items = pd.read_csv("data/order_items.csv")
+        orders = pd.read_csv("data/orders.csv")
+        products = pd.read_csv("data/products.csv")
+
+        completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+        merged = order_items.merge(completed_orders, on="order_id")
+        merged["line"] = merged["quantity"] * merged["unit_price"]
+        merged = merged.merge(products[["product_id", "category"]], on="product_id")
+
+        cat_rev_alphabetical = merged.groupby("category")["line"].sum()
+        cat_rev_alphabetical
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เตรียมข้อมูลรายได้ต่อหมวดสินค้า เรียงจากมากไปน้อย (เหมาะกับกราฟแท่ง) เก็บไว้ในตัวแปร result
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+      completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+      merged = order_items.merge(completed_orders, on="order_id")
+      merged["line"] = merged["quantity"] * merged["unit_price"]
+      merged = merged.merge(products[["product_id", "category"]], on="product_id")
+      result = merged.groupby("category")["line"].sum().sort_values(ascending=___)
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+      completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+      merged = order_items.merge(completed_orders, on="order_id")
+      merged["line"] = merged["quantity"] * merged["unit_price"]
+      merged = merged.merge(products[["product_id", "category"]], on="product_id")
+      result = merged.groupby("category")["line"].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "\"มากไปน้อย\" คือ ascending=False"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      อยากดูสัดส่วนช่องทางสมัครของลูกค้า (เหมาะกับกราฟแท่งหรือวงกลม) เตรียมจำนวนลูกค้าต่อช่องทางสมัคร
+      (channel) เพื่อจะเอาไปวาดกราฟ เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers["channel"].value_counts()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.value_counts()` นับจำนวนลูกค้าของแต่ละช่องทางให้อัตโนมัติ"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      การกระจายของราคาสินค้าเป็นยังไง (เหมาะกับ histogram) แบ่งราคาสินค้าเป็นช่วง [0,500], (500,1000],
+      (1000,5000], (5000,10000], (10000,30000] แล้วนับจำนวนสินค้าต่อช่วง เพื่อจะเอาไปวาดกราฟ histogram
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      bins = pd.cut(products["price"], bins=[0, 500, 1000, 5000, 10000, 30000])
+      result = bins.value_counts()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`pd.cut(series, bins=[...])` แบ่งค่าตัวเลขเป็นช่วง แล้ว `.value_counts()` นับจำนวนต่อช่วง"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      ราคากับต้นทุนของสินค้าสัมพันธ์กันยังไง (เหมาะกับ scatter plot) เตรียมสองคอลัมน์ price กับ cost
+      เพื่อจะเอาไปวาดกราฟ scatter เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products[["price", "cost"]]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "scatter plot ต้องการสองคอลัมน์ตัวเลข ไม่ต้องทำ groupby หรือ aggregate ใดๆ"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ยอดขายรายเดือนปี 2025 เปลี่ยนแปลงยังไง (เหมาะกับกราฟเส้น) เตรียม Series ยอดขายรวมต่อเดือน
+      (เฉพาะออเดอร์ที่ status เป็น completed) index เป็น YYYY-MM เพื่อจะเอาไปวาดกราฟเส้น เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      completed["month"] = pd.to_datetime(completed["order_date"]).dt.strftime("%Y-%m")
+
+      result = completed[completed["month"].str.startswith("2025")].groupby("month")["line"].sum()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือนตัวอย่าง x1 — merge order_items กับ orders, กรอง completed, ดึงเดือนจาก order_date แล้ว groupby
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      หมวดสินค้าไหนทำรายได้เยอะที่สุด เรียงจากมากไปน้อย (เหมาะกับกราฟแท่ง) เพื่อจะเอาไปวาดกราฟแท่ง
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+      completed_orders = orders[orders["status"] == "completed"][["order_id"]]
+      merged = order_items.merge(completed_orders, on="order_id")
+      merged["line"] = merged["quantity"] * merged["unit_price"]
+      merged = merged.merge(products[["product_id", "category"]], on="product_id")
+
+      result = merged.groupby("category")["line"].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือนตัวอย่าง x2 — อย่าลืม sort_values(ascending=False) ไม่งั้นจะได้เรียงตามตัวอักษรแทน
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ราคาสินค้าแต่ละหมวดกระจายกว้างแค่ไหน (เหมาะกับ box plot) เตรียม Q1/median/Q3 ของราคาต่อหมวดสินค้า
+      เพื่อจะเอาไปวาดกราฟ box plot เก็บไว้ในตัวแปร result (index เป็น category คอลัมน์คือ 25%, 50%, 75%)
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      result = products.groupby("category")["price"].describe()[["25%", "50%", "75%"]]
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "`.describe()` ให้ Q1/median/Q3 มาในคอลัมน์ 25%/50%/75% อยู่แล้ว เลือกแค่ 3 คอลัมน์นี้ออกมา"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      ถ้าอยากรู้ว่าลูกค้าที่สมัครผ่านช่องทางไหนใช้จ่ายเฉลี่ยต่อออเดอร์เยอะที่สุด กราฟชนิดไหนเหมาะที่สุด
+      (เทียบหมวดหมู่ → กราฟแท่ง) เตรียมยอดขายเฉลี่ยต่อออเดอร์ (เฉพาะ completed) ต่อช่องทางสมัคร (channel)
+      เรียงจากมากไปน้อย เพื่อจะเอาไปวาดกราฟแท่ง เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      order_rev = completed.groupby("order_id")["line"].sum().reset_index()
+
+      order_channel = completed[["order_id", "customer_id"]].drop_duplicates().merge(
+          customers[["customer_id", "channel"]], on="customer_id"
+      )
+      rev_channel = order_rev.merge(order_channel, on="order_id")
+
+      result = rev_channel.groupby("channel")["line"].mean().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "หายอดขายรวมต่อออเดอร์ก่อน (groupby order_id) แล้ว merge กับ channel ของลูกค้าที่สั่งออเดอร์นั้น จากนั้น groupby('channel') หาค่าเฉลี่ย"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      เดือนไหนใน 2025 ทำรายได้สูงสุด 3 อันดับแรก (ยอดขายเฉพาะออเดอร์ completed) เพื่อจะเอาไปวาดจุดเน้นบนกราฟ
+      เส้น เก็บไว้ในตัวแปร result เรียงจากมากไปน้อย
+    starter: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      order_items = pd.read_csv("data/order_items.csv")
+      orders = pd.read_csv("data/orders.csv")
+
+      merged = order_items.merge(orders, on="order_id")
+      completed = merged[merged["status"] == "completed"].copy()
+      completed["line"] = completed["quantity"] * completed["unit_price"]
+      completed["month"] = pd.to_datetime(completed["order_date"]).dt.strftime("%Y-%m")
+
+      monthly = completed[completed["month"].str.startswith("2025")].groupby("month")["line"].sum()
+      result = monthly.sort_values(ascending=False).head(3)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เหมือนโจทย์ e4 แต่ต่อด้วย sort_values(ascending=False).head(3)
+
+quiz:
+  - id: q1
+    question: "อยากดูเทรนด์ยอดขายตามเวลา ควรใช้กราฟแบบไหน"
+    choices:
+      - text: กราฟเส้น (line chart)
+        correct: true
+        why: กราฟเส้นออกแบบมาให้สายตาไล่ตามทิศทางขึ้น/ลงตามแกนเวลาได้ง่ายที่สุด
+      - text: กราฟวงกลม (pie chart)
+        why: กราฟวงกลมบอกสัดส่วนของทั้งหมด ไม่ได้สื่อทิศทางการเปลี่ยนแปลงตามเวลา
+      - text: Scatter plot
+        why: scatter เหมาะกับดูความสัมพันธ์ระหว่างตัวเลขสองตัว ไม่ใช่เทรนด์ตามเวลาต่อเนื่อง
+      - text: Box plot
+        why: box plot เหมาะกับดูการกระจาย/outlier ของกลุ่ม ไม่ได้เน้นทิศทางตามเวลา
+  - id: q2
+    question: "อยากเทียบยอดขายระหว่างหมวดสินค้า ควรใช้กราฟแบบไหน"
+    choices:
+      - text: กราฟแท่ง (bar chart)
+        correct: true
+        why: การเทียบความยาวแท่งระหว่างหมวดหมู่ที่ไม่ต่อเนื่องกัน สายตาคนอ่านทำได้แม่นยำที่สุด
+      - text: กราฟเส้น (line chart)
+        why: กราฟเส้นสื่อความต่อเนื่องตามแกน x (มักเป็นเวลา) ไม่เหมาะกับหมวดหมู่ที่ไม่มีลำดับต่อเนื่อง
+      - text: Histogram
+        why: histogram ใช้ดูการกระจายของตัวแปรตัวเลขตัวเดียว ไม่ใช่เทียบหมวดหมู่
+      - text: Scatter plot
+        why: scatter ใช้ดูความสัมพันธ์ระหว่างตัวเลขสองตัว ไม่ใช่เทียบยอดรวมของหมวดหมู่
+  - id: q3
+    question: "ทำไมกราฟวงกลม (pie chart) ที่มีมากกว่า 5-6 ส่วนถึงมักอ่านยาก"
+    choices:
+      - text: เพราะคนเปรียบเทียบขนาดมุม/พื้นที่โค้งได้แม่นยำน้อยกว่าเปรียบเทียบความยาวแท่ง
+        correct: true
+        why: นี่คือเหตุผลหลักที่กราฟแท่งเรียงลำดับมักอ่านง่ายกว่าวงกลมเมื่อมีหลายส่วน
+      - text: เพราะโปรแกรมส่วนใหญ่วาดวงกลมได้ไม่เกิน 5-6 สี
+        why: ข้อจำกัดเรื่องสีไม่ใช่เหตุผลหลัก ปัญหาอยู่ที่การรับรู้ขนาดเสี้ยววงกลมของสายตาคน
+      - text: เพราะวงกลมไม่รองรับตัวเลขทศนิยม
+        why: วงกลมแสดงสัดส่วนที่เป็นทศนิยมได้ตามปกติ ไม่ใช่ข้อจำกัดจริง
+      - text: เพราะวงกลมใช้ได้กับข้อมูลตามเวลาเท่านั้น
+        why: วงกลมไม่ได้จำกัดเฉพาะข้อมูลตามเวลา และจริงๆ ไม่เหมาะกับข้อมูลตามเวลาด้วยซ้ำ
+  - id: q4
+    question: "อยากดูความสัมพันธ์ระหว่างตัวแปรตัวเลขสองตัว ควรใช้กราฟแบบไหน"
+    choices:
+      - text: Scatter plot
+        correct: true
+        why: จุดแต่ละจุดแทน 1 แถว ทำให้เห็นรูปแบบความสัมพันธ์ระหว่างตัวเลขสองแกนได้ตรงที่สุด
+      - text: กราฟแท่ง (bar chart)
+        why: กราฟแท่งเหมาะกับเทียบหมวดหมู่ ไม่ได้ออกแบบมาสำหรับตัวเลขต่อเนื่องสองตัว
+      - text: กราฟวงกลม (pie chart)
+        why: วงกลมบอกสัดส่วนของทั้งหมด ไม่ได้สื่อความสัมพันธ์ระหว่างตัวเลขสองตัว
+      - text: Histogram
+        why: histogram ดูการกระจายของตัวแปรตัวเดียว ไม่ใช่ความสัมพันธ์ระหว่างสองตัวแปร
+
+summary:
+  - เริ่มจากคำถามที่อยากตอบก่อนเสมอ แล้วค่อยเลือกชนิดกราฟที่ตอบคำถามนั้นได้ตรงที่สุด ไม่ใช่เลือกกราฟที่ถนัดก่อน
+  - "เทรนด์ตามเวลา → เส้น, เทียบหมวดหมู่ → แท่ง, การกระจายตัวแปรเดียว → histogram/box plot, ความสัมพันธ์ระหว่างตัวเลขสองตัว → scatter, สัดส่วนของทั้งหมด → แท่งซ้อน/วงกลม (ระวังวงกลมเมื่อมีหลายส่วน)"
+  - ก่อนวาดกราฟต้องเตรียมข้อมูลให้อยู่ในรูปที่กราฟนั้นต้องการก่อนเสมอ (groupby/sort/pivot) — เป็นทักษะที่ตรวจสอบได้จริง ส่วนไวยากรณ์การวาดจะเรียนในบทถัดไป
+
+interview:
+  - id: i1
+    q: ได้โจทย์ "อยากรู้ว่าลูกค้ากลุ่มไหนน่าสนใจที่สุด" แบบกว้างๆ จะเลือกกราฟและเตรียมข้อมูลยังไง
+    a: |
+      เริ่มจากถามกลับให้คำถามแคบลงก่อนว่า "น่าสนใจ" หมายถึงอะไร — จำนวนคนเยอะ, ใช้จ่ายเยอะ, หรือแนวโน้ม
+      เติบโตเร็ว เพราะแต่ละแบบตอบด้วยกราฟคนละชนิด
+
+      ถ้าหมายถึง "กลุ่มไหนใช้จ่ายรวมเยอะที่สุด" (เทียบหมวดหมู่) จะเตรียมข้อมูลแบบ groupby ตามกลุ่มลูกค้า
+      (เช่น channel หรือ city) แล้วรวมยอดใช้จ่าย เรียงจากมากไปน้อย ใช้กราฟแท่ง
+
+      ถ้าหมายถึง "แต่ละกลุ่มใช้จ่ายกระจายกว้างแค่ไหน มีลูกค้า VIP โผล่ในกลุ่มไหนบ้าง" จะเปลี่ยนไปใช้ box plot
+      แทน เพราะต้องการเห็นการกระจายและ outlier ไม่ใช่แค่ผลรวม
+
+      สรุปคือต้องตีความคำถามกำกวมให้ชัดเจนก่อนเสมอ แล้วค่อยเลือกกราฟ ไม่ใช่เดาชนิดกราฟจากคำถามที่ยังกว้างอยู่
+  - id: i2
+    q: เจอ dataset ใหม่ ขั้นตอนแรกก่อนเลือกชนิดกราฟควรทำอะไร
+    a: |
+      ขั้นตอนแรกคือทำความเข้าใจ**คำถามที่จะตอบ**ให้ชัดก่อนเสมอ ไม่ใช่เปิดโปรแกรมแล้วเลือกชนิดกราฟที่ถนัด
+      หรือดูสวยที่สุดก่อนแล้วค่อยหาคำถามมาใส่ทีหลัง เพราะลำดับที่กลับกันมักจบด้วยกราฟที่ดูดีแต่ตอบผิดคำถาม
+
+      หลังจากรู้คำถามชัดแล้ว ค่อยดูว่าตัวแปรที่เกี่ยวข้องเป็นชนิดไหน (ตามเวลา, หมวดหมู่, ตัวเลขต่อเนื่อง)
+      แล้วจับคู่กับตารางตัดสินใจ (เทรนด์→เส้น, เทียบหมวด→แท่ง, การกระจาย→histogram/box, ความสัมพันธ์→scatter)
+      สุดท้ายค่อยเตรียมข้อมูลด้วย groupby/sort/pivot ให้อยู่ในรูปที่กราฟชนิดนั้นต้องการ
+
+flashcards:
+  - id: c1
+    front: หลักเลือกชนิดกราฟแบบคร่าวๆ มีอะไรบ้าง
+    back: เทรนด์ตามเวลา → เส้น, เทียบหมวดหมู่ → แท่ง, การกระจายตัวแปรเดียว → histogram/box plot, ความสัมพันธ์ระหว่างตัวเลขสองตัว → scatter
+  - id: c2
+    front: ทำไมกราฟแท่งเรียงลำดับมักดีกว่ากราฟวงกลมเมื่อมีหลายส่วน
+    back: สายตาคนเทียบความยาวแท่งได้แม่นยำกว่าเทียบมุม/พื้นที่โค้งของวงกลม ยิ่งมีหลายส่วน (>5-6) วงกลมยิ่งแยกเสี้ยวเล็กๆ ได้ยาก

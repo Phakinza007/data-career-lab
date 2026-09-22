@@ -1,10 +1,18 @@
 import runtimeSrc from './runtime.py?raw';
 import checkersSrc from './checkers.py?raw';
+import thaiFontBase64 from './assets/NotoSansThai.ttf.b64?raw';
 import type { CheckResult, RunResult } from '../runtime/types';
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64.trim());
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 export const PYODIDE_VERSION = '314.0.7';
 export const PYODIDE_CDN = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
-export const PY_PACKAGES = ['pandas', 'matplotlib'];
+export const PY_PACKAGES = ['pandas', 'matplotlib', 'scipy', 'micropip'];
 const HOME = '/home/pyodide';
 
 export interface PyodideLike {
@@ -24,9 +32,12 @@ export interface PythonApi {
 /** ติดตั้งแพ็กเกจ, runtime.py/checkers.py และไฟล์ข้อมูล (ที่ data/<ชื่อไฟล์>) ลงใน Pyodide */
 export async function bootPython(py: PyodideLike, files: Record<string, string>): Promise<PythonApi> {
   await py.loadPackage(PY_PACKAGES, { messageCallback: () => {} });
+  const micropip = py.pyimport('micropip');
+  await micropip.install('seaborn');
   py.FS.mkdirTree(`${HOME}/pylib`);
   py.FS.writeFile(`${HOME}/pylib/runtime.py`, runtimeSrc);
   py.FS.writeFile(`${HOME}/pylib/checkers.py`, checkersSrc);
+  py.FS.writeFile(`${HOME}/pylib/NotoSansThai.ttf`, base64ToBytes(thaiFontBase64));
   for (const [name, content] of Object.entries(files)) {
     const full = `${HOME}/data/${name}`;
     py.FS.mkdirTree(full.slice(0, full.lastIndexOf('/')));

@@ -1,0 +1,520 @@
+goals:
+  - อ่านรูปร่างการกระจายของข้อมูล (สมมาตร vs เบ้ซ้าย/เบ้ขวา) ด้วยตา และวัดด้วย skewness
+  - คำนวณ z-score และใช้หา outlier ด้วยกฎ `\|z\| > 3`
+  - เข้าใจว่ากฎ z-score ตั้งอยู่บนสมมติฐานว่าข้อมูลใกล้เคียงการแจกแจงปกติ ถ้าข้อมูลเบ้มากอาจตีความผิดได้
+
+examples:
+  - id: x1
+    title: เทียบความเบ้ของราคาสินค้า กับยอดรายได้ต่อออเดอร์
+    lang: python
+    prompt: |
+      อยากรู้ว่าราคาสินค้ากับยอดรายได้ต่อออเดอร์ (เฉพาะออเดอร์ที่สำเร็จ) มีรูปร่างการกระจายแบบไหน สมมาตรหรือเบ้
+    steps:
+      - text: |
+          หา skew ของราคาสินค้าก่อน (เหมือนที่เคยดู mean/median ใน Lesson 1 ที่ต่างกันมาก)
+        code: |
+          import pandas as pd
+
+          products = pd.read_csv("data/products.csv")
+          products['price'].skew()
+      - text: |
+          สร้างยอดรายได้ต่อออเดอร์ (เฉพาะออเดอร์ที่ `status == 'completed'`) แล้วดู skew เทียบกัน
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          completed = orders[orders['status'] == 'completed']
+          merged = order_items.merge(completed, on='order_id')
+          merged['line'] = merged['quantity'] * merged['unit_price']
+          order_rev = merged.groupby('order_id')['line'].sum()
+
+          order_rev.skew()
+    pitfall:
+      text: |
+        skew ใกล้ 0 ไม่ได้แปลว่าข้อมูล "สมมาตรสมบูรณ์แบบ" หรือ "ไม่มีอะไรน่าสนใจ" เสมอไป
+        ข้อมูลบางแบบมีรูปร่างซับซ้อนกว่านั้น (เช่นมีสองยอดแยกกัน หรือ bimodal) ที่ตัวเลข skew ตัวเดียวจับไม่ได้
+        ควรดูกราฟ histogram ประกอบเสมอ ไม่เชื่อตัวเลขสรุปตัวเดียวแบบไม่ดูรูปร่างจริง
+  - id: x2
+    title: z-score ของออเดอร์ที่ยอดรายได้สูงที่สุด
+    lang: python
+    prompt: |
+      อยากรู้ว่าออเดอร์ที่มียอดรายได้สูงที่สุด "ผิดปกติ" แค่ไหนเมื่อเทียบกับค่าเฉลี่ยของออเดอร์ทั้งหมด
+    steps:
+      - text: |
+          สร้างยอดรายได้ต่อออเดอร์เหมือนตัวอย่างที่แล้ว แล้วหาค่าเฉลี่ยกับ std
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          completed = orders[orders['status'] == 'completed']
+          merged = order_items.merge(completed, on='order_id')
+          merged['line'] = merged['quantity'] * merged['unit_price']
+          order_rev = merged.groupby('order_id')['line'].sum()
+
+          mean_rev = order_rev.mean()
+          std_rev = order_rev.std()
+          mean_rev, std_rev
+      - text: |
+          หา z-score ของออเดอร์ที่ยอดสูงสุด ด้วยสูตร `(x - mean) / std`
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          completed = orders[orders['status'] == 'completed']
+          merged = order_items.merge(completed, on='order_id')
+          merged['line'] = merged['quantity'] * merged['unit_price']
+          order_rev = merged.groupby('order_id')['line'].sum()
+
+          max_rev = order_rev.max()
+          z_max = (max_rev - order_rev.mean()) / order_rev.std()
+          z_max
+    pitfall:
+      text: |
+        เอากฎ `\|z\| > 3` ไปใช้กับข้อมูลเบ้ขวาแบบยอดรายได้นี้แบบไม่คิดอะไรเลยอันตราย —
+        ถ้าข้อมูลเป็น normal distribution จริง ทฤษฎีบอกว่าจะมีค่าที่ `\|z\| > 3` แค่ประมาณ 0.27% เท่านั้น
+        แต่พอวัดจากข้อมูลรายได้จริงชุดนี้ กลับเจอสัดส่วนสูงถึงประมาณ 2.29% (มากกว่าทฤษฎีเกือบ 8.5 เท่า)
+        เพราะข้อมูลเบ้ขวารุนแรง ไม่ใช่ normal — กฎนี้จึงต้องใช้อย่างระมัดระวัง ไม่ใช่เชื่อทื่อๆ
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เติมสูตร z-score `(x - mean) / std` ให้ครบ เพื่อหาว่าออเดอร์ที่ยอดรายได้สูงที่สุดมี z-score เท่าไร
+      เก็บไว้ในตัวแปร z_max เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      max_rev = order_rev.max()
+      z_max = (max_rev - ___) / ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      max_rev = order_rev.max()
+      z_max = (max_rev - order_rev.mean()) / order_rev.std()
+    check: |
+      check_value(z_max, _sol["z_max"], name="z_max", tol=0.01)
+    hints:
+      - "สูตร z-score คือ (x - mean) / std ใช้ order_rev.mean() กับ order_rev.std()"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      skewness ของราคาสินค้า (`products['price']`) เก็บไว้ในตัวแปร skew_price
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      skew_price = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      skew_price = products['price'].skew()
+    check: |
+      check_value(skew_price, _sol["skew_price"], name="skew_price", tol=0.001)
+    hints:
+      - "`.skew()` คำนวณความเบ้ของ Series ตัวเลข"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      สร้างยอดรายได้ต่อออเดอร์ (เฉพาะออเดอร์ที่ `status == 'completed'`, `line = quantity * unit_price`
+      แล้ว groupby ตาม order_id) แล้วหา skewness ของยอดรายได้นี้ เก็บไว้ในตัวแปร skew_order_rev
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      skew_order_rev = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      skew_order_rev = order_rev.skew()
+    check: |
+      check_value(skew_order_rev, _sol["skew_order_rev"], name="skew_order_rev", tol=0.001)
+    hints:
+      - เหมือนตัวอย่าง x1 แต่เปลี่ยนมาใช้ order_rev แทน products['price']
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      ยอดรายได้ต่อออเดอร์ (สร้างเหมือน e2) เบ้ขวาไหม (`skew > 0`) เก็บผลบูลีนไว้ในตัวแปร is_right_skewed
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      is_right_skewed = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      is_right_skewed = bool(order_rev.skew() > 0)
+    check: |
+      check_value(is_right_skewed, _sol["is_right_skewed"], name="is_right_skewed")
+    hints:
+      - "เบ้ขวา (right-skewed) คือ skew > 0"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณ z-score ของยอดรายได้ **ทุกออเดอร์** (ไม่ใช่แค่ออเดอร์เดียว) ด้วยสูตร `(x - mean) / std`
+      ตั้งชื่อ Series ผลลัพธ์ว่า `z` แล้วเก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      result = ((order_rev - order_rev.mean()) / order_rev.std()).rename('z')
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "ใช้สูตร (order_rev - order_rev.mean()) / order_rev.std() แล้ว .rename('z') ตั้งชื่อ Series"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      นับจำนวนออเดอร์ที่ `\|z\| > 3` (จากยอดรายได้ต่อออเดอร์) เก็บไว้ในตัวแปร n_outliers_z
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_outliers_z = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_outliers_z = int((z.abs() > 3).sum())
+    check: |
+      check_value(n_outliers_z, _sol["n_outliers_z"], name="n_outliers_z")
+    hints:
+      - "`z.abs() > 3` ได้ Series บูลีน ใช้ `.sum()` นับจำนวน True"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      z-score สูงสุดในบรรดาออเดอร์ทั้งหมด (ปัด 2 ตำแหน่ง) เก็บไว้ในตัวแปร max_z
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      max_z = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      max_z = round(z.max(), 2)
+    check: |
+      check_value(max_z, _sol["max_z"], name="max_z", tol=0.01)
+    hints:
+      - "`z.max()` หาค่าสูงสุดของ Series แล้ว round(..., 2)"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      เทียบวิธีหา outlier สองแบบบนยอดรายได้ต่อออเดอร์เดียวกัน: วิธี IQR (fence = `Q3 + 1.5*IQR`)
+      กับวิธี z-score (`\|z\| > 3`) — วิธี IQR เจอ outlier มากกว่าวิธี z-score ไหม เก็บผลบูลีนไว้ในตัวแปร iqr_flags_more
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      iqr_flags_more = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      q1 = order_rev.quantile(0.25)
+      q3 = order_rev.quantile(0.75)
+      iqr = q3 - q1
+      upper_fence = q3 + 1.5 * iqr
+      n_outliers_iqr = int((order_rev > upper_fence).sum())
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_outliers_z = int((z.abs() > 3).sum())
+
+      iqr_flags_more = n_outliers_iqr > n_outliers_z
+    check: |
+      check_value(iqr_flags_more, _sol["iqr_flags_more"], name="iqr_flags_more")
+    hints:
+      - "หา n_outliers_iqr (จำนวนออเดอร์เกิน upper fence) กับ n_outliers_z (จำนวนออเดอร์ที่ |z|>3) แล้วเทียบกัน"
+  - id: e8
+    level: applied
+    lang: python
+    prompt: |
+      นับจำนวนออเดอร์ที่ `z > 2` (ดูด้านเดียว คือหางบนเท่านั้น ไม่รวม `z < -2`) เก็บไว้ในตัวแปร n_above_2sigma
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_above_2sigma = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      n_above_2sigma = int((z > 2).sum())
+    check: |
+      check_value(n_above_2sigma, _sol["n_above_2sigma"], name="n_above_2sigma")
+    hints:
+      - "ใช้ `z > 2` (ด้านเดียว) ไม่ใช่ `z.abs() > 2`"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ยอดรายได้ (บาท) ที่จุด 3 standard deviation เหนือค่าเฉลี่ย (`mean + 3*std`) เก็บไว้ในตัวแปร threshold_3sigma
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      threshold_3sigma = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      threshold_3sigma = order_rev.mean() + 3 * order_rev.std()
+    check: |
+      check_value(threshold_3sigma, _sol["threshold_3sigma"], name="threshold_3sigma", tol=0.1)
+    hints:
+      - "threshold = mean + 3*std คือค่าที่ทำให้ z เท่ากับ 3 พอดี"
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      เทียบ % ของออเดอร์จริงที่ `\|z\| > 3` (ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร actual_pct) กับ % ทางทฤษฎีที่ควรเจอ
+      ถ้าข้อมูลเป็น normal distribution จริง (`scipy.stats.norm.sf(3)*2*100` ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร theoretical_pct)
+    starter: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      actual_pct = ___
+      theoretical_pct = ___
+    solution: |
+      import pandas as pd
+      import scipy.stats as stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      completed = orders[orders['status'] == 'completed']
+      merged = order_items.merge(completed, on='order_id')
+      merged['line'] = merged['quantity'] * merged['unit_price']
+      order_rev = merged.groupby('order_id')['line'].sum()
+
+      z = (order_rev - order_rev.mean()) / order_rev.std()
+      actual_pct = round((z.abs() > 3).sum() / len(order_rev) * 100, 2)
+      theoretical_pct = round(stats.norm.sf(3) * 2 * 100, 2)
+    check: |
+      check_value(actual_pct, _sol["actual_pct"], name="actual_pct")
+      check_value(theoretical_pct, _sol["theoretical_pct"], name="theoretical_pct")
+    hints:
+      - "actual_pct = (จำนวนออเดอร์ที่ |z|>3) / (จำนวนออเดอร์ทั้งหมด) * 100"
+      - "theoretical_pct ใช้ scipy.stats.norm.sf(3) คูณ 2 (สองด้าน) คูณ 100"
+
+quiz:
+  - id: q1
+    question: "skew เป็นบวก แปลว่าอะไร"
+    choices:
+      - text: หางของการแจกแจงยาวไปทางขวา มีค่าที่สูงผิดปกติอยู่บ้าง มักทำให้ mean > median
+        correct: true
+        why: นี่คือความหมายของ right-skewed — ค่าส่วนใหญ่กระจุกอยู่ค่าต่ำ แต่มีบางค่าสูงมากดึงหางไปทางขวา
+      - text: หางของการแจกแจงยาวไปทางซ้าย มักทำให้ mean < median
+        why: นั่นคือ skew เป็นลบ (left-skewed) ไม่ใช่ skew เป็นบวก
+      - text: ข้อมูลสมมาตรสมบูรณ์แบบ ไม่มีความเบ้เลย
+        why: ข้อมูลสมมาตรจะมี skew ใกล้ 0 ไม่ใช่เป็นบวก
+      - text: ข้อมูลมีแต่ค่าติดลบเท่านั้น
+        why: skew ไม่เกี่ยวกับเครื่องหมายของค่าข้อมูล แต่บอกทิศทางของหางการกระจาย
+  - id: q2
+    question: "z-score คำนวณจากสูตรไหน"
+    choices:
+      - text: "(x - mean) / std"
+        correct: true
+        why: z-score บอกว่าค่า x ห่างจากค่าเฉลี่ยกี่เท่าของ standard deviation
+      - text: "(x - median) / IQR"
+        why: สูตรนี้ไม่ใช่ z-score เป็นการผสมแนวคิดสองอย่างที่ไม่ตรงนิยาม
+      - text: "(x - min) / (max - min)"
+        why: นี่คือสูตร min-max normalization ไม่ใช่ z-score
+      - text: "x / mean"
+        why: สูตรนี้ไม่ได้หักลบค่าเฉลี่ยออกก่อน ไม่ใช่ z-score
+  - id: q3
+    question: "กฎ `\\|z\\| > 3` = ผิดปกติ ตั้งอยู่บนสมมติฐานอะไร"
+    choices:
+      - text: ข้อมูลใกล้เคียงการแจกแจงปกติ (normal distribution)
+        correct: true
+        why: ตัวเลข "0.27% ของข้อมูลที่ |z|>3" มาจากคุณสมบัติของ normal distribution โดยเฉพาะ
+      - text: ข้อมูลต้องมีขนาดตัวอย่างมากกว่า 1000 แถวเสมอ
+        why: กฎนี้ไม่ได้ผูกกับขนาดตัวอย่าง แต่ผูกกับรูปร่างการแจกแจง
+      - text: ข้อมูลต้องไม่มีค่าซ้ำกันเลยสักค่า
+        why: ค่าซ้ำกันไม่มีผลต่อกฎนี้ ประเด็นอยู่ที่รูปร่างการแจกแจง
+      - text: ข้อมูลต้องเรียงจากน้อยไปมากก่อนถึงจะคำนวณได้
+        why: z-score คำนวณได้โดยไม่ต้องเรียงลำดับข้อมูลก่อน
+  - id: q4
+    question: ทำไมข้อมูลเบ้ขวาถึงมี z-score เกิน 3 บ่อยกว่าที่ทฤษฎีทำนายไว้มาก
+    choices:
+      - text: เพราะการแจกแจงจริงมีหางยาวกว่า normal distribution ค่าที่สูงผิดปกติจึงเกิดบ่อยกว่าที่ทฤษฎีคาดไว้
+        correct: true
+        why: ตัวเลข 0.27% (ทฤษฎี) เทียบกับ 2.29% (ข้อมูลจริง) มาจากข้อเท็จจริงนี้พอดี
+      - text: เพราะขนาดตัวอย่างน้อยเกินไปจนคำนวณผิดพลาด
+        why: ขนาดตัวอย่างในกรณีนี้มีหลักพันแถว ไม่ใช่สาเหตุ ประเด็นอยู่ที่รูปร่างการแจกแจงไม่ใช่ normal
+      - text: เพราะสูตรคำนวณ std ผิดพลาดกับข้อมูลเบ้
+        why: สูตร std คำนวณถูกต้องเสมอ ปัญหาอยู่ที่สมมติฐานความเป็น normal ของกฎ |z|>3 ต่างหาก
+      - text: เพราะ skewness ทำให้คำนวณ mean ไม่ได้
+        why: mean คำนวณได้ปกติแม้ข้อมูลจะเบ้ เพียงแต่ mean จะถูกดึงไปทางหางมากกว่า median
+
+summary:
+  - "skewness (`.skew()`) บอกทิศทางและขนาดของความเบ้: `skew > 0` เบ้ขวา (มักทำให้ mean > median), `skew < 0` เบ้ซ้าย"
+  - "z-score = (x - mean) / std บอกว่าค่าห่างจากค่าเฉลี่ยกี่เท่าของ std กฎที่ใช้บ่อยคือ `\\|z\\| > 3` = ผิดปกติ"
+  - กฎ z-score ตั้งอยู่บนสมมติฐานว่าข้อมูลใกล้เคียง normal distribution — ข้อมูลยอดขาย/รายได้ที่เบ้ขวารุนแรงมักมีค่า |z|>3 บ่อยกว่าที่ทฤษฎีทำนายไว้มาก ควรใช้ร่วมกับวิธีอื่น (เช่น IQR) เสมอ
+
+interview:
+  - id: i1
+    q: ทำไมกฎ `\|z\| > 3` อาจใช้ไม่ได้ดีกับข้อมูลยอดขาย/รายได้ที่มักเบ้ขวา
+    a: |
+      กฎนี้อ้างอิงคุณสมบัติของ normal distribution ที่บอกว่าค่าซึ่งห่างจากค่าเฉลี่ยเกิน 3 std จะเจอได้แค่ประมาณ 0.27%
+      แต่ข้อมูลยอดขาย/รายได้จริงมักเบ้ขวารุนแรง (ลูกค้าส่วนใหญ่ซื้อของราคาปกติ แต่มีบางออเดอร์ใหญ่ผิดปกติดึงหางออกไป)
+      พอเอากฎนี้ไปใช้จริง จะเจอสัดส่วนที่ `\|z\|>3` สูงกว่าทฤษฎีทำนายไว้มาก (ในข้อมูลชุดนี้สูงกว่าเกือบ 8.5 เท่า)
+      เพราะฉะนั้นควรใช้ z-score เป็นสัญญาณเบื้องต้น ไม่ใช่กฎตายตัว และควรเทียบกับวิธีอื่นประกอบเสมอ
+  - id: i2
+    q: นอกจาก z-score แล้ว มีวิธีอื่นหา outlier อะไรอีกบ้าง
+    a: |
+      วิธีที่ใช้บ่อยที่สุดอีกแบบคือ IQR method จาก Lesson ที่แล้ว (ค่าที่อยู่นอก `Q1 - 1.5*IQR` ถึง `Q3 + 1.5*IQR`)
+      ซึ่งทนทานต่อความเบ้ของข้อมูลมากกว่า z-score เพราะอิงตำแหน่ง (percentile) ไม่ใช่ค่าเฉลี่ย/std ที่ถูกดึงง่ายโดยค่าสุดขั้ว
+      นอกจากนี้ยังมีวิธีดูจาก domain knowledge ตรงๆ (เช่น รู้ว่าราคาสินค้าติดลบเป็นไปไม่ได้อยู่แล้ว)
+      หรือดูกราฟ (histogram/boxplot) ประกอบ ไม่พึ่งตัวเลขสรุปตัวเดียว
+
+flashcards:
+  - id: c1
+    front: skew เป็นบวก (right-skewed) หมายความว่าอะไร
+    back: หางของข้อมูลยาวไปทางขวา มีค่าที่สูงผิดปกติอยู่บ้าง มักทำให้ mean > median
+  - id: c2
+    front: z-score คำนวณยังไง และตั้งอยู่บนสมมติฐานอะไร
+    back: "z = (x - mean) / std ตั้งอยู่บนสมมติฐานว่าข้อมูลใกล้เคียง normal distribution ถ้าข้อมูลเบ้มากอาจตีความผิดได้"

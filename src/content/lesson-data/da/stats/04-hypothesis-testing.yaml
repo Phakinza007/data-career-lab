@@ -1,0 +1,652 @@
+goals:
+  - เข้าใจ null hypothesis (H0) กับ alternative hypothesis (H1) และตรรกะของการ "ทดสอบเพื่อหักล้าง H0"
+  - ทำ one-sample t-test เพื่อเทียบค่าเฉลี่ยตัวอย่างกับค่าที่มีคนอ้าง
+  - ทำ two-sample t-test (Welch's) เพื่อเทียบค่าเฉลี่ยระหว่างสองกลุ่ม
+  - อ่านและตีความ p-value ให้ถูกต้อง (ไม่ใช่ "ความน่าจะเป็นที่ H0 เป็นจริง")
+
+examples:
+  - id: x1
+    title: "ผู้บริหารอ้างว่ายอดออเดอร์เฉลี่ยคือ 5000 บาท — จริงไหม"
+    lang: python
+    prompt: |
+      ผู้บริหารอ้างว่ายอดออเดอร์เฉลี่ยของร้านอยู่ที่ 5000 บาท ทีมอยากตรวจสอบคำกล่าวนี้ด้วยตัวอย่าง 200 ออเดอร์
+      (สุ่มแบบเดียวกับบทที่แล้ว) ว่าข้อมูลตัวอย่างขัดแย้งกับคำกล่าวนี้อย่างมีนัยสำคัญหรือไม่
+    steps:
+      - text: |
+          ตั้งสมมติฐาน: H0 คือ "ค่าเฉลี่ยจริงของยอดออเดอร์ = 5000 บาท" (สมมติฐานว่าง ที่เราพยายามหาหลักฐานมาหักล้าง)
+          ส่วน H1 คือ "ค่าเฉลี่ยจริง ≠ 5000 บาท" จากนั้นสร้างตัวอย่างเดียวกับบทที่แล้วเป๊ะๆ (seed 42, ขนาด 200, ไม่คืนที่)
+        code: |
+          import pandas as pd
+          import numpy as np
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+          sample.mean()
+      - text: |
+          รัน one-sample t-test ด้วย `scipy.stats.ttest_1samp(sample, 5000)` เทียบค่าเฉลี่ยตัวอย่างกับค่าที่อ้าง (5000)
+        code: |
+          import pandas as pd
+          import numpy as np
+          from scipy import stats
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+
+          merged = order_items.merge(orders, on='order_id')
+          completed = merged[merged['status'] == 'completed'].copy()
+          completed['line'] = completed['quantity'] * completed['unit_price']
+          order_rev = completed.groupby('order_id')['line'].sum()
+
+          rng = np.random.default_rng(42)
+          sample = rng.choice(order_rev.values, size=200, replace=False)
+
+          t_stat, p_value = stats.ttest_1samp(sample, 5000)
+          t_stat, p_value    # ≈ 1.908, ≈ 0.0578
+    pitfall:
+      text: |
+        ได้ `p_value ≈ 0.0578` แล้วอ่านว่า "มีโอกาส 94.2% ที่คำกล่าวของผู้บริหารเป็นจริง" — นี่คือการตีความ p-value ที่ผิดที่พบบ่อยที่สุด
+        p-value **ไม่ใช่** ความน่าจะเป็นที่ H0 เป็นจริง แต่คือ "ถ้าค่าเฉลี่ยจริงเท่ากับ 5000 บาทจริงๆ (H0 เป็นจริง) โอกาสที่จะสุ่มตัวอย่าง
+        มาแล้วได้ค่าเฉลี่ยที่ต่างจาก 5000 มากเท่านี้หรือมากกว่า คือ 5.78%" — ในที่นี้ `p=0.0578 > 0.05` จึงยัง **ไม่มีหลักฐานเพียงพอ**
+        ที่จะปฏิเสธคำกล่าวของผู้บริหาร (แต่ก็ไม่ได้แปลว่าคำกล่าวนั้น "ถูกพิสูจน์ว่าจริง" เช่นกัน)
+  - id: x2
+    title: "ลูกค้าช่องทาง organic กับ ads ใครสั่งของแพงกว่ากันจริงไหม"
+    lang: python
+    prompt: |
+      ทีมการตลาดสงสัยว่าลูกค้าที่มาจากช่องทาง organic กับ ads มียอดสั่งซื้อเฉลี่ยต่อออเดอร์ต่างกันหรือไม่
+      เทียบด้วย two-sample t-test ระหว่างสองกลุ่ม
+    steps:
+      - text: |
+          เตรียมยอดขายต่อออเดอร์ (เฉพาะออเดอร์ที่เสร็จสมบูรณ์) พร้อมช่องทางของลูกค้าแต่ละออเดอร์ แล้วแยกเป็นสองกลุ่มตาม channel
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          customers = pd.read_csv("data/customers.csv")
+
+          completed = orders[orders['status'] == 'completed']
+          oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+          items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+          items['line'] = items['quantity'] * items['unit_price']
+          rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+          organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+          ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+          len(organic), organic.mean(), len(ads), ads.mean()   # ≈ 3010, 5405.2, 2034, 5015.77
+      - text: |
+          รัน two-sample t-test แบบ **Welch's t-test** (`equal_var=False`) ซึ่งไม่สมมติว่าความแปรปรวนของสองกลุ่มเท่ากัน
+        code: |
+          import pandas as pd
+          from scipy import stats
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          customers = pd.read_csv("data/customers.csv")
+
+          completed = orders[orders['status'] == 'completed']
+          oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+          items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+          items['line'] = items['quantity'] * items['unit_price']
+          rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+          organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+          ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+          t2, p2 = stats.ttest_ind(organic, ads, equal_var=False)
+          t2, p2    # ≈ 1.8537, ≈ 0.0639
+    pitfall:
+      text: |
+        ใช้ `stats.ttest_ind(organic, ads, equal_var=True)` (Student's t-test แบบดั้งเดิม) โดยไม่ตรวจสอบก่อนว่าสองกลุ่มมี
+        ความแปรปรวนใกล้เคียงกันจริงไหม — ถ้าความแปรปรวนต่างกันมาก (ซึ่งพบได้บ่อยกับข้อมูลยอดขายที่เบ้ขวา) ผลลัพธ์จาก
+        `equal_var=True` อาจคลาดเคลื่อนได้ ทางที่ปลอดภัยกว่าเมื่อไม่แน่ใจคือใช้ **Welch's t-test** (`equal_var=False`)
+        เป็นค่าเริ่มต้นเสมอ อย่างที่ตัวอย่างนี้ทำ
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      ทำ one-sample t-test ทดสอบว่ายอดออเดอร์เฉลี่ยของตัวอย่าง (สุ่มแบบเดียวกับบทที่แล้ว seed 42 ขนาด 200 ไม่คืนที่)
+      ต่างจากคำกล่าวอ้างที่ว่า "ยอดเฉลี่ยคือ 5000 บาท" อย่างมีนัยสำคัญหรือไม่ เก็บค่าสถิติ t ไว้ในตัวแปร `t_stat`
+      และ p-value ไว้ในตัวแปร `p_value` เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      t_stat, p_value = stats.ttest_1samp(sample, ___)
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      t_stat, p_value = stats.ttest_1samp(sample, 5000)
+    check: |
+      check_value(t_stat, _sol["t_stat"], name="t_stat", tol=0.001)
+      check_value(p_value, _sol["p_value"], name="p_value", tol=0.001)
+    hints:
+      - "ค่าที่ผู้บริหารอ้างคือ 5000 บาท ใส่แทน `___` ตรงๆ"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณค่าสถิติ t ของ one-sample t-test ที่เทียบค่าเฉลี่ยของตัวอย่าง (สุ่มแบบเดียวกับบทที่แล้ว: seed 42, ขนาด 200,
+      ไม่คืนที่ จากยอดขายต่อออเดอร์ที่เสร็จสมบูรณ์) กับค่าที่อ้างว่า `μ = 5000` เก็บไว้ในตัวแปร `t_stat`
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      t_stat = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      t_stat = stats.ttest_1samp(sample, 5000).statistic
+    check: |
+      check_value(t_stat, _sol["t_stat"], name="t_stat", tol=0.001)
+    hints:
+      - "`stats.ttest_1samp(sample, 5000)` คืนค่ามาเป็น object ที่มี `.statistic` และ `.pvalue`"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      จาก one-sample t-test เดียวกับข้อที่แล้ว (ตัวอย่างเดิม เทียบกับ `μ = 5000`) เก็บ p-value ไว้ในตัวแปร `p_value`
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      p_value = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      p_value = stats.ttest_1samp(sample, 5000).pvalue
+    check: |
+      check_value(p_value, _sol["p_value"], name="p_value", tol=0.001)
+    hints:
+      - "ใช้ `.pvalue` แทน `.statistic`"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จาก p-value ของข้อที่แล้ว ที่ระดับนัยสำคัญ α=0.05 เราปฏิเสธ H0 (ที่ว่ายอดเฉลี่ย = 5000) หรือไม่
+      เก็บผลเป็น boolean ไว้ในตัวแปร `reject_h0`
+    starter: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      p_value = stats.ttest_1samp(sample, 5000).pvalue
+      reject_h0 = ___
+    solution: |
+      import pandas as pd
+      import numpy as np
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+
+      merged = order_items.merge(orders, on='order_id')
+      completed = merged[merged['status'] == 'completed'].copy()
+      completed['line'] = completed['quantity'] * completed['unit_price']
+      order_rev = completed.groupby('order_id')['line'].sum()
+
+      rng = np.random.default_rng(42)
+      sample = rng.choice(order_rev.values, size=200, replace=False)
+
+      p_value = stats.ttest_1samp(sample, 5000).pvalue
+      reject_h0 = p_value < 0.05
+    check: |
+      check_value(reject_h0, _sol["reject_h0"], name="reject_h0")
+    hints:
+      - "ปฏิเสธ H0 เมื่อ p_value น้อยกว่า α (0.05)"
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณยอดขายเฉลี่ยต่อออเดอร์ (เฉพาะออเดอร์ที่เสร็จสมบูรณ์) ของลูกค้าที่มาจากช่องทาง `organic`
+      เก็บไว้ในตัวแปร `mean_organic`
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      mean_organic = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      mean_organic = rev_by_order[rev_by_order['channel'] == 'organic']['line'].mean()
+    check: |
+      check_value(mean_organic, _sol["mean_organic"], name="mean_organic", tol=0.1)
+    hints:
+      - "กรองแถวที่ `channel == 'organic'` ก่อน แล้วค่อย `.mean()` ที่คอลัมน์ line"
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      เหมือนข้อที่แล้ว แต่คำนวณยอดขายเฉลี่ยต่อออเดอร์ของลูกค้าที่มาจากช่องทาง `ads` แทน เก็บไว้ในตัวแปร `mean_ads`
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      mean_ads = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      mean_ads = rev_by_order[rev_by_order['channel'] == 'ads']['line'].mean()
+    check: |
+      check_value(mean_ads, _sol["mean_ads"], name="mean_ads", tol=0.1)
+    hints:
+      - เหมือน e4 แต่เปลี่ยน channel เป็น ads
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ทำ two-sample t-test แบบ Welch's (`equal_var=False`) เทียบยอดขายเฉลี่ยต่อออเดอร์ระหว่างกลุ่ม `organic` กับ `ads`
+      เก็บค่าสถิติ t ไว้ในตัวแปร `t2`
+    starter: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      t2 = ___
+    solution: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      t2 = stats.ttest_ind(organic, ads, equal_var=False).statistic
+    check: |
+      check_value(t2, _sol["t2"], name="t2", tol=0.001)
+    hints:
+      - "`stats.ttest_ind(group1, group2, equal_var=False)` คือ Welch's t-test"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จาก two-sample t-test เดียวกับข้อที่แล้ว เก็บ p-value ไว้ในตัวแปร `p2`
+    starter: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = ___
+    solution: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = stats.ttest_ind(organic, ads, equal_var=False).pvalue
+    check: |
+      check_value(p2, _sol["p2"], name="p2", tol=0.001)
+    hints:
+      - "ใช้ `.pvalue` แทน `.statistic`"
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จาก p-value ของ two-sample t-test (ข้อที่แล้ว) ที่ระดับนัยสำคัญ α=0.05 มีหลักฐานเพียงพอไหมว่าลูกค้า organic
+      สั่งซื้อเฉลี่ยต่อออเดอร์สูงกว่าลูกค้า ads อย่างมีนัยสำคัญ เก็บผลเป็น boolean ไว้ในตัวแปร `is_significant`
+    starter: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = stats.ttest_ind(organic, ads, equal_var=False).pvalue
+      is_significant = ___
+    solution: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = stats.ttest_ind(organic, ads, equal_var=False).pvalue
+      is_significant = p2 < 0.05
+    check: |
+      check_value(is_significant, _sol["is_significant"], name="is_significant")
+    hints:
+      - "`p2 ≈ 0.0639` มากกว่า 0.05 หรือเปล่า"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ถ้าทีมเลือกใช้ระดับนัยสำคัญที่หลวมกว่าเดิมคือ α=0.10 (แทนที่จะเป็น 0.05) ผลการทดสอบ two-sample t-test
+      ข้อ e7 จะกลายเป็น "มีนัยสำคัญ" หรือไม่ (`p2 < 0.10`) เก็บผลเป็น boolean ไว้ในตัวแปร `sig_at_10pct`
+      — ตัวอย่างที่เป็นรูปธรรมว่าทำไมค่า α ที่เลือกไว้ล่วงหน้าถึงสำคัญ
+    starter: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = stats.ttest_ind(organic, ads, equal_var=False).pvalue
+      sig_at_10pct = ___
+    solution: |
+      import pandas as pd
+      from scipy import stats
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+
+      completed = orders[orders['status'] == 'completed']
+      oc = completed.merge(customers[['customer_id', 'channel']], on='customer_id')
+      items = order_items.merge(oc[['order_id', 'channel']], on='order_id')
+      items['line'] = items['quantity'] * items['unit_price']
+      rev_by_order = items.groupby(['order_id', 'channel'])['line'].sum().reset_index()
+
+      organic = rev_by_order[rev_by_order['channel'] == 'organic']['line']
+      ads = rev_by_order[rev_by_order['channel'] == 'ads']['line']
+
+      p2 = stats.ttest_ind(organic, ads, equal_var=False).pvalue
+      sig_at_10pct = p2 < 0.10
+    check: |
+      check_value(sig_at_10pct, _sol["sig_at_10pct"], name="sig_at_10pct")
+    hints:
+      - "เปลี่ยนเกณฑ์เทียบจาก 0.05 เป็น 0.10 เท่านั้น"
+
+quiz:
+  - id: q1
+    question: "null hypothesis (H0) คืออะไรโดยหลักการ"
+    choices:
+      - text: สมมติฐานที่บอกว่า "ไม่มีความแตกต่าง/ไม่มีผล" ซึ่งเราพยายามหาหลักฐานมาหักล้าง
+        correct: true
+        why: การทดสอบสมมติฐานเริ่มจากตั้ง H0 แบบนี้เสมอ แล้วดูว่าข้อมูลมีหลักฐานมากพอจะหักล้างมันไหม
+      - text: สมมติฐานที่นักวิเคราะห์เชื่อว่าเป็นจริงและอยากพิสูจน์
+        why: อันนั้นคือ alternative hypothesis (H1) ต่างหาก H0 คือสมมติฐาน "ไม่มีอะไรเกิดขึ้น" ที่เราพยายามหักล้าง
+      - text: ค่า p-value ที่ใช้ตัดสินใจ
+        why: p-value เป็นผลลัพธ์จากการทดสอบ ไม่ใช่ตัวสมมติฐานเอง
+      - text: ข้อสรุปสุดท้ายของการวิเคราะห์
+        why: H0 เป็นสมมติฐานตั้งต้นก่อนทดสอบ ไม่ใช่ข้อสรุป
+  - id: q2
+    question: "p-value คือความน่าจะเป็นของอะไร"
+    choices:
+      - text: ความน่าจะเป็นที่จะเห็นผลลัพธ์สุดขั้วเท่านี้หรือมากกว่า ถ้า H0 เป็นจริง
+        correct: true
+        why: นี่คือนิยามที่ถูกต้อง p-value เป็นความน่าจะเป็นแบบมีเงื่อนไข "ถ้า H0 จริง" เท่านั้น
+      - text: ความน่าจะเป็นที่ H0 เป็นจริง
+        why: เป็นการตีความที่ผิดที่พบบ่อยที่สุด p-value ไม่ได้บอกความน่าจะเป็นที่ H0 เป็นจริงเลย
+      - text: ความน่าจะเป็นที่ผลลัพธ์เกิดจากความบังเอิญล้วนๆ
+        why: ใกล้เคียงแต่ไม่ตรงนิยาม — p-value คำนวณภายใต้สมมติฐานว่า H0 เป็นจริง ไม่ใช่ความน่าจะเป็นของ "ความบังเอิญ" เฉยๆ
+      - text: ระดับความมั่นใจว่าผลการทดลองถูกต้อง
+        why: p-value ไม่ได้วัดความน่าเชื่อถือของการทดลองโดยรวม แต่วัดความสุดขั้วของผลลัพธ์ภายใต้ H0
+  - id: q3
+    question: "p < 0.05 แปลว่าอะไร"
+    choices:
+      - text: มีหลักฐานเพียงพอที่จะปฏิเสธ H0 ที่ระดับนัยสำคัญ 0.05
+        correct: true
+        why: นี่คือความหมายตรงตัวของเกณฑ์ α=0.05 ที่ตกลงกันไว้ล่วงหน้า
+      - text: ผลต่างที่พบมีขนาดใหญ่มากเสมอ
+        why: p-value เล็กบอกแค่ว่าผลต่างไม่น่าเกิดจากสุ่มเฉยๆ ไม่ได้บอกขนาด (effect size) ของผลต่างนั้น
+      - text: H0 เป็นเท็จแน่นอน 100%
+        why: การทดสอบสถิติไม่เคยให้ความแน่นอน 100% เสมอมีโอกาสตัดสินใจผิดพลาดอยู่บ้าง
+      - text: สามารถหยุดเก็บข้อมูลได้เลยเพราะได้คำตอบสุดท้ายแล้ว
+        why: p<0.05 เป็นแค่หลักฐานทางสถิติ ณ ตัวอย่างที่มี ไม่ได้แปลว่าไม่ต้องพิจารณาปัจจัยอื่นอีก
+  - id: q4
+    question: "two-sample t-test แบบ `equal_var=False` (Welch's) ต่างจาก `equal_var=True` ยังไง"
+    choices:
+      - text: ไม่สมมติว่าความแปรปรวนของสองกลุ่มเท่ากัน ปลอดภัยกว่าเมื่อไม่แน่ใจ
+        correct: true
+        why: Welch's t-test ปรับสูตรให้ใช้ได้แม้สองกลุ่มมีความแปรปรวนต่างกัน จึงเป็นตัวเลือกที่ปลอดภัยกว่าเป็นค่าเริ่มต้น
+      - text: ใช้ได้เฉพาะกับตัวอย่างขนาดเล็กเท่านั้น
+        why: ใช้ได้กับตัวอย่างทุกขนาด ไม่ได้จำกัดแค่ตัวอย่างเล็ก
+      - text: คำนวณ p-value แบบทางเดียว (one-sided) เสมอ
+        why: ทั้ง equal_var=True และ False ให้ผลแบบ two-sided โดยค่าเริ่มต้นเหมือนกัน ต่างกันแค่สมมติฐานเรื่องความแปรปรวน
+      - text: ให้ผลเหมือนกันทุกกรณีไม่ว่าความแปรปรวนจะต่างกันแค่ไหน
+        why: ถ้าความแปรปรวนสองกลุ่มต่างกันมาก ผลลัพธ์จากสองวิธีนี้อาจต่างกันได้ชัดเจน
+  - id: q5
+    question: "การไม่ปฏิเสธ H0 (fail to reject) แปลว่า H0 เป็นจริงแน่นอนไหม"
+    choices:
+      - text: ไม่ใช่ แค่แปลว่าข้อมูลที่มีไม่พอจะหักล้าง H0 ได้
+        correct: true
+        why: "\"fail to reject\" ไม่เท่ากับ \"พิสูจน์ว่าจริง\" อาจเป็นเพราะตัวอย่างเล็กเกินไป หรือ H0 ผิดจริงแต่ผลต่างเล็กเกินจะตรวจจับได้"
+      - text: ใช่ แปลว่า H0 ถูกพิสูจน์แล้วว่าเป็นจริง
+        why: การทดสอบสถิติไม่เคย "พิสูจน์" ว่า H0 เป็นจริง ทำได้แค่บอกว่าข้อมูลที่มีไม่พอจะหักล้างมัน
+      - text: ใช่ เพราะ p-value จะต้องมากกว่า 0.5 เสมอ
+        why: ไม่จำเป็นต้องมากกว่า 0.5 แค่มากกว่า α ที่ตั้งไว้ (เช่น 0.05) ก็ถือว่า fail to reject แล้ว
+      - text: ไม่ใช่ แปลว่าการทดลองมีข้อผิดพลาด ต้องทำใหม่
+        why: fail to reject เป็นผลลัพธ์ที่สมเหตุสมผลปกติของการทดสอบ ไม่ได้แปลว่าการทดลองผิดพลาด
+
+summary:
+  - null hypothesis (H0) คือสมมติฐาน "ไม่มีผล/ไม่มีความแตกต่าง" ที่เราพยายามหาหลักฐานมาหักล้าง ไม่ใช่สิ่งที่อยากพิสูจน์
+  - one-sample t-test (`ttest_1samp`) เทียบค่าเฉลี่ยตัวอย่างกับค่าที่อ้าง ส่วน two-sample t-test (`ttest_ind`, แนะนำ `equal_var=False`) เทียบค่าเฉลี่ยระหว่างสองกลุ่ม
+  - p-value คือความน่าจะเป็นที่จะเห็นผลสุดขั้วเท่านี้หรือมากกว่า **ถ้า H0 เป็นจริง** ไม่ใช่ความน่าจะเป็นที่ H0 เป็นจริง และ fail to reject H0 ไม่ได้แปลว่า H0 ถูกพิสูจน์แล้ว
+
+interview:
+  - id: i1
+    q: อธิบาย p-value ให้ผู้บริหารที่ไม่ได้เรียนสถิติฟัง โดยไม่ใช้คำว่า "null hypothesis"
+    a: |
+      อาจอธิบายแบบนี้: "สมมติว่าตัวเลขที่เราอยากตรวจสอบนั้นถูกต้องจริงๆ (เช่น ยอดเฉลี่ยคือ 5000 บาทจริง) ถ้าเราสุ่มตัวอย่างมาดูซ้ำๆ
+      หลายๆ ครั้ง มีโอกาสกี่เปอร์เซ็นต์ที่จะได้ตัวอย่างที่ผลต่างจากตัวเลขนั้นมากเท่ากับหรือมากกว่าที่เราเห็นในครั้งนี้"
+      ถ้าตัวเลขนี้ (p-value) ต่ำมาก แปลว่าสิ่งที่เราสังเกตเห็นไม่น่าจะเกิดจากความบังเอิญเฉยๆ ถ้าตัวเลขไม่ถูกต้องจริง —
+      จุดสำคัญคือ p-value ไม่ได้บอกว่า "ตัวเลขที่อ้างมีโอกาสถูกกี่เปอร์เซ็นต์" มันตอบคำถามกลับด้านกัน
+  - id: i2
+    q: ทำไมการทดสอบทางสถิติที่ไม่ปฏิเสธ H0 ไม่ได้แปลว่าไม่มีความแตกต่างจริง
+    a: |
+      เพราะ "fail to reject H0" แปลว่าข้อมูลที่มีอยู่ไม่มากพอจะให้หลักฐานที่แข็งแรงพอจะหักล้าง H0 ได้ ไม่ได้แปลว่า H0 ถูกพิสูจน์
+      ว่าเป็นจริง — สาเหตุที่พบบ่อยคือขนาดตัวอย่างเล็กเกินไป (statistical power ไม่พอ) หรือผลต่างที่แท้จริงมีขนาดเล็กจนตรวจจับ
+      ไม่ได้ด้วยตัวอย่างขนาดนี้ ความแตกต่างจริงอาจยังมีอยู่ แค่ข้อมูลที่เก็บมายังไม่พอจะเห็นมันชัดเจน
+  - id: i3
+    q: ถ้า p-value = 0.049 กับ 0.051 ควรตีความต่างกันมากไหม
+    a: |
+      ไม่ควรตีความต่างกันมาก — เส้นแบ่ง α=0.05 เป็นธรรมเนียมที่ตกลงกันไว้ล่วงหน้า ไม่ใช่กำแพงที่มีความหมายพิเศษทางสถิติจริงๆ
+      ผลลัพธ์ทั้งสองแทบไม่ต่างกันเลยในแง่ความแข็งแรงของหลักฐาน การตัดสินใจทางธุรกิจที่เปลี่ยนขั้วสุดโต่ง (ทำ/ไม่ทำ) แค่เพราะ
+      p-value ต่างกัน 0.002 จึงเป็นความเสี่ยงที่ควรระวัง ควรดูขนาดของผลต่าง (effect size) และบริบทประกอบด้วยเสมอ ไม่ใช่ยึด
+      เกณฑ์ 0.05 แบบทื่อๆ
+
+flashcards:
+  - id: c1
+    front: p-value คือความน่าจะเป็นของอะไรกันแน่
+    back: ความน่าจะเป็นที่จะเห็นผลลัพธ์สุดขั้วเท่านี้หรือมากกว่า ถ้า H0 เป็นจริง — ไม่ใช่ความน่าจะเป็นที่ H0 เป็นจริง
+  - id: c2
+    front: "\"fail to reject H0\" แปลว่าอะไร"
+    back: ข้อมูลที่มีไม่พอจะหักล้าง H0 ได้ ไม่ได้แปลว่า H0 ถูกพิสูจน์ว่าเป็นจริง
