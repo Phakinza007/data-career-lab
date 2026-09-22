@@ -1,0 +1,581 @@
+goals:
+  - สร้างตาราง RFM ระดับลูกค้า (recency, frequency, monetary) จากตารางออเดอร์
+  - ให้คะแนน 1–4 ด้วย pd.qcut และรู้ว่าเมื่อไหร่ที่ qcut ใช้ไม่ได้ ต้องกำหนดเกณฑ์เอง
+  - แปลงคะแนนเป็นกลุ่มลูกค้าที่เสนอ action ต่อได้ และอ่านตารางกลุ่มให้เป็นข้อเสนอเชิงธุรกิจ
+
+examples:
+  - id: x1
+    title: สร้างตาราง RFM ระดับลูกค้า
+    lang: python
+    prompt: |
+      ทีมการตลาดมีงบทำแคมเปญจำกัด อยากรู้ว่าควรคุยกับลูกค้ากลุ่มไหนก่อน
+      เริ่มจากสร้างตารางพฤติกรรมการซื้อของลูกค้าแต่ละคนก่อน
+    steps:
+      - text: |
+          เตรียมตารางยอดขายระดับรายการสินค้า (merge order_items กับ orders แล้วกรองเฉพาะ completed
+          ตามนิยามรายได้ของเว็บนี้)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          sales.head()
+      - text: |
+          สรุปเป็นระดับลูกค้า — recency นับจากวันที่ล่าสุดในระบบ (31 ธ.ค. 2025) เพราะข้อมูลชุดนี้ไม่มี "วันนี้" จริง
+          ส่วน frequency ต้องใช้ `'nunique'` กับ order_id เพราะหลัง merge หนึ่งแถวคือหนึ่งรายการสินค้า
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+
+          asof = pd.Timestamp('2025-12-31')
+          rfm = sales.groupby('customer_id').agg(
+              recency=('order_date', lambda s: (asof - s.max()).days),
+              frequency=('order_id', 'nunique'),
+              monetary=('line', 'sum'),
+          )
+          rfm.describe()
+    pitfall:
+      text: |
+        ถ้าใช้ `'size'` แทน `'nunique'` ในการนับ frequency จะได้จำนวน **รายการสินค้า** ไม่ใช่จำนวนออเดอร์
+        (ลูกค้าที่ซื้อออเดอร์เดียวแต่มี 3 ชิ้นจะกลายเป็น frequency = 3) โค้ดรันผ่านปกติ
+        แต่คะแนน F ของทุกคนเพี้ยนไปหมด — เป็นกับดักเดียวกับ `COUNT(*)` หลัง JOIN ในบทที่ 1
+      code: |
+        import pandas as pd
+
+        orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+        items = pd.read_csv("data/order_items.csv")
+        sales = items.merge(orders, on='order_id')
+        sales = sales[sales['status'] == 'completed']
+
+        wrong = sales.groupby('customer_id').agg(frequency_wrong=('order_id', 'size'))
+        right = sales.groupby('customer_id').agg(frequency=('order_id', 'nunique'))
+        wrong.join(right).head(10)
+  - id: x2
+    title: ให้คะแนน R และเจอทางตันของ qcut ที่ F
+    lang: python
+    prompt: |
+      ต่อจากตาราง RFM — แปลงค่าดิบเป็นคะแนน 1–4 เพื่อให้เทียบข้ามมิติกันได้
+    steps:
+      - text: |
+          `pd.qcut(x, 4, labels=[4, 3, 2, 1])` แบ่งเป็น 4 กลุ่มเท่าๆ กันตามควอไทล์
+          — สังเกตว่า labels ของ R กลับหัว เพราะ recency น้อย (เพิ่งซื้อ) ต้องได้คะแนนสูง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          asof = pd.Timestamp('2025-12-31')
+          rfm = sales.groupby('customer_id').agg(
+              recency=('order_date', lambda s: (asof - s.max()).days),
+              frequency=('order_id', 'nunique'),
+              monetary=('line', 'sum'),
+          )
+
+          rfm['R'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+          rfm['M'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+          rfm[['R', 'M']].apply(pd.Series.value_counts)
+      - text: |
+          `frequency` ใช้ qcut ไม่ได้เพราะค่าซ้ำกันเยอะเกินไป (ลูกค้า 1,181 คนจาก 2,707 คนซื้อครั้งเดียว)
+          ทางออกที่อธิบายให้ทีมธุรกิจฟังได้คือกำหนดเกณฑ์เองตามจำนวนครั้ง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          asof = pd.Timestamp('2025-12-31')
+          rfm = sales.groupby('customer_id').agg(
+              recency=('order_date', lambda s: (asof - s.max()).days),
+              frequency=('order_id', 'nunique'),
+              monetary=('line', 'sum'),
+          )
+
+          def score_frequency(n):
+              if n == 1:
+                  return 1
+              if n == 2:
+                  return 2
+              if n == 3:
+                  return 3
+              return 4
+
+          rfm['F'] = rfm['frequency'].apply(score_frequency)
+          rfm['F'].value_counts().sort_index()
+    pitfall:
+      text: |
+        ทางลัดที่เห็นบ่อยเวลา qcut ฟ้อง "Bin edges must be unique" คือใส่ `.rank(method='first')` ก่อน
+        โค้ดด้านล่างรันผ่านและได้ 4 กลุ่มขนาดเท่ากันเป๊ะจริง แต่ลูกค้าที่ซื้อ 1 ครั้งเท่ากันทุกประการ
+        กลับได้คะแนนต่างกัน (บางคน 1 บางคน 2) เพราะถูกแบ่งตามลำดับแถวในตาราง
+        เวลาทีมการตลาดถามว่าทำไมสองคนนี้คะแนนไม่เท่ากันจะตอบไม่ได้เลย
+      code: |
+        import pandas as pd
+
+        orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+        items = pd.read_csv("data/order_items.csv")
+        sales = items.merge(orders, on='order_id')
+        sales = sales[sales['status'] == 'completed']
+        rfm = sales.groupby('customer_id').agg(frequency=('order_id', 'nunique'))
+
+        rfm['F_rank'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+        rfm[rfm['frequency'] == 1]['F_rank'].value_counts().sort_index()
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      ให้คะแนน R (1–4) จากคอลัมน์ recency โดยเพิ่งซื้อ = คะแนนสูง แล้วนับจำนวนลูกค้าแต่ละคะแนน
+      เรียงตามคะแนน เก็บไว้ในตัวแปร result — เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      recency = completed.groupby('customer_id')['order_date'].max().apply(lambda d: (asof - d).days)
+
+      scores = pd.qcut(recency, 4, labels=[___, ___, ___, ___]).astype(int)
+      result = scores.value_counts().sort_index()
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      recency = completed.groupby('customer_id')['order_date'].max().apply(lambda d: (asof - d).days)
+
+      scores = pd.qcut(recency, 4, labels=[4, 3, 2, 1]).astype(int)
+      result = scores.value_counts().sort_index()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - recency น้อยแปลว่าเพิ่งซื้อ ต้องได้คะแนนสูงสุด
+      - labels เรียงตามลำดับกลุ่มจากค่าน้อยไปมาก
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      recency (จำนวนวันนับจากออเดอร์ completed ล่าสุดถึง 31 ธ.ค. 2025) ของลูกค้าแต่ละคน
+      เก็บเป็น Series ที่มี index เป็น customer_id ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      result = completed.groupby('customer_id')['order_date'].max().apply(lambda d: (asof - d).days)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - หาวันที่ซื้อล่าสุดของแต่ละคนด้วย groupby().max() ก่อน
+      - "ผลต่างของ Timestamp สองตัวมี .days ให้ดึงจำนวนวันออกมา"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      frequency (จำนวนออเดอร์ completed แบบไม่ซ้ำ) ของลูกค้าแต่ละคน เก็บเป็น Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      result = completed.groupby('customer_id')['order_id'].nunique()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.nunique()` นับค่าที่ไม่ซ้ำกันในแต่ละกลุ่ม"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      monetary (ยอดซื้อรวมจากออเดอร์ completed) ของลูกค้าแต่ละคน เก็บเป็น Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby('customer_id')['line'].sum()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - ยอดต่อรายการ = quantity × unit_price
+      - merge กับ orders ก่อนเพื่อกรองสถานะและรู้ว่าออเดอร์เป็นของใคร
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ตาราง RFM ระดับลูกค้า มีคอลัมน์ recency, frequency, monetary (นิยามเดียวกับสามข้อที่แล้ว)
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      result = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - "named aggregation `.agg(ชื่อ=('คอลัมน์', ฟังก์ชัน))` สร้างสามคอลัมน์ในครั้งเดียวได้"
+      - ฟังก์ชันของ recency เขียนเป็น lambda ที่รับ Series ของวันที่ทั้งกลุ่มได้
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในแต่ละคะแนน F โดยใช้เกณฑ์ของบทนี้ (ซื้อ 1 ครั้ง = 1, 2 ครั้ง = 2, 3 ครั้ง = 3,
+      ตั้งแต่ 4 ครั้งขึ้นไป = 4) เรียงตามคะแนน เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      frequency = completed.groupby('customer_id')['order_id'].nunique()
+      f_score = frequency.apply(lambda n: n if n <= 3 else 4)
+      result = f_score.value_counts().sort_index()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - เกณฑ์นี้เขียนสั้นๆ ได้ด้วย min(n, 4) หรือ n if n <= 3 else 4
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ตาราง RFM ที่มีคอลัมน์คะแนน R, F, M ครบ (R จาก qcut labels กลับหัว, F ตามเกณฑ์ของบทนี้,
+      M จาก qcut ปกติ) แล้วนับจำนวนลูกค้าในแต่ละคะแนนรวม (R+F+M) เรียงตามคะแนนรวม
+      เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      rfm = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+      rfm['R'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['F'] = rfm['frequency'].apply(lambda n: n if n <= 3 else 4)
+      rfm['M'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      result = (rfm['R'] + rfm['F'] + rfm['M']).value_counts().sort_index()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ต่อยอดจากตาราง RFM ของข้อ e4
+      - คะแนนรวมคือผลบวกของสามคอลัมน์ บวกกันตรงๆ ได้เลย
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าและรายได้รวมของแต่ละ segment (ใช้กติกาแบ่งกลุ่มของบทนี้)
+      แสดงคอลัมน์ customers, revenue โดย index เป็นชื่อ segment เรียงตามรายได้จากมากไปน้อย
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      rfm = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+      rfm['R'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['F'] = rfm['frequency'].apply(lambda n: n if n <= 3 else 4)
+
+      def segment(row):
+          if row['R'] >= 4 and row['F'] >= 3:
+              return 'champions'
+          if row['R'] <= 2 and row['F'] >= 3:
+              return 'at_risk'
+          if row['R'] >= 3 and row['F'] == 1:
+              return 'new_one_time'
+          if row['R'] == 1 and row['F'] <= 2:
+              return 'lost'
+          return 'others'
+
+      rfm['segment'] = rfm.apply(segment, axis=1)
+      result = rfm.groupby('segment').agg(customers=('monetary', 'size'), revenue=('monetary', 'sum'))
+      result = result.sort_values('revenue', ascending=False)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "`.apply(ฟังก์ชัน, axis=1)` เรียกฟังก์ชันทีละแถว โดยรับแถวนั้นเป็น Series"
+      - เงื่อนไขของกลุ่มต้องเรียงจากเฉพาะเจาะจงไปกว้าง เพราะ return ตัวแรกที่เข้าเงื่อนไขชนะ
+  - id: e8
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง RFM ระดับลูกค้าด้วย SQL — แสดง customer_id, recency (จำนวนวันถึง 2025-12-31),
+      frequency, monetary เฉพาะ 10 อันดับแรกที่ monetary สูงสุด เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT o.customer_id,
+             DATEDIFF('day', MAX(o.order_date), DATE '2025-12-31') AS recency,
+             COUNT(DISTINCT o.order_id) AS frequency,
+             SUM(li.quantity * li.unit_price) AS monetary
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY monetary DESC
+      LIMIT 10
+    ordered: true
+    hints:
+      - "DATEDIFF('day', a, b) นับจำนวนวันจาก a ไป b"
+      - อย่าลืมนับ frequency แบบไม่ซ้ำเพราะ join แล้วหนึ่งแถวคือหนึ่งรายการสินค้า
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      ให้คะแนน R ด้วย `NTILE(4)` ใน SQL โดยเรียงจากลูกค้าที่เพิ่งซื้อล่าสุดไปหาเก่าสุด
+      (ใช้ `ORDER BY last_order DESC, customer_id` เพื่อให้ผลคงที่เมื่อวันที่ซ้ำกัน)
+      แล้วสรุปเป็น r_score, customers, revenue เรียงตาม r_score จาก 1 ถึง 4
+      หมายเหตุ: `NTILE(4)` ให้กลุ่มที่ 1 กับแถวแรกสุดตามลำดับที่กำหนด ดังนั้นกลุ่ม 1 คือคนที่เพิ่งซื้อล่าสุด
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH per_customer AS (
+        SELECT o.customer_id,
+               MAX(o.order_date) AS last_order,
+               SUM(li.quantity * li.unit_price) AS monetary
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      ), scored AS (
+        SELECT customer_id, monetary,
+               NTILE(4) OVER (ORDER BY last_order DESC, customer_id) AS r_score
+        FROM per_customer
+      )
+      SELECT r_score, COUNT(*) AS customers, SUM(monetary) AS revenue
+      FROM scored
+      GROUP BY 1
+      ORDER BY r_score
+    ordered: true
+    hints:
+      - สรุปข้อมูลระดับลูกค้าใน CTE ก่อน แล้วค่อยใช้ NTILE ใน CTE ถัดไป
+      - "NTILE ต้องมี ORDER BY ที่ไม่กำกวม ไม่งั้นลูกค้าที่ค่าเท่ากันอาจตกคนละกลุ่มในแต่ละครั้งที่รัน"
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      ตารางสรุป segment แบบเต็ม — คอลัมน์ customers, revenue, rev_pct (สัดส่วนรายได้เป็นเปอร์เซ็นต์
+      ปัด 1 ตำแหน่ง) และ avg_monetary (ปัดเป็นจำนวนเต็ม) เรียงตาม rev_pct จากมากไปน้อย
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      rfm = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+      rfm['R'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['F'] = rfm['frequency'].apply(lambda n: n if n <= 3 else 4)
+
+      def segment(row):
+          if row['R'] >= 4 and row['F'] >= 3:
+              return 'champions'
+          if row['R'] <= 2 and row['F'] >= 3:
+              return 'at_risk'
+          if row['R'] >= 3 and row['F'] == 1:
+              return 'new_one_time'
+          if row['R'] == 1 and row['F'] <= 2:
+              return 'lost'
+          return 'others'
+
+      rfm['segment'] = rfm.apply(segment, axis=1)
+      result = rfm.groupby('segment').agg(
+          customers=('monetary', 'size'),
+          revenue=('monetary', 'sum'),
+          avg_monetary=('monetary', 'mean'),
+      )
+      result['rev_pct'] = (result['revenue'] / rfm['monetary'].sum() * 100).round(1)
+      result['avg_monetary'] = result['avg_monetary'].round(0)
+      result = result[['customers', 'revenue', 'rev_pct', 'avg_monetary']].sort_values('rev_pct', ascending=False)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - ต่อยอดจากข้อ e7 แล้วเพิ่มคอลัมน์ที่คำนวณจากผลรวมทั้งตาราง
+      - สัดส่วนรายได้หารด้วยรายได้รวมของลูกค้าทุกคน ไม่ใช่รายได้ของ segment เอง
+
+quiz:
+  - id: q1
+    question: ทำไม labels ของ pd.qcut สำหรับคะแนน R ต้องเป็น [4, 3, 2, 1]
+    choices:
+      - text: เพราะ recency น้อย (เพิ่งซื้อ) ต้องได้คะแนนสูง แต่ qcut เรียงกลุ่มจากค่าน้อยไปมาก
+        correct: true
+        why: ถ้าใส่ [1,2,3,4] ลูกค้าที่หายไปนานที่สุดจะได้คะแนนสูงสุด ซึ่งกลับหัวกับความหมายที่ต้องการ
+      - text: เพราะ pandas ต้องการ labels เรียงจากมากไปน้อยเสมอ
+        why: pandas รับได้ทั้งสองแบบ ขึ้นกับความหมายที่เราต้องการ
+      - text: เพราะ recency เป็นค่าติดลบ
+        why: recency เป็นจำนวนวันซึ่งเป็นค่าบวก
+      - text: ไม่จำเป็น ใส่แบบไหนก็ได้ผลเหมือนกัน
+        why: ใส่กลับด้านแล้วคะแนนทุกคนพลิกทันที และไม่มี error ให้เห็น จึงเป็นบั๊กที่จับยาก
+  - id: q2
+    question: qcut กับ frequency แล้วเจอ "Bin edges must be unique" เพราะอะไร
+    choices:
+      - text: เพราะลูกค้าซื้อครั้งเดียวมีมากถึง 43.6% ขอบควอไทล์สองขอบจึงตกที่ค่าเดียวกัน
+        correct: true
+        why: qcut ต้องการขอบที่แตกต่างกันเพื่อแบ่ง 4 กลุ่ม แต่ค่าซ้ำเยอะทำให้ขอบชนกัน
+      - text: เพราะ frequency มีค่า NULL
+        why: frequency ที่นับจาก groupby ไม่มี NULL
+      - text: เพราะ frequency เป็นจำนวนเต็ม ใช้ qcut ไม่ได้
+        why: qcut ใช้กับจำนวนเต็มได้ปกติ ถ้าค่ากระจายพอ ปัญหาอยู่ที่ค่าซ้ำเยอะเกินไป
+      - text: เพราะข้อมูลมีน้อยเกินไป
+        why: มีลูกค้า 2,707 คนซึ่งมากพอ ปัญหาคือการกระจายตัวของค่า ไม่ใช่จำนวนแถว
+  - id: q3
+    question: ทำไมการใช้ rank(method='first') ก่อน qcut ถึงไม่ใช่ทางแก้ที่ดีสำหรับ F
+    choices:
+      - text: เพราะลูกค้าที่ซื้อจำนวนครั้งเท่ากันจะได้คะแนนต่างกันตามลำดับแถว ซึ่งอธิบายให้ทีมธุรกิจฟังไม่ได้
+        correct: true
+        why: เกณฑ์ที่อธิบายไม่ได้ทำให้ทีมไม่เชื่อถือ segment และเอาไปใช้ตัดสินใจไม่ได้
+      - text: เพราะ rank ทำให้โค้ดช้ามาก
+        why: ความเร็วไม่ใช่ประเด็น
+      - text: เพราะ rank ใช้กับจำนวนเต็มไม่ได้
+        why: ใช้ได้ปกติ ปัญหาอยู่ที่ความหมายของผลลัพธ์
+      - text: เพราะผลลัพธ์จะมีกลุ่มไม่เท่ากัน
+        why: กลับกัน — rank ทำให้กลุ่มเท่ากันเป๊ะ แต่แลกมาด้วยเกณฑ์ที่อธิบายไม่ได้
+  - id: q4
+    question: จากตาราง segment ของบทนี้ ถ้ามีงบทำแคมเปญก้อนเดียว ควรเริ่มที่กลุ่มไหน
+    choices:
+      - text: at_risk เพราะมีแค่ 383 คนแต่เคยสร้างรายได้ 24.3% และเฉลี่ยต่อคนสูงเป็นอันดับสอง
+        correct: true
+        why: กลุ่มนี้รู้จักร้านดีและเคยพิสูจน์แล้วว่ายอมจ่าย การดึงกลับจึงคุ้มกว่าการหาลูกค้าใหม่
+      - text: champions เพราะเป็นลูกค้าที่ดีที่สุด
+        why: champions ซื้ออยู่แล้ว ส่วนลดที่ให้ไปมักเป็นกำไรที่หายไปเปล่าๆ (cannibalization)
+      - text: new_one_time เพราะมีคนเยอะที่สุดรองจาก others
+        why: กลุ่มนี้ใหญ่แต่มูลค่าต่อคนต่ำสุด เหมาะกับวิธีถูกๆ อย่างอีเมลอัตโนมัติมากกว่างบก้อนใหญ่
+      - text: lost เพราะต้องรีบดึงกลับก่อนหายไปถาวร
+        why: กลุ่มนี้หายไปนานและแทบไม่เคยซื้อซ้ำ โอกาสดึงกลับต่ำที่สุดเมื่อเทียบกับงบที่ใช้
+  - id: q5
+    question: ข้อใดคือข้อจำกัดสำคัญของคะแนน RFM
+    choices:
+      - text: เป็นภาพ ณ วันที่อ้างอิงเท่านั้น และคะแนนเป็นอันดับ ไม่ใช่ปริมาณที่เอามาคูณหารกันได้
+        correct: true
+        why: เปลี่ยนวันอ้างอิงคะแนนก็เปลี่ยนหมด และ R=4 ไม่ได้แปลว่าดีเป็นสองเท่าของ R=2
+      - text: ต้องใช้ machine learning ถึงจะคำนวณได้
+        why: RFM ใช้แค่ตารางออเดอร์กับการจัดกลุ่มพื้นฐาน ไม่ต้องมีโมเดล
+      - text: ใช้ได้เฉพาะกับธุรกิจออนไลน์
+        why: ใช้ได้กับธุรกิจไหนก็ได้ที่มีประวัติการซื้อ เพียงแต่ต้องปรับกรอบเวลาให้เข้ากับรอบการซื้อของธุรกิจนั้น
+      - text: ต้องมีลูกค้าอย่างน้อยหนึ่งล้านคน
+        why: ใช้กับฐานลูกค้าขนาดไหนก็ได้ ยิ่งเล็กยิ่งต้องระวังการแบ่งควอไทล์ที่กลุ่มเล็กเกินไป
+
+summary:
+  - RFM สรุปพฤติกรรมลูกค้าด้วย 3 มิติจากตารางออเดอร์ที่มีอยู่แล้ว ไม่ต้องใช้โมเดลอะไรซับซ้อน
+  - qcut แบ่งควอไทล์ได้เฉพาะตอนค่ากระจายพอ ถ้าค่าซ้ำเยอะ (เช่น frequency) ให้กำหนดเกณฑ์เองที่อธิบายได้
+  - คะแนนรวมใช้จัดอันดับ แต่กลุ่มที่เสนอ action ได้ต้องมาจากการรวม R กับ F ตามความหมาย
+
+interview:
+  - id: i1
+    q: อธิบาย RFM และวิธีเอาไปใช้จริงกับทีมการตลาด
+    a: |
+      RFM แบ่งลูกค้าด้วยสามมิติจากประวัติการซื้อ — ซื้อล่าสุดเมื่อไหร่ (R) ซื้อมาแล้วกี่ครั้ง (F)
+      และจ่ายไปเท่าไหร่ (M) — แล้วให้คะแนนแต่ละมิติเพื่อจัดกลุ่ม สิ่งที่ทำให้ RFM ใช้ได้จริงคือมันตอบคำถาม
+      "ควรคุยกับใครก่อน" ด้วยภาษาที่ทีมการตลาดเข้าใจ เช่น กลุ่มที่เคยซื้อบ่อยแต่หายไปนาน (at_risk)
+      คุ้มที่จะใช้งบดึงกลับ ส่วนกลุ่มที่ซื้ออยู่แล้วไม่ต้องให้ส่วนลด ข้อควรระวังคือคะแนนเป็นภาพ ณ วันอ้างอิง
+      และต้องปรับกรอบเวลาให้เข้ากับรอบการซื้อของธุรกิจนั้นๆ
+  - id: i2
+    q: ทำไมถึงไม่ใช้คะแนนรวม RFM ตัวเดียวจัดอันดับลูกค้าแล้วจบ
+    a: |
+      เพราะคะแนนรวมที่เท่ากันมาจากพฤติกรรมคนละแบบได้ เช่น 8 คะแนนอาจเป็น R=4,F=2,M=2
+      (เพิ่งซื้อครั้งแรก ยังไม่รู้ว่าจะอยู่ต่อไหม) หรือ R=1,F=4,M=3 (เคยเป็นลูกค้าชั้นดีที่หายไปแล้ว)
+      สองคนนี้ต้องทำคนละอย่างกันคนละขั้ว คะแนนรวมจึงใช้เรียงลำดับความสำคัญได้ แต่ไม่พอสำหรับตัดสินใจว่าทำอะไร
+      ต้องดูองค์ประกอบของคะแนนด้วยเสมอ
+
+flashcards:
+  - id: c1
+    front: R, F, M ย่อมาจากอะไร
+    back: Recency (ซื้อล่าสุดเมื่อไหร่) Frequency (ซื้อกี่ครั้ง) Monetary (จ่ายรวมเท่าไหร่)
+  - id: c2
+    front: ทำไม labels ของคะแนน R ต้องกลับหัว
+    back: เพราะ recency น้อยแปลว่าเพิ่งซื้อ ต้องได้คะแนนสูง แต่ qcut เรียงกลุ่มจากค่าน้อยไปมาก
+  - id: c3
+    front: กลุ่ม at_risk คือใคร และควรทำอะไร
+    back: ลูกค้าที่เคยซื้อบ่อยแต่หายไปนาน — คุ้มที่สุดที่จะใช้งบดึงกลับ เพราะเคยพิสูจน์แล้วว่ายอมจ่าย

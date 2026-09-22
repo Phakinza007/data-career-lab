@@ -1,0 +1,413 @@
+goals:
+  - สร้างตาราง funnel จากตาราง events โดยนับหน่วยเดียวกันทุกขั้น (session) และเรียงตามลำดับขั้นจริง
+  - แยกให้ออกระหว่าง conversion "เทียบขั้นก่อนหน้า" กับ "เทียบขั้นแรก" และรู้ว่าจะใช้ตัวไหนตอนไหน
+  - หาขั้นที่คนหายไปมากที่สุด แล้วเจาะต่อด้วยการแบ่งกลุ่ม (segment)
+
+examples:
+  - id: x1
+    title: สร้างตาราง funnel ที่เรียงตามลำดับขั้นจริง
+    lang: sql
+    prompt: |
+      ทีม product อยากเห็นภาพรวมว่าจาก session ที่เข้าเว็บทั้งหมด เหลือกี่ session ในแต่ละขั้นของ funnel
+    steps:
+      - text: |
+          นับ session แบบไม่ซ้ำของแต่ละขั้นก่อน — หนึ่ง session อาจยิง event เดิมซ้ำได้ในงานจริง
+          จึงต้อง `COUNT(DISTINCT session_id)` ไม่ใช่ `COUNT(*)`
+        code: |
+          SELECT event_type, COUNT(DISTINCT session_id) AS sessions
+          FROM events
+          GROUP BY 1
+          ORDER BY sessions DESC
+      - text: |
+          ใส่หมายเลขขั้นด้วย `CASE` เพื่อบังคับลำดับให้ตรงกับ funnel จริง แล้วคำนวณสัดส่วนเทียบขั้นแรก
+          ด้วย `MAX(sessions) OVER ()` (ค่าสูงสุดของทั้งตาราง = จำนวน session ขั้น visit)
+        code: |
+          WITH funnel AS (
+            SELECT CASE event_type
+                     WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                     WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+                   END AS step_no,
+                   event_type,
+                   COUNT(DISTINCT session_id) AS sessions
+            FROM events
+            GROUP BY 1, 2
+          )
+          SELECT step_no, event_type, sessions,
+                 ROUND(sessions * 100.0 / MAX(sessions) OVER (), 2) AS pct_of_visit
+          FROM funnel
+          ORDER BY step_no
+    pitfall:
+      text: |
+        ถ้าปล่อยให้ `GROUP BY event_type` เรียงเองตามค่าเริ่มต้น จะได้ลำดับตามตัวอักษร
+        (`add_to_cart`, `checkout`, `purchase`, `view_product`, `visit`) ซึ่งไม่ใช่ลำดับของ funnel
+        ตัวเลขทุกตัวถูกต้อง แต่ตารางอ่านแล้วสับสนทันทีเพราะ "กรวย" ไม่ได้แคบลงตามลำดับ
+        — ข้อมูลถูกแต่สื่อสารผิด ก็ยังนับเป็นรายงานที่ใช้ไม่ได้
+      code: |
+        SELECT event_type, COUNT(DISTINCT session_id) AS sessions
+        FROM events
+        GROUP BY 1
+        ORDER BY event_type
+  - id: x2
+    title: หาขั้นที่คนหายไปมากที่สุดด้วย LAG
+    lang: sql
+    prompt: |
+      ทีมมีงบพอแก้ได้จุดเดียว — ต้องรู้ว่าขั้นไหนของ funnel ที่คนหายไปมากที่สุด
+    steps:
+      - text: |
+          ดึงจำนวน session ของขั้นก่อนหน้ามาวางข้างกันด้วย `LAG(sessions) OVER (ORDER BY step_no)`
+        code: |
+          WITH funnel AS (
+            SELECT CASE event_type
+                     WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                     WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+                   END AS step_no,
+                   event_type,
+                   COUNT(DISTINCT session_id) AS sessions
+            FROM events
+            GROUP BY 1, 2
+          )
+          SELECT step_no, event_type, sessions,
+                 LAG(sessions) OVER (ORDER BY step_no) AS prev_sessions
+          FROM funnel
+          ORDER BY step_no
+      - text: |
+          เปลี่ยนเป็นเปอร์เซ็นต์ผ่านต่อ และเปอร์เซ็นต์ที่หายไป (100 ลบด้วยเปอร์เซ็นต์ผ่านต่อ)
+          — ขั้น `add_to_cart` หายไป 65.44% มากที่สุดในทุกขั้น
+        code: |
+          WITH funnel AS (
+            SELECT CASE event_type
+                     WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                     WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+                   END AS step_no,
+                   event_type,
+                   COUNT(DISTINCT session_id) AS sessions
+            FROM events
+            GROUP BY 1, 2
+          )
+          SELECT step_no, event_type, sessions,
+                 ROUND(sessions * 100.0 / LAG(sessions) OVER (ORDER BY step_no), 2) AS pct_of_prev,
+                 ROUND(100 - sessions * 100.0 / LAG(sessions) OVER (ORDER BY step_no), 2) AS drop_pct
+          FROM funnel
+          ORDER BY step_no
+    pitfall:
+      text: |
+        ถ้าเปลี่ยนหน่วยนับจาก `session_id` เป็น `customer_id` ตัวเลขจะเล็กลงมากทุกขั้นและสัดส่วนเพี้ยนไปหมด
+        เพราะ event ส่วนใหญ่มาจากผู้ใช้ที่ยังไม่ล็อกอิน (`customer_id` เป็น NULL) และ `COUNT(DISTINCT)`
+        ไม่นับ NULL ให้ — funnel ที่ได้จะเป็นของ "เฉพาะคนที่ล็อกอินแล้ว" ซึ่งเป็นคนละคำถามกับที่ตั้งใจถาม
+      code: |
+        SELECT event_type,
+               COUNT(DISTINCT session_id) AS sessions,
+               COUNT(DISTINCT customer_id) AS customers
+        FROM events
+        GROUP BY 1
+        ORDER BY sessions DESC
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      funnel ของเฉพาะ session บนมือถือ (`device = 'mobile'`) แสดง step_no, event_type, sessions
+      เรียงตามลำดับขั้น เติม `___` ให้ครบ
+    starter: |
+      SELECT CASE event_type
+               WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+               WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+             END AS step_no,
+             event_type,
+             COUNT(___ session_id) AS sessions
+      FROM events
+      WHERE device = ___
+      GROUP BY 1, 2
+      ORDER BY ___
+    solution: |
+      SELECT CASE event_type
+               WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+               WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+             END AS step_no,
+             event_type,
+             COUNT(DISTINCT session_id) AS sessions
+      FROM events
+      WHERE device = 'mobile'
+      GROUP BY 1, 2
+      ORDER BY step_no
+    ordered: true
+    hints:
+      - นับ session แบบไม่ซ้ำ
+      - เรียงตามหมายเลขขั้นที่สร้างไว้ ไม่ใช่ตามชื่อ event
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวน session (ไม่ซ้ำ) ของแต่ละ event_type แสดงคอลัมน์ event_type, sessions เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT event_type, COUNT(DISTINCT session_id) AS sessions
+      FROM events
+      GROUP BY 1
+      ORDER BY sessions DESC
+    ordered: true
+    hints:
+      - "COUNT(DISTINCT session_id) นับ session แบบไม่ซ้ำ"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวน session ทั้งหมดที่เข้าเว็บ (ขั้น `visit`) และจำนวน session ที่ซื้อ (ขั้น `purchase`)
+      แสดงคอลัมน์ visits, purchases (แถวเดียว)
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END) AS visits,
+             COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) AS purchases
+      FROM events
+    hints:
+      - "COUNT(DISTINCT CASE WHEN ... THEN session_id END) นับเฉพาะแถวที่เข้าเงื่อนไขในคอลัมน์เดียว"
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      conversion rate รวมของ funnel (session ที่ซื้อ ÷ session ที่เข้าเว็บ) เป็นเปอร์เซ็นต์ปัด 2 ตำแหน่ง
+      แสดงคอลัมน์เดียวชื่อ cvr_pct
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+    hints:
+      - ต่อยอดจากข้อที่แล้ว เอาสองตัวเลขมาหารกันแล้วคูณ 100
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวน session ที่ไปถึงขั้น `checkout` แยกตามอุปกรณ์ แสดงคอลัมน์ device, sessions เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT device, COUNT(DISTINCT session_id) AS sessions
+      FROM events
+      WHERE event_type = 'checkout'
+      GROUP BY 1
+      ORDER BY sessions DESC
+    ordered: true
+    hints:
+      - กรองขั้นที่ต้องการด้วย WHERE ก่อนจัดกลุ่ม
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง funnel ครบทุกขั้น แสดงคอลัมน์ step_no, event_type, sessions, pct_of_visit
+      (สัดส่วนเทียบขั้น visit เป็นเปอร์เซ็นต์ปัด 2 ตำแหน่ง) เรียงตามลำดับขั้น
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH funnel AS (
+        SELECT CASE event_type
+                 WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                 WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+               END AS step_no,
+               event_type,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM events
+        GROUP BY 1, 2
+      )
+      SELECT step_no, event_type, sessions,
+             ROUND(sessions * 100.0 / MAX(sessions) OVER (), 2) AS pct_of_visit
+      FROM funnel
+      ORDER BY step_no
+    ordered: true
+    hints:
+      - "MAX(sessions) OVER () คือค่าสูงสุดของทั้งตาราง ซึ่งก็คือจำนวน session ของขั้นแรก"
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง funnel พร้อมอัตราผ่านต่อเทียบขั้นก่อนหน้า แสดงคอลัมน์ step_no, event_type, sessions, pct_of_prev
+      (ปัด 2 ตำแหน่ง ขั้นแรกเป็น NULL) เรียงตามลำดับขั้น
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH funnel AS (
+        SELECT CASE event_type
+                 WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                 WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+               END AS step_no,
+               event_type,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM events
+        GROUP BY 1, 2
+      )
+      SELECT step_no, event_type, sessions,
+             ROUND(sessions * 100.0 / LAG(sessions) OVER (ORDER BY step_no), 2) AS pct_of_prev
+      FROM funnel
+      ORDER BY step_no
+    ordered: true
+    hints:
+      - "LAG(sessions) OVER (ORDER BY step_no) คือจำนวน session ของขั้นก่อนหน้า"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      เทียบ conversion rate ของแต่ละอุปกรณ์ แสดงคอลัมน์ device, visits, purchases, cvr_pct
+      (เปอร์เซ็นต์ปัด 2 ตำแหน่ง) เรียงตาม cvr_pct จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT device,
+             COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END) AS visits,
+             COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) AS purchases,
+             ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+      GROUP BY 1
+      ORDER BY cvr_pct DESC
+    ordered: true
+    hints:
+      - จัดกลุ่มตาม device แล้วนับสองขั้นในแถวเดียวด้วย CASE WHEN
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      ขั้นไหนของ funnel ที่คนหายไปมากที่สุด (เทียบกับขั้นก่อนหน้า) แสดงคอลัมน์ event_type, drop_pct
+      (เปอร์เซ็นต์ที่หายไป ปัด 2 ตำแหน่ง) แถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH funnel AS (
+        SELECT CASE event_type
+                 WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                 WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+               END AS step_no,
+               event_type,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM events
+        GROUP BY 1, 2
+      ), steps AS (
+        SELECT event_type,
+               ROUND(100 - sessions * 100.0 / LAG(sessions) OVER (ORDER BY step_no), 2) AS drop_pct
+        FROM funnel
+      )
+      SELECT event_type, drop_pct
+      FROM steps
+      WHERE drop_pct IS NOT NULL
+      ORDER BY drop_pct DESC
+      LIMIT 1
+    hints:
+      - คำนวณ drop ของทุกขั้นก่อนใน CTE แล้วค่อยเรียงเอาแถวบนสุด
+      - ขั้นแรกไม่มีขั้นก่อนหน้า ค่าจะเป็น NULL ต้องกรองทิ้งก่อนเรียง
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      conversion rate รายเดือนของปี 2025 แสดงคอลัมน์ month, visits, purchases, cvr_pct
+      (เปอร์เซ็นต์ปัด 2 ตำแหน่ง) เรียงตามเดือน — สังเกตว่าเดือนที่ traffic พุ่งไม่ได้แปลว่า conversion ดีขึ้น
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT DATE_TRUNC('month', CAST(event_time AS TIMESTAMP)) AS month,
+             COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END) AS visits,
+             COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) AS purchases,
+             ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+      GROUP BY 1
+      ORDER BY month
+    ordered: true
+    hints:
+      - "event_time เป็น timestamp ต้อง CAST ก่อนใช้ DATE_TRUNC"
+      - ข้อมูล events มีแค่ปี 2025 จึงไม่ต้องกรองปีเพิ่ม
+
+quiz:
+  - id: q1
+    question: ทำไมต้องใส่หมายเลขขั้นด้วย CASE แทนที่จะปล่อยให้ GROUP BY เรียงเอง
+    choices:
+      - text: เพราะ GROUP BY เรียงตามตัวอักษร ซึ่งไม่ตรงกับลำดับจริงของ funnel ทำให้ตารางอ่านแล้วสับสน
+        correct: true
+        why: ตัวเลขถูกแต่ลำดับผิด คนอ่านจะไม่เห็น "กรวย" ที่แคบลงตามขั้น
+      - text: เพราะ GROUP BY คำนวณ COUNT ผิดถ้าไม่ใส่ CASE
+        why: COUNT ถูกต้องอยู่แล้ว ปัญหาอยู่ที่ลำดับการแสดงผลเท่านั้น
+      - text: เพราะ CASE ทำให้ query เร็วขึ้น
+        why: ไม่เกี่ยวกับความเร็ว
+      - text: เพราะ event_type เป็น NULL ในบางแถว
+        why: "event_type มีค่าครบทุกแถว คอลัมน์ที่มี NULL เยอะคือ customer_id และ variant"
+  - id: q2
+    question: '"conversion rate 7.64%" ของ funnel นี้หมายถึงอะไร'
+    choices:
+      - text: 7.64% ของ session ที่เข้าเว็บจบด้วยการซื้อ
+        correct: true
+        why: เป็น overall conversion ที่หารด้วยขั้นแรก (visit) — ต้องบอกตัวหารเสมอไม่งั้นกำกวม
+      - text: 7.64% ของคนที่ถึงหน้าจ่ายเงินแล้วซื้อจริง
+        why: ตัวเลขนั้นคือ 67.31% (เทียบขั้นก่อนหน้า) ไม่ใช่ 7.64%
+      - text: 7.64% ของลูกค้าทั้งหมดในฐานข้อมูลเคยซื้อ
+        why: funnel นี้นับเป็น session ไม่ใช่ลูกค้า และไม่ได้ดูจากตาราง customers
+      - text: ยอดขายเติบโต 7.64%
+        why: conversion rate ไม่เกี่ยวกับการเติบโตของยอดขาย
+  - id: q3
+    question: ขั้นไหนของ funnel นี้ที่ควรแก้ก่อนถ้ามีงบแก้ได้จุดเดียว
+    choices:
+      - text: add_to_cart เพราะผ่านต่อได้แค่ 34.56% ของขั้นก่อนหน้า — หายไปมากที่สุดในทุกขั้น
+        correct: true
+        why: จุดที่คนหายเยอะที่สุดคือจุดที่การปรับปรุงให้ผลตอบแทนสูงสุด
+      - text: purchase เพราะเหลือแค่ 7.64% ของ visit ซึ่งน้อยที่สุด
+        why: 7.64% เป็นผลสะสมของทุกขั้น จริงๆ แล้วขั้น purchase ผ่านได้ดีที่สุด (67.31% ของขั้นก่อนหน้า)
+      - text: visit เพราะเป็นขั้นแรกและสำคัญที่สุด
+        why: visit คือขั้นตั้งต้น ไม่มีขั้นก่อนหน้าให้เทียบ การเพิ่ม traffic เป็นคนละเรื่องกับการอุด funnel ที่รั่ว
+      - text: checkout เพราะเกี่ยวกับการจ่ายเงินโดยตรง
+        why: checkout ผ่านต่อได้ 54.79% ซึ่งยังดีกว่า add_to_cart
+  - id: q4
+    question: แบ่ง funnel ตาม device แล้วพบว่าทั้งสองกลุ่มแทบไม่ต่างกัน ควรทำยังไงต่อ
+    choices:
+      - text: บันทึกไว้ว่าอุปกรณ์ไม่ใช่สาเหตุ แล้วไปตั้งสมมติฐานอื่นแทน
+        correct: true
+        why: ผลที่ "ไม่ต่าง" ตัดสมมติฐานหนึ่งออกไปได้ ซึ่งมีค่าพอๆ กับการเจอความต่าง
+      - text: หาวิธีแบ่งกลุ่มย่อยไปเรื่อยๆ จนกว่าจะเจอกลุ่มที่ต่างกันอย่างมีนัยสำคัญ
+        why: การไล่แบ่งกลุ่มจนเจอความต่างคือการขุดหา p-value (p-hacking) เจอความต่างแน่ๆ แต่มักเป็นเรื่องบังเอิญ
+      - text: สรุปว่าข้อมูลผิดเพราะ mobile กับ desktop ต้องต่างกันอยู่แล้ว
+        why: การตั้งต้นว่าผลต้องออกมาแบบหนึ่งแล้วโทษข้อมูลเมื่อไม่เป็นตามนั้น เป็นการวิเคราะห์ที่ลำเอียง
+      - text: เลิกทำ funnel analysis เพราะไม่ได้ insight
+        why: funnel ชี้จุดที่ต้องแก้ (add_to_cart) ไปแล้ว การ segment เป็นแค่ขั้นเจาะหาสาเหตุต่อ
+
+summary:
+  - funnel ต้องนับหน่วยเดียวกันทุกขั้น (ที่นี่คือ session) และเรียงตามลำดับขั้นจริง ไม่ใช่ตามตัวอักษร
+  - conversion มีสองแบบ — เทียบขั้นก่อนหน้า (หาจุดรั่ว) และเทียบขั้นแรก (ภาพรวม) ต้องบอกเสมอว่าหารด้วยอะไร
+  - จุดที่คนหายมากที่สุดคือจุดที่ควรแก้ก่อน และผล segment ที่ "ไม่ต่าง" ก็เป็นคำตอบที่ใช้งานได้
+
+interview:
+  - id: i1
+    q: จะออกแบบ funnel analysis ให้ทีม product ยังไง ตั้งแต่ตั้งคำถามจนถึงข้อเสนอ
+    a: |
+      เริ่มจากนิยามขั้นของ funnel ให้ตรงกับเส้นทางจริงของผู้ใช้ และเลือกหน่วยนับให้เหมือนกันทุกขั้น
+      (session หรือ user — ถ้าข้อมูลมีผู้ใช้ที่ยังไม่ล็อกอินเยอะ การนับเป็น user จะทิ้งข้อมูลไปมาก)
+      จากนั้นคำนวณสองมุม คือ % ของขั้นก่อนหน้า (ชี้จุดรั่ว) และ % ของขั้นแรก (บอกผลกระทบต่อภาพรวม)
+      หาขั้นที่ drop มากที่สุดเป็นเป้าหมายแรก แล้ว segment ต่อ (อุปกรณ์ ช่องทาง ลูกค้าใหม่/เก่า)
+      เพื่อดูว่าเกิดกับทุกคนหรือเฉพาะกลุ่ม สุดท้ายเสนอสิ่งที่ทดลองได้จริงและวัดผลได้ด้วย A/B test
+  - id: i2
+    q: ทีมบอกว่า conversion เดือนนี้ลดลง แต่ยอดขายเพิ่ม เป็นไปได้ยังไง
+    a: |
+      เป็นไปได้ปกติ เพราะ conversion เป็นอัตราส่วน ถ้าตัวหาร (จำนวน session หรือ traffic) โตเร็วกว่าตัวตั้ง
+      (จำนวนคนที่ซื้อ) อัตราส่วนจะลดลงทั้งที่ยอดขายเพิ่มขึ้น กรณีที่พบบ่อยคือแคมเปญโฆษณาที่ดึง traffic
+      กลุ่มใหม่ที่ยังไม่พร้อมซื้อเข้ามาเยอะ จึงต้องดูตัวตั้งกับตัวหารแยกกันเสมอ และถ้าเป็นไปได้ให้แยก
+      conversion ตามช่องทางที่มา เพราะ traffic คนละแหล่งมีพฤติกรรมต่างกันจนเอามารวมกันแล้วตีความผิดได้
+
+flashcards:
+  - id: c1
+    front: funnel analysis ตอบคำถามอะไร
+    back: คนหายไปมากที่สุดตรงขั้นไหน เพื่อเลือกจุดที่แก้แล้วได้ผลตอบแทนสูงสุด
+  - id: c2
+    front: conversion "เทียบขั้นก่อนหน้า" ต่างจาก "เทียบขั้นแรก" ยังไง
+    back: เทียบขั้นก่อนหน้าใช้หาจุดรั่วของ funnel ส่วนเทียบขั้นแรกบอกผลกระทบต่อภาพรวม
+  - id: c3
+    front: ทำไม funnel ในเว็บนี้ถึงนับเป็น session ไม่ใช่ลูกค้า
+    back: เพราะ event ส่วนใหญ่มาจากผู้ใช้ที่ยังไม่ล็อกอิน (customer_id เป็น NULL) การนับเป็นลูกค้าจะทิ้งข้อมูลไปเกือบครึ่ง

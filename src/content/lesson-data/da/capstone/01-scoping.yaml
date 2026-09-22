@@ -1,0 +1,341 @@
+goals:
+  - แปลงคำถามธุรกิจกว้างๆ ให้เป็นคำถามย่อยที่ตอบได้ด้วยตัวชี้วัดและข้อมูลที่มีจริง
+  - ทำ data profiling (ขนาด ช่วงเวลา ค่าว่าง ความสอดคล้องระหว่างตาราง) ก่อนเริ่มวิเคราะห์
+  - เขียนขอบเขตและข้อจำกัดของงานให้ชัดตั้งแต่ต้น
+
+examples:
+  - id: x1
+    title: profiling ขนาดและช่วงเวลาของข้อมูล
+    lang: sql
+    prompt: |
+      ก่อนตอบคำถามใดๆ ต้องรู้ก่อนว่ามีข้อมูลอะไรอยู่บ้าง แต่ละตารางใหญ่แค่ไหน และครอบคลุมช่วงเวลาไหน
+    steps:
+      - text: |
+          นับจำนวนแถวของทุกตารางในผลลัพธ์เดียวด้วย `UNION ALL` — อ่านง่ายกว่ารันทีละ query
+        code: |
+          SELECT 'customers' AS table_name, COUNT(*) AS rows FROM customers
+          UNION ALL SELECT 'products', COUNT(*) FROM products
+          UNION ALL SELECT 'orders', COUNT(*) FROM orders
+          UNION ALL SELECT 'order_items', COUNT(*) FROM order_items
+          UNION ALL SELECT 'events', COUNT(*) FROM events
+          ORDER BY rows DESC
+      - text: |
+          ดูช่วงเวลาของแต่ละตาราง — จุดที่ต้องสังเกตคือ `events` มีแค่ปี 2025
+          ซึ่งแปลว่าเทียบ funnel ข้ามปีไม่ได้ ต้องรู้ตั้งแต่ตอนวางแผน ไม่ใช่ตอนเขียน query ไปครึ่งทางแล้ว
+        code: |
+          SELECT 'orders.order_date' AS column_name,
+                 CAST(MIN(order_date) AS VARCHAR) AS min_value,
+                 CAST(MAX(order_date) AS VARCHAR) AS max_value
+          FROM orders
+          UNION ALL
+          SELECT 'customers.signup_date', CAST(MIN(signup_date) AS VARCHAR), CAST(MAX(signup_date) AS VARCHAR)
+          FROM customers
+          UNION ALL
+          SELECT 'events.event_time', CAST(MIN(CAST(event_time AS TIMESTAMP)) AS VARCHAR),
+                 CAST(MAX(CAST(event_time AS TIMESTAMP)) AS VARCHAR)
+          FROM events
+    pitfall:
+      text: |
+        `COUNT(*)` นับทุกแถว ส่วน `COUNT(คอลัมน์)` ไม่นับแถวที่คอลัมน์นั้นเป็น NULL —
+        คนมักใช้สองอย่างนี้สลับกันโดยไม่ตั้งใจ ในตาราง events ได้ 55,900 กับ 33,452 ซึ่งต่างกันมาก
+        ความต่างนี้ไม่ใช่บั๊ก แต่เป็นข้อจำกัดที่ต้องรู้ (event ส่วนใหญ่มาจากผู้ใช้ที่ยังไม่ล็อกอิน)
+      code: |
+        SELECT COUNT(*) AS all_rows,
+               COUNT(customer_id) AS rows_with_customer,
+               COUNT(variant) AS rows_with_variant
+        FROM events
+  - id: x2
+    title: ตรวจความสอดคล้องระหว่างตารางและตรรกะของข้อมูล
+    lang: sql
+    prompt: |
+      ก่อนเชื่อผลการวิเคราะห์ ต้องรู้ว่าข้อมูลเชื่อมกันครบไหม และมีอะไรที่ขัดกับตรรกะพื้นฐานหรือเปล่า
+    steps:
+      - text: |
+          หา "ลูกกำพร้า" ด้วย `LEFT JOIN` แล้วกรองแถวที่ฝั่งขวาเป็น NULL — ถ้าได้ 0 แปลว่าเชื่อมกันครบทุกแถว
+        code: |
+          SELECT COUNT(*) AS items_without_order
+          FROM order_items li
+          LEFT JOIN orders o ON o.order_id = li.order_id
+          WHERE o.order_id IS NULL
+      - text: |
+          ตรวจตรรกะที่ต้องเป็นจริงเสมอ (sanity check) — ออเดอร์ต้องไม่เกิดก่อนวันสมัคร
+          จำนวนต้องไม่ติดลบ และส่วนลดต้องอยู่ระหว่าง 0–100
+        code: |
+          SELECT COUNT(*) FILTER (WHERE o.order_date < c.signup_date) AS orders_before_signup,
+                 COUNT(*) FILTER (WHERE o.discount_pct < 0 OR o.discount_pct > 100) AS bad_discount
+          FROM orders o
+          JOIN customers c ON c.customer_id = o.customer_id
+    pitfall:
+      text: |
+        ถ้าใช้ `JOIN` ธรรมดา (inner join) แทน `LEFT JOIN` เพื่อหาลูกกำพร้า จะได้ 0 เสมอไม่ว่าข้อมูลจะพังแค่ไหน
+        เพราะ inner join ตัดแถวที่จับคู่ไม่ได้ทิ้งไปตั้งแต่แรก — เป็นการ "ตรวจแล้วผ่าน" ที่ไม่ได้ตรวจอะไรเลย
+        โค้ดด้านล่างรันผ่านและได้ 0 แต่เชื่อไม่ได้
+      code: |
+        SELECT COUNT(*) AS fake_check
+        FROM order_items li
+        JOIN orders o ON o.order_id = li.order_id
+        WHERE o.order_id IS NULL
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      นับค่าว่างของคอลัมน์สำคัญในตาราง orders — แสดง rows (ทุกแถว), with_discount (แถวที่มีส่วนลด)
+      เติม `___` ให้ครบ
+    starter: |
+      SELECT COUNT(___) AS rows,
+             COUNT(___) AS with_discount
+      FROM orders
+    solution: |
+      SELECT COUNT(*) AS rows,
+             COUNT(discount_pct) AS with_discount
+      FROM orders
+    hints:
+      - "COUNT(*) นับทุกแถว ส่วน COUNT(คอลัมน์) ข้าม NULL ให้เอง"
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนแถวของตาราง order_items แสดงคอลัมน์เดียวชื่อ rows
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(*) AS rows
+      FROM order_items
+    hints:
+      - "COUNT(*) นับทุกแถวในตาราง"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      ช่วงเวลาของออเดอร์ แสดงคอลัมน์ first_order, last_order
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT MIN(order_date) AS first_order,
+             MAX(order_date) AS last_order
+      FROM orders
+    hints:
+      - "MIN/MAX ใช้กับคอลัมน์วันที่ได้ตรงๆ"
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      สัดส่วนของแต่ละสถานะออเดอร์ แสดง status, orders, pct (เปอร์เซ็นต์ของออเดอร์ทั้งหมด ปัด 1 ตำแหน่ง)
+      เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT status,
+             COUNT(*) AS orders,
+             ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS pct
+      FROM orders
+      GROUP BY 1
+      ORDER BY orders DESC
+    ordered: true
+    hints:
+      - "SUM(COUNT(*)) OVER () คือผลรวมของทุกกลุ่ม ใช้เป็นตัวหารได้เลย"
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวน event แยกตามเดือน แสดง month, events เรียงตามเดือน — เพื่อดูว่าข้อมูลครอบคลุมช่วงไหนบ้าง
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT DATE_TRUNC('month', CAST(event_time AS TIMESTAMP)) AS month,
+             COUNT(*) AS events
+      FROM events
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - "event_time เป็นข้อความ ต้อง CAST เป็น TIMESTAMP ก่อน"
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ไม่เคยสั่งซื้อเลย (ไม่มีออเดอร์ในตาราง orders เลยสักใบ)
+      แสดงคอลัมน์เดียวชื่อ customers_without_orders
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(*) AS customers_without_orders
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id
+      WHERE o.customer_id IS NULL
+    hints:
+      - "LEFT JOIN แล้วกรองแถวที่ฝั่งขวาเป็น NULL คือวิธีหา 'ไม่มีคู่'"
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ตรวจความสอดคล้องระหว่างตารางในแถวเดียว แสดง items_without_order, orders_without_customer
+      (ทั้งคู่ควรได้ 0 ถ้าข้อมูลสมบูรณ์)
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT (SELECT COUNT(*)
+              FROM order_items li
+              LEFT JOIN orders o ON o.order_id = li.order_id
+              WHERE o.order_id IS NULL) AS items_without_order,
+             (SELECT COUNT(*)
+              FROM orders o
+              LEFT JOIN customers c ON c.customer_id = o.customer_id
+              WHERE c.customer_id IS NULL) AS orders_without_customer
+    hints:
+      - เขียน subquery สองตัวใน SELECT เดียวได้ ไม่ต้อง join อะไรเพิ่ม
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      โปรไฟล์ของตาราง events แสดง all_rows, rows_with_customer, rows_with_variant, distinct_sessions
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(*) AS all_rows,
+             COUNT(customer_id) AS rows_with_customer,
+             COUNT(variant) AS rows_with_variant,
+             COUNT(DISTINCT session_id) AS distinct_sessions
+      FROM events
+    hints:
+      - "COUNT(คอลัมน์) ข้าม NULL ให้เอง จึงใช้นับ 'แถวที่มีค่า' ได้"
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      sanity check รวมของข้อมูล แสดง orders_before_signup (ออเดอร์ที่เกิดก่อนวันสมัคร),
+      bad_discount (ส่วนลดนอกช่วง 0–100), bad_quantity (จำนวนสินค้าน้อยกว่าหรือเท่ากับ 0)
+      — ทั้งสามคอลัมน์ควรได้ 0
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT (SELECT COUNT(*)
+              FROM orders o
+              JOIN customers c ON c.customer_id = o.customer_id
+              WHERE o.order_date < c.signup_date) AS orders_before_signup,
+             (SELECT COUNT(*)
+              FROM orders
+              WHERE discount_pct < 0 OR discount_pct > 100) AS bad_discount,
+             (SELECT COUNT(*)
+              FROM order_items
+              WHERE quantity <= 0) AS bad_quantity
+    hints:
+      - แต่ละการตรวจเขียนเป็น subquery แยกกันได้
+      - "เงื่อนไขที่เทียบกับ NULL จะไม่เป็นจริง แถวที่ discount_pct เป็น NULL จึงไม่ถูกนับอยู่แล้ว"
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      เทียบ "รายได้เฉลี่ยต่อลูกค้า" สองนิยาม (เฉพาะออเดอร์ `completed`) —
+      per_registered หารด้วยลูกค้าที่สมัครทั้งหมด และ per_buyer หารด้วยลูกค้าที่เคยซื้อจริง
+      ปัดทั้งคู่ 2 ตำแหน่ง แสดงสองคอลัมน์นี้ในแถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH revenue AS (
+        SELECT SUM(li.quantity * li.unit_price) AS total_revenue,
+               COUNT(DISTINCT o.customer_id) AS buyers
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+      )
+      SELECT ROUND(total_revenue / (SELECT COUNT(*) FROM customers), 2) AS per_registered,
+             ROUND(total_revenue / buyers, 2) AS per_buyer
+      FROM revenue
+    hints:
+      - ตัวหารสองแบบคือจำนวนลูกค้าทั้งหมดในตาราง customers กับจำนวนลูกค้าที่มีออเดอร์ completed
+      - ความต่างของสองตัวนี้คือเหตุผลที่ต้องระบุนิยามให้ชัดในรายงาน
+
+quiz:
+  - id: q1
+    question: ทำไมต้องทำ data profiling ก่อนเริ่มวิเคราะห์
+    choices:
+      - text: เพื่อรู้ข้อจำกัดของข้อมูลตั้งแต่ต้น เช่น events มีแค่ปี 2025 จึงเทียบ funnel ข้ามปีไม่ได้
+        correct: true
+        why: รู้ก่อนแล้วปรับแผนได้ ดีกว่าเขียน query ไปครึ่งวันแล้วค่อยพบว่าตอบคำถามนั้นไม่ได้
+      - text: เพื่อให้ query ทำงานเร็วขึ้น
+        why: profiling ไม่เกี่ยวกับประสิทธิภาพ
+      - text: เพื่อทำความสะอาดข้อมูลให้เรียบร้อยก่อน
+        why: การทำความสะอาดเป็นขั้นถัดไป profiling คือการ "รู้จัก" ข้อมูลก่อนตัดสินใจว่าจะทำอะไรกับมัน
+      - text: ไม่จำเป็น ถ้าข้อมูลมาจากระบบของบริษัทเอง
+        why: ข้อมูลของบริษัทเองก็มีข้อจำกัดเสมอ เช่น ช่วงเวลาที่เริ่มเก็บ หรือคอลัมน์ที่เพิ่งเพิ่มมาทีหลัง
+  - id: q2
+    question: COUNT(*) กับ COUNT(customer_id) ในตาราง events ต่างกันเพราะอะไร
+    choices:
+      - text: "COUNT(คอลัมน์) ไม่นับแถวที่คอลัมน์นั้นเป็น NULL — event ส่วนใหญ่มาจากผู้ใช้ที่ยังไม่ล็อกอิน"
+        correct: true
+        why: ความต่าง 55,900 กับ 33,452 คือจำนวน event ที่ไม่รู้ว่าเป็นของลูกค้าคนไหน
+      - text: "COUNT(*) นับคอลัมน์ ส่วน COUNT(customer_id) นับแถว"
+        why: สลับกัน — COUNT(*) นับแถวทั้งหมด ส่วน COUNT(คอลัมน์) นับแถวที่คอลัมน์นั้นมีค่า
+      - text: เพราะ customer_id มีค่าซ้ำกันหลายแถว
+        why: "ค่าซ้ำไม่ทำให้ COUNT ต่างกัน ถ้าจะตัดค่าซ้ำต้องใช้ COUNT(DISTINCT ...)"
+      - text: เพราะตาราง events มีแถวเสีย
+        why: ไม่ใช่แถวเสีย แต่เป็นข้อมูลปกติของผู้ใช้ที่ยังไม่ล็อกอิน
+  - id: q3
+    question: ใช้ INNER JOIN ตรวจหาแถวลูกกำพร้า (orphan) แล้วได้ 0 แปลว่าอะไร
+    choices:
+      - text: แปลว่าอะไรไม่ได้เลย เพราะ inner join ตัดแถวที่จับคู่ไม่ได้ทิ้งไปตั้งแต่แรก ต้องใช้ LEFT JOIN
+        correct: true
+        why: เป็น "การตรวจที่ผ่านเสมอ" ซึ่งอันตรายกว่าการไม่ตรวจเลย เพราะทำให้เราเชื่อข้อมูลผิดๆ
+      - text: แปลว่าข้อมูลสมบูรณ์ ไม่มีแถวลูกกำพร้า
+        why: ผลนี้ได้ 0 เสมอไม่ว่าข้อมูลจะพังแค่ไหน จึงไม่ได้ยืนยันอะไร
+      - text: แปลว่าตารางว่างเปล่า
+        why: ตารางมีข้อมูลปกติ แค่วิธีตรวจนั้นตรวจไม่ได้จริง
+      - text: แปลว่าต้องเปลี่ยนไปใช้ FULL OUTER JOIN เท่านั้น
+        why: "LEFT JOIN + WHERE ฝั่งขวา IS NULL ก็พอแล้วสำหรับการตรวจทิศทางเดียว"
+  - id: q4
+    question: ข้อใดควรเขียนไว้ในส่วน "ข้อจำกัด" ของรายงาน capstone นี้
+    choices:
+      - text: ไม่มีข้อมูลต้นทุนการตลาด จึงคำนวณ ROI หรือ CAC ของแต่ละช่องทางไม่ได้
+        correct: true
+        why: บอกไว้ล่วงหน้าว่าอะไรตอบไม่ได้ ทำให้คนอ่านไม่ตีความเกินกว่าที่ข้อมูลรองรับ
+      - text: ใช้เวลาทำงานสามวัน
+        why: ระยะเวลาทำงานไม่ใช่ข้อจำกัดของข้อมูลหรือข้อสรุป
+      - text: ใช้ DuckDB แทน PostgreSQL
+        why: เครื่องมือที่ใช้ไม่กระทบความถูกต้องของข้อสรุป
+      - text: ผู้เขียนยังเรียนไม่จบ module นี้
+        why: ไม่เกี่ยวกับข้อมูลหรือขอบเขตของการวิเคราะห์
+
+summary:
+  - งานแรกของ DA คือแปลงคำถามธุรกิจกว้างๆ ให้เป็นคำถามย่อยที่มีตัวชี้วัดและแหล่งข้อมูลชัดเจน
+  - profiling (ขนาด ช่วงเวลา ค่าว่าง ความสอดคล้อง ตรรกะ) ต้องทำก่อนวิเคราะห์ ไม่ใช่หลังจากเขียน query ไปครึ่งทาง
+  - เขียนขอบเขตและข้อจำกัดไว้ตั้งแต่ต้น เพื่อกันการตีความเกินกว่าที่ข้อมูลรองรับ
+
+interview:
+  - id: i1
+    q: ได้รับโจทย์ว่า "ช่วยดูหน่อยว่าธุรกิจเราโตยั่งยืนไหม" จะเริ่มยังไง
+    a: |
+      เริ่มจากทำให้คำถามตอบได้ก่อน — ถามกลับว่านิยามของ "ยั่งยืน" ในบริบทนี้คืออะไร แล้วแตกเป็นคำถามย่อย
+      ที่มีตัวชี้วัดชัดเจน เช่น การเติบโตมาจากลูกค้าใหม่หรือลูกค้าเดิม ลูกค้าที่ได้มา retention เป็นยังไง
+      และกำไรโตตามรายได้ไหม จากนั้น profiling ข้อมูลเพื่อดูว่าตอบข้อไหนได้บ้างด้วยข้อมูลที่มี
+      แล้วตกลงขอบเขตกับผู้ถามก่อนลงมือ ขั้นตอนนี้ใช้เวลาไม่นานแต่ช่วยไม่ให้ส่งงานที่ตอบผิดคำถาม
+  - id: i2
+    q: ทำไมการเขียน "ข้อจำกัดของการวิเคราะห์" ถึงสำคัญ
+    a: |
+      เพราะข้อสรุปทุกข้อมีขอบเขตที่มันใช้ได้ ถ้าไม่บอก คนอ่านจะตีความเกินไปเอง เช่น เห็นว่า
+      ช่องทาง organic มีรายได้ต่อลูกค้าสูงสุดแล้วสรุปว่า "ควรย้ายงบโฆษณาไป organic ทั้งหมด"
+      ทั้งที่เราไม่มีข้อมูลต้นทุนของแต่ละช่องทางเลย จึงเปรียบเทียบความคุ้มค่าจริงๆ ไม่ได้
+      การเขียนข้อจำกัดยังแสดงว่าเราเข้าใจข้อมูลของตัวเองดีพอที่จะรู้ว่ามันตอบอะไรไม่ได้
+
+flashcards:
+  - id: c1
+    front: data profiling ดูอะไรบ้าง
+    back: ขนาดตาราง ช่วงเวลา ค่าว่าง ความสอดคล้องระหว่างตาราง และตรรกะที่ต้องเป็นจริงเสมอ (sanity check)
+  - id: c2
+    front: หาแถวลูกกำพร้า (orphan) ยังไง
+    back: "LEFT JOIN ตารางแม่ แล้วกรองแถวที่ฝั่งขวาเป็น NULL — ใช้ inner join จะได้ 0 เสมอ"
+  - id: c3
+    front: ทำไมต้องระบุขอบเขตและข้อจำกัดตั้งแต่ต้น
+    back: กันไม่ให้คนอ่านตีความเกินกว่าที่ข้อมูลรองรับ และกันคำถามที่ตอบไม่ได้ในห้องประชุม

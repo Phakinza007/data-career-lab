@@ -1,0 +1,499 @@
+goals:
+  - แตกตัวชี้วัดใหญ่เป็นตัวคูณย่อย (metric tree) เพื่อบอกว่าการเปลี่ยนแปลงมาจากกิ่งไหน
+  - ตรวจว่าค่าเฉลี่ยรวมที่เปลี่ยนไปเกิดจากกลุ่มย่อยเปลี่ยน หรือจากส่วนผสมของกลุ่มเปลี่ยน (mix shift)
+  - แยก vanity metric ออกจากตัวชี้วัดที่ใช้ตัดสินใจได้ และรู้จัก north star / guardrail metric
+
+examples:
+  - id: x1
+    title: รายได้โต 21% — มาจากกิ่งไหนของ metric tree
+    lang: sql
+    prompt: |
+      ผู้บริหารเห็นว่ารายได้ปี 2025 โตขึ้นจากปี 2024 แล้วถามว่า "โตเพราะอะไร"
+    steps:
+      - text: |
+          เริ่มจากวางตัวเลขของทั้งสองปีไว้ข้างกันก่อน — รายได้ ออเดอร์ AOV และจำนวนลูกค้าที่ซื้อ
+        code: |
+          SELECT EXTRACT(year FROM o.order_date) AS y,
+                 SUM(li.quantity * li.unit_price) AS revenue,
+                 COUNT(DISTINCT o.order_id) AS orders,
+                 ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov,
+                 COUNT(DISTINCT o.customer_id) AS customers
+          FROM orders o
+          JOIN order_items li ON li.order_id = o.order_id
+          WHERE o.status = 'completed'
+          GROUP BY 1
+          ORDER BY 1
+      - text: |
+          เปลี่ยนเป็นอัตราการเติบโตของทุกกิ่งพร้อมกันด้วย `LAG()` — กิ่งที่โตผิดปกติคือคำตอบ
+          ผลที่ได้: รายได้ +21.3% ออเดอร์ +21.2% แต่ AOV แทบไม่ขยับ (+0.03%)
+        code: |
+          WITH yearly AS (
+            SELECT EXTRACT(year FROM o.order_date) AS y,
+                   SUM(li.quantity * li.unit_price) AS revenue,
+                   COUNT(DISTINCT o.order_id) AS orders,
+                   SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id) AS aov
+            FROM orders o
+            JOIN order_items li ON li.order_id = o.order_id
+            WHERE o.status = 'completed'
+            GROUP BY 1
+          )
+          SELECT y,
+                 ROUND((revenue / LAG(revenue) OVER (ORDER BY y) - 1) * 100, 2) AS revenue_growth,
+                 ROUND((orders / LAG(orders) OVER (ORDER BY y) - 1) * 100, 2) AS orders_growth,
+                 ROUND((aov / LAG(aov) OVER (ORDER BY y) - 1) * 100, 2) AS aov_growth
+          FROM yearly
+          ORDER BY y
+    pitfall:
+      text: |
+        ถ้าดูแค่ตัวเลขรายได้รวมแล้วสรุปว่า "ธุรกิจโต 21%" จะพลาดสิ่งที่สำคัญกว่า — ในข้อมูลชุดนี้
+        จำนวนลูกค้าโตเร็วกว่าจำนวนออเดอร์ (31.5% เทียบกับ 21.2%) แปลว่าออเดอร์ต่อลูกค้าลดลงจาก 2.23
+        เหลือ 2.05 การโตครั้งนี้จึงมาจากลูกค้าใหม่ล้วนๆ ไม่ใช่จากลูกค้าเดิมที่ซื้อมากขึ้น
+        ซึ่งเป็นการเติบโตที่แพงกว่าและเปราะบางกว่ามาก
+      code: |
+        SELECT EXTRACT(year FROM o.order_date) AS y,
+               COUNT(DISTINCT o.order_id) AS orders,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               ROUND(COUNT(DISTINCT o.order_id) * 1.0 / COUNT(DISTINCT o.customer_id), 2) AS orders_per_customer
+        FROM orders o
+        WHERE o.status = 'completed'
+        GROUP BY 1
+        ORDER BY 1
+  - id: x2
+    title: retention รวมลดลง เพราะกลุ่มเดิมแย่ลงหรือเพราะส่วนผสมเปลี่ยน
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของลูกค้าที่เริ่มซื้อปี 2025 ต่ำกว่าปี 2024 (20.2% เทียบกับ 24.4%)
+      — ต้องตอบให้ได้ว่าเกิดจากอะไรก่อนจะเสนอให้ทีมไปแก้อะไร
+    steps:
+      - text: |
+          ดูค่ารวมของแต่ละปีก่อน เพื่อยืนยันว่าตัวเลขที่ผู้บริหารเห็นถูกต้องจริง
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), activity AS (
+            SELECT f.customer_id,
+                   DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+            FROM orders o
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed'
+          )
+          SELECT EXTRACT(year FROM f.cohort_month) AS cohort_year,
+                 COUNT(DISTINCT f.customer_id) AS customers,
+                 ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                       / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+          FROM first_order f
+          LEFT JOIN activity a ON a.customer_id = f.customer_id
+          GROUP BY 1
+          ORDER BY 1
+      - text: |
+          แยกตามช่องทางที่ลูกค้าเข้ามา จะเห็นว่าช่องทาง `ads` ดีขึ้นด้วยซ้ำ (22.4% → 22.6%)
+          และตัวที่ดึงค่ารวมลงคือช่องทาง `promo` ที่เพิ่งมีในปี 2025 และ retention แค่ 7.3%
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), activity AS (
+            SELECT f.customer_id,
+                   DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+            FROM orders o
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed'
+          )
+          SELECT EXTRACT(year FROM f.cohort_month) AS cohort_year, c.channel,
+                 COUNT(DISTINCT f.customer_id) AS customers,
+                 ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                       / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+          FROM first_order f
+          JOIN customers c ON c.customer_id = f.customer_id
+          LEFT JOIN activity a ON a.customer_id = f.customer_id
+          GROUP BY 1, 2
+          ORDER BY c.channel, cohort_year
+    pitfall:
+      text: |
+        ถ้าสรุปจากค่ารวมว่า "คุณภาพลูกค้าแย่ลง 4.2 จุด" แล้วส่งทีมไปไล่ปรับปรุงช่องทาง organic
+        จะเป็นการแก้ปัญหาที่ไม่มีอยู่จริง — ตัดลูกค้า `promo` ออกแล้วค่ารวมปี 2025 เป็น 22.5%
+        (ลดลงจากปี 2024 แค่ราว 1.9 จุด) มากกว่าครึ่งของการลดลงมาจากส่วนผสมที่เปลี่ยน ไม่ใช่กลุ่มเดิมแย่ลง
+      code: |
+        WITH first_order AS (
+          SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+          FROM orders WHERE status = 'completed' GROUP BY 1
+        ), activity AS (
+          SELECT f.customer_id,
+                 DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+          FROM orders o
+          JOIN first_order f ON f.customer_id = o.customer_id
+          WHERE o.status = 'completed'
+        )
+        SELECT COUNT(DISTINCT f.customer_id) AS customers,
+               ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                     / COUNT(DISTINCT f.customer_id), 1) AS m1_excl_promo
+        FROM first_order f
+        JOIN customers c ON c.customer_id = f.customer_id
+        LEFT JOIN activity a ON a.customer_id = f.customer_id
+        WHERE EXTRACT(year FROM f.cohort_month) = 2025 AND c.channel <> 'promo'
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      ออเดอร์ต่อลูกค้าของแต่ละปี (เฉพาะ `completed`) แสดง y, orders, customers, orders_per_customer
+      (ปัด 2 ตำแหน่ง) เรียงตามปี เติม `___` ให้ครบ
+    starter: |
+      SELECT EXTRACT(year FROM order_date) AS y,
+             COUNT(___ order_id) AS orders,
+             COUNT(___ customer_id) AS customers,
+             ROUND(COUNT(DISTINCT order_id) * 1.0 / COUNT(DISTINCT customer_id), ___) AS orders_per_customer
+      FROM orders
+      WHERE status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    solution: |
+      SELECT EXTRACT(year FROM order_date) AS y,
+             COUNT(DISTINCT order_id) AS orders,
+             COUNT(DISTINCT customer_id) AS customers,
+             ROUND(COUNT(DISTINCT order_id) * 1.0 / COUNT(DISTINCT customer_id), 2) AS orders_per_customer
+      FROM orders
+      WHERE status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - ลูกค้าหนึ่งคนมีหลายออเดอร์ ทั้งสองคอลัมน์ต้องนับแบบไม่ซ้ำ
+      - โจทย์บอกให้ปัด 2 ตำแหน่ง
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      ตัวเลขระดับปี (เฉพาะ `completed`) แสดง y, revenue, orders, customers เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT EXTRACT(year FROM o.order_date) AS y,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             COUNT(DISTINCT o.order_id) AS orders,
+             COUNT(DISTINCT o.customer_id) AS customers
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - "EXTRACT(year FROM order_date) ดึงปีออกมาเป็นตัวเลข"
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      AOV ของแต่ละปี (เฉพาะ `completed`) ปัด 2 ตำแหน่ง แสดง y, aov เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT EXTRACT(year FROM o.order_date) AS y,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - AOV = รายได้ ÷ จำนวนออเดอร์ไม่ซ้ำ
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้ต่อลูกค้าของแต่ละปี (เฉพาะ `completed`) ปัด 2 ตำแหน่ง แสดง y, revenue_per_customer เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT EXTRACT(year FROM o.order_date) AS y,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.customer_id), 2) AS revenue_per_customer
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - เปลี่ยนตัวหารจากจำนวนออเดอร์เป็นจำนวนลูกค้า
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เริ่มซื้อในแต่ละปี แยกตามช่องทางที่สมัคร แสดง cohort_year, channel, customers
+      เรียงตามปีแล้วตามช่องทาง
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, MIN(order_date) AS first_day
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      )
+      SELECT EXTRACT(year FROM f.first_day) AS cohort_year, c.channel, COUNT(*) AS customers
+      FROM first_order f
+      JOIN customers c ON c.customer_id = f.customer_id
+      GROUP BY 1, 2
+      ORDER BY 1, 2
+    ordered: true
+    hints:
+      - หาวันที่ซื้อครั้งแรกของแต่ละคนก่อน แล้วค่อย join ข้อมูลช่องทาง
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      อัตราการเติบโตของทุกกิ่งใน metric tree แสดง y, revenue_growth, orders_growth, aov_growth
+      (เปอร์เซ็นต์เทียบปีก่อนหน้า ปัด 2 ตำแหน่ง ปีแรกเป็น NULL) เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH yearly AS (
+        SELECT EXTRACT(year FROM o.order_date) AS y,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders,
+               SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id) AS aov
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+        GROUP BY 1
+      )
+      SELECT y,
+             ROUND((revenue / LAG(revenue) OVER (ORDER BY y) - 1) * 100, 2) AS revenue_growth,
+             ROUND((orders / LAG(orders) OVER (ORDER BY y) - 1) * 100, 2) AS orders_growth,
+             ROUND((aov / LAG(aov) OVER (ORDER BY y) - 1) * 100, 2) AS aov_growth
+      FROM yearly
+      ORDER BY y
+    ordered: true
+    hints:
+      - สรุปตัวเลขระดับปีใน CTE ก่อน แล้วค่อยเทียบกับปีก่อนหน้าด้วย LAG
+      - "(ค่าใหม่ / ค่าเก่า - 1) * 100 ให้ผลเดียวกับ (ใหม่ - เก่า) / เก่า * 100"
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของลูกค้าที่เริ่มซื้อในแต่ละปี แสดง cohort_year, customers, m1_pct (ปัด 1 ตำแหน่ง)
+      เรียงตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT EXTRACT(year FROM f.cohort_month) AS cohort_year,
+             COUNT(DISTINCT f.customer_id) AS customers,
+             ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                   / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+      FROM first_order f
+      LEFT JOIN activity a ON a.customer_id = f.customer_id
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - ใช้โครง cohort จากบทที่ 3 แต่จัดกลุ่มระดับปีแทนระดับเดือน
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 แยกตามปีที่เริ่มซื้อและช่องทาง แสดง cohort_year, channel, customers, m1_pct
+      (ปัด 1 ตำแหน่ง) เรียงตามช่องทางแล้วตามปี
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT EXTRACT(year FROM f.cohort_month) AS cohort_year, c.channel,
+             COUNT(DISTINCT f.customer_id) AS customers,
+             ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                   / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+      FROM first_order f
+      JOIN customers c ON c.customer_id = f.customer_id
+      LEFT JOIN activity a ON a.customer_id = f.customer_id
+      GROUP BY 1, 2
+      ORDER BY c.channel, cohort_year
+    ordered: true
+    hints:
+      - เพิ่ม channel เข้าไปใน GROUP BY ของข้อที่แล้ว
+      - "ระวังลำดับการเรียง โจทย์ขอเรียงตามช่องทางก่อน"
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของลูกค้าที่เริ่มซื้อปี 2025 โดย**ตัดลูกค้าช่องทาง promo ออก**
+      แสดงคอลัมน์ customers, m1_pct (ปัด 1 ตำแหน่ง) แถวเดียว — เพื่อดูว่าถ้าไม่มีแคมเปญนั้นตัวเลขจะเป็นเท่าไหร่
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT COUNT(DISTINCT f.customer_id) AS customers,
+             ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                   / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+      FROM first_order f
+      JOIN customers c ON c.customer_id = f.customer_id
+      LEFT JOIN activity a ON a.customer_id = f.customer_id
+      WHERE EXTRACT(year FROM f.cohort_month) = 2025 AND c.channel <> 'promo'
+    hints:
+      - กรองทั้งปีที่เริ่มซื้อและช่องทางใน WHERE เดียวกัน
+      - ต่อยอดจากข้อ e6 ได้เลย
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      รายได้ปี 2025 แยกว่ามาจากลูกค้าที่เริ่มซื้อปี 2025 (ลูกค้าใหม่) หรือลูกค้าที่เริ่มซื้อก่อนหน้านั้น
+      แสดง customer_type ('new' / 'existing'), customers, revenue, revenue_pct (ปัด 1 ตำแหน่ง)
+      เรียงตาม revenue จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, MIN(order_date) AS first_day
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), sales_2025 AS (
+        SELECT o.customer_id,
+               CASE WHEN EXTRACT(year FROM f.first_day) = 2025 THEN 'new' ELSE 'existing' END AS customer_type,
+               li.quantity * li.unit_price AS line
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed' AND EXTRACT(year FROM o.order_date) = 2025
+      )
+      SELECT customer_type,
+             COUNT(DISTINCT customer_id) AS customers,
+             SUM(line) AS revenue,
+             ROUND(SUM(line) * 100.0 / SUM(SUM(line)) OVER (), 1) AS revenue_pct
+      FROM sales_2025
+      GROUP BY 1
+      ORDER BY revenue DESC
+    ordered: true
+    hints:
+      - ติดป้ายลูกค้าว่าใหม่หรือเก่าจากปีที่ซื้อครั้งแรก แล้วค่อยรวมยอดของปี 2025
+      - "SUM(SUM(line)) OVER () คือผลรวมของทุกกลุ่ม ใช้เป็นตัวหารของสัดส่วนได้"
+
+quiz:
+  - id: q1
+    question: metric tree มีประโยชน์ยังไงเวลาตัวเลขเปลี่ยน
+    choices:
+      - text: บอกว่าการเปลี่ยนแปลงมาจากกิ่งไหน (เช่น ออเดอร์หรือ AOV) แทนที่จะต้องเดาสุ่ม
+        correct: true
+        why: แตกตามสูตรก่อนเป็นขั้นแรกที่เร็วที่สุดในการหาสาเหตุ
+      - text: ทำให้ตัวเลขแม่นยำขึ้น
+        why: ความแม่นยำมาจากนิยามและข้อมูล ไม่ใช่จากการแตกกิ่ง
+      - text: ใช้แทนการทำ A/B test ได้
+        why: metric tree บอกว่าอะไรเปลี่ยน แต่ไม่ได้พิสูจน์ว่าอะไรเป็นสาเหตุ — การพิสูจน์เหตุผลยังต้องใช้การทดลอง
+      - text: ทำให้ query เร็วขึ้น
+        why: ไม่เกี่ยวกับประสิทธิภาพของ query
+  - id: q2
+    question: รายได้โต 21.3% ออเดอร์โต 21.2% แต่ AOV โต 0.03% ควรสรุปว่าอย่างไร
+    choices:
+      - text: การเติบโตมาจากจำนวนออเดอร์เกือบทั้งหมด ไม่ได้มาจากยอดต่อบิลที่สูงขึ้น
+        correct: true
+        why: เมื่อกิ่งหนึ่งนิ่งสนิท การเปลี่ยนแปลงทั้งหมดจึงมาจากอีกกิ่ง
+      - text: ทั้งสองอย่างช่วยกันคนละครึ่ง
+        why: AOV ขยับแค่ 0.03% ซึ่งแทบไม่มีผลต่อรายได้เลย
+      - text: ข้อมูลผิด เพราะรายได้ต้องโตเท่ากับ AOV
+        why: รายได้ = ออเดอร์ × AOV ดังนั้นรายได้โตได้จากกิ่งใดกิ่งหนึ่งหรือทั้งสองก็ได้
+      - text: แปลว่าลูกค้าเดิมซื้อมากขึ้น
+        why: ต้องดูจำนวนลูกค้าก่อน — ในข้อมูลนี้ลูกค้าโต 31.5% เร็วกว่าออเดอร์ แปลว่าออเดอร์ต่อลูกค้าลดลงด้วยซ้ำ
+  - id: q3
+    question: mix shift คืออะไร
+    choices:
+      - text: ค่าเฉลี่ยรวมเปลี่ยนเพราะสัดส่วนของกลุ่มย่อยเปลี่ยน แม้แต่ละกลุ่มแทบไม่เปลี่ยนเลย
+        correct: true
+        why: เช่นการมีลูกค้ากลุ่มใหม่ที่ retention ต่ำเข้ามา ทำให้ค่ารวมลดลงทั้งที่กลุ่มเดิมยังเหมือนเดิม
+      - text: การที่ข้อมูลของสองตารางปนกันตอน JOIN
+        why: นั่นเป็นปัญหาการ join ไม่ใช่ mix shift
+      - text: การที่ตัวชี้วัดเปลี่ยนนิยามระหว่างทาง
+        why: นั่นคือปัญหานิยามของตัวชี้วัด คนละเรื่องกับสัดส่วนของกลุ่ม
+      - text: การที่ข้อมูลบางเดือนหายไป
+        why: ข้อมูลขาดเป็นอีกปัญหาหนึ่ง ไม่ใช่ mix shift
+  - id: q4
+    question: ข้อใดเป็น vanity metric
+    choices:
+      - text: จำนวนผู้ใช้สะสมทั้งหมดตั้งแต่เปิดบริษัท
+        correct: true
+        why: มีแต่เพิ่มขึ้น ไม่มีวันลด ต่อให้ทุกคนเลิกใช้ไปแล้วก็ยังดูดีอยู่
+      - text: retention เดือนที่ 1 ของแต่ละ cohort
+        why: ลดลงได้ เทียบข้ามกลุ่มได้ และชี้ทางให้ทำอะไรต่อได้
+      - text: conversion rate ของ funnel
+        why: เป็นอัตราส่วนที่ลดลงได้และบอกจุดที่ต้องแก้
+      - text: รายได้ต่อลูกค้า
+        why: สะท้อนคุณภาพของลูกค้าจริงและลดลงได้เมื่อสถานการณ์แย่ลง
+  - id: q5
+    question: guardrail metric มีไว้ทำอะไร
+    choices:
+      - text: กันไม่ให้ทีมไล่ตัวชี้วัดหลักจนไปทำลายเรื่องอื่น เช่น ลดราคาหนักจนกำไรหาย
+        correct: true
+        why: guardrail คือสิ่งที่ต้องไม่แย่ลง แม้ตัวชี้วัดหลักจะดีขึ้นก็ตาม
+      - text: ใช้แทน north star metric เมื่อคำนวณตัวหลักไม่ได้
+        why: guardrail ใช้ควบคู่กับตัวหลัก ไม่ได้ใช้แทนกัน
+      - text: ใช้วัดผลงานของทีม data โดยเฉพาะ
+        why: guardrail วัดสุขภาพของธุรกิจ ไม่ใช่ผลงานของทีมใดทีมหนึ่ง
+      - text: ใช้ตรวจว่าข้อมูลใน warehouse ถูกต้อง
+        why: นั่นคือ data quality check ซึ่งเป็นคนละเรื่อง
+
+summary:
+  - metric tree แตกตัวชี้วัดใหญ่เป็นตัวคูณย่อย ทำให้บอกได้ว่าการเปลี่ยนแปลงมาจากกิ่งไหนและใครรับผิดชอบ
+  - ค่าเฉลี่ยรวมที่เปลี่ยนอาจมาจาก mix shift (สัดส่วนกลุ่มเปลี่ยน) ไม่ใช่กลุ่มเดิมแย่ลง ต้องแยกดูเสมอ
+  - vanity metric ขึ้นได้เรื่อยๆ โดยไม่บอกอะไร ส่วน north star ต้องมี guardrail กำกับไม่ให้ไล่ตัวเลขจนพังเรื่องอื่น
+
+interview:
+  - id: i1
+    q: ผู้บริหารถามว่า "ทำไมรายได้เดือนนี้ตก" มีวิธีไล่หาคำตอบยังไง
+    a: |
+      ไล่สี่ชั้นตามลำดับ: (1) แตกตามสูตร — รายได้ = ออเดอร์ × AOV ดูว่ากิ่งไหนเปลี่ยน แล้วแตกต่อ
+      (ออเดอร์ = ลูกค้า × ออเดอร์ต่อลูกค้า หรือ = session × conversion) (2) แตกตามกลุ่ม — ตกทุกกลุ่ม
+      หรือเฉพาะบางช่องทาง/สินค้า/พื้นที่ (3) เช็คส่วนผสม — สัดส่วนของกลุ่มเปลี่ยนไปไหม เพราะค่ารวมอาจตก
+      ทั้งที่ทุกกลุ่มย่อยเท่าเดิม (4) เช็คนิยามและข้อมูล — มีการเปลี่ยน tracking ระบบล่ม หรือข้อมูลบางส่วนยังไม่เข้าไหม
+      ส่วนใหญ่คำตอบอยู่ในสามข้อแรก และข้อสี่คือสิ่งที่ต้องตัดออกให้ได้ก่อนจะเชื่อตัวเลขใดๆ
+  - id: i2
+    q: ทีมตั้ง north star metric เป็น "จำนวนออเดอร์ต่อเดือน" คิดว่ามีความเสี่ยงอะไร
+    a: |
+      เสี่ยงตรงที่จำนวนออเดอร์เพิ่มได้ด้วยวิธีที่ทำลายธุรกิจ เช่น ลดราคาหนักจนกำไรต่อออเดอร์หาย
+      แจกส่วนลดให้ลูกค้าที่จะซื้ออยู่แล้ว หรือกระตุ้นให้แยกออเดอร์เป็นหลายใบ จึงควรมี guardrail กำกับ
+      เช่น กำไรขั้นต้นต่อออเดอร์ อัตราคืนสินค้า และ retention ของลูกค้าใหม่ และถ้าเลือกได้
+      ตัวชี้วัดหลักที่ดีกว่าคือตัวที่สะท้อนคุณค่าที่ลูกค้าได้รับจริง เช่น จำนวนลูกค้าที่ซื้อซ้ำต่อเดือน
+
+flashcards:
+  - id: c1
+    front: metric tree คืออะไร
+    back: การแตกตัวชี้วัดใหญ่เป็นตัวคูณย่อย เช่น รายได้ = ออเดอร์ × AOV เพื่อบอกว่าการเปลี่ยนแปลงมาจากกิ่งไหน
+  - id: c2
+    front: mix shift ทำให้เกิดอะไร
+    back: ค่าเฉลี่ยรวมเปลี่ยนเพราะสัดส่วนกลุ่มเปลี่ยน แม้แต่ละกลุ่มแทบไม่เปลี่ยน — กรณีสุดขั้วคือ Simpson's paradox
+  - id: c3
+    front: north star metric กับ guardrail metric ต่างกันยังไง
+    back: north star คือตัวชี้วัดหลักที่ทีมไล่ให้ขึ้น ส่วน guardrail คือตัวที่ต้องไม่แย่ลงระหว่างทาง

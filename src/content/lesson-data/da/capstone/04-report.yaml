@@ -1,0 +1,559 @@
+goals:
+  - เรียบเรียงผลวิเคราะห์เป็นรายงานที่เอาข้อสรุปขึ้นก่อน และมี insight ครบสี่ส่วน
+  - เตรียมข้อมูลสำหรับกราฟที่จำเป็นจริงๆ ด้วย pandas แล้วค่อยวาด
+  - จัดโครง portfolio และเล่างานให้จบใน 2 นาที
+
+examples:
+  - id: x1
+    title: เตรียมข้อมูลและวาดกราฟรายได้รายเดือน 2024–2025
+    lang: python
+    prompt: |
+      กราฟแรกของรายงาน — ให้คนอ่านเห็นแนวโน้มและฤดูกาลของรายได้ในภาพเดียว
+    steps:
+      - text: |
+          เตรียมข้อมูลก่อนเสมอ — `dt.to_period('M').astype(str)` ให้ป้ายเดือนแบบ `2024-01`
+          ที่เรียงตามเวลาได้ถูกต้องและอ่านรู้เรื่อง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          monthly = sales.groupby(sales['order_date'].dt.to_period('M').astype(str))['line'].sum()
+          monthly
+      - text: |
+          วาดแล้วใส่ title กับชื่อแกนให้ครบ — กราฟในรายงานต้องอ่านเข้าใจได้เองโดยไม่ต้องมีคนอธิบาย
+        code: |
+          import pandas as pd
+          import matplotlib.pyplot as plt
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          monthly = sales.groupby(sales['order_date'].dt.to_period('M').astype(str))['line'].sum()
+
+          plt.plot(monthly.index, monthly.values)
+          plt.title('รายได้รวมรายเดือน 2024–2025')
+          plt.xlabel('เดือน')
+          plt.ylabel('รายได้ (บาท)')
+          plt.xticks(rotation=90)
+    pitfall:
+      text: |
+        ถ้าจัดกลุ่มด้วย `dt.month` (เลขเดือน 1–12) แทน `dt.to_period('M')` โค้ดจะรันผ่านและได้กราฟ 12 จุดสวยงาม
+        แต่เดือนเดียวกันของสองปีถูกบวกรวมกันหมด — กราฟที่ได้ไม่ใช่แนวโน้มตามเวลาอีกต่อไป
+        แต่เป็นผลรวมสองปีต่อเดือนปฏิทิน ซึ่งตอบคนละคำถามกับที่รายงานต้องการ
+      code: |
+        import pandas as pd
+
+        orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+        items = pd.read_csv("data/order_items.csv")
+        items['line'] = items['quantity'] * items['unit_price']
+        sales = items.merge(orders, on='order_id')
+        sales = sales[sales['status'] == 'completed']
+        wrong = sales.groupby(sales['order_date'].dt.month)['line'].sum()
+        wrong
+  - id: x2
+    title: ตารางตัวเลขหลักสำหรับ executive summary
+    lang: python
+    prompt: |
+      ผู้บริหารอ่านตารางเดียวแล้วต้องเห็นภาพทั้งปี — รายได้ ออเดอร์ AOV ลูกค้า เทียบสองปี
+    steps:
+      - text: |
+          สรุปตัวเลขระดับปีก่อน โดยนับออเดอร์และลูกค้าแบบไม่ซ้ำ (กับดักเดิมจาก module ที่แล้ว)
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          yearly = sales.groupby(sales['order_date'].dt.year).agg(
+              revenue=('line', 'sum'),
+              orders=('order_id', 'nunique'),
+              customers=('customer_id', 'nunique'),
+          )
+          yearly['aov'] = (yearly['revenue'] / yearly['orders']).round(2)
+          yearly
+      - text: |
+          เพิ่มคอลัมน์การเปลี่ยนแปลงเป็นเปอร์เซ็นต์ด้วย `.pct_change()` เพื่อให้คนอ่านไม่ต้องคิดเลขเอง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+          items = pd.read_csv("data/order_items.csv")
+          items['line'] = items['quantity'] * items['unit_price']
+          sales = items.merge(orders, on='order_id')
+          sales = sales[sales['status'] == 'completed']
+          yearly = sales.groupby(sales['order_date'].dt.year).agg(
+              revenue=('line', 'sum'),
+              orders=('order_id', 'nunique'),
+              customers=('customer_id', 'nunique'),
+          )
+          yearly['aov'] = yearly['revenue'] / yearly['orders']
+          change = (yearly.pct_change() * 100).round(2)
+          change
+    pitfall:
+      text: |
+        margin ปี 2024 คือ 28.9% และปี 2025 คือ 28.7% — พูดว่า "ลดลง 0.2 **จุดเปอร์เซ็นต์**" ถูกต้อง
+        แต่ถ้าพูดว่า "ลดลง 0.2%" จะผิด เพราะการลดลงเชิงสัมพัทธ์คือ 0.69% คนละตัวเลขกัน
+        ความสับสนระหว่าง "จุดเปอร์เซ็นต์" กับ "เปอร์เซ็นต์" เป็นข้อผิดพลาดที่เจอบ่อยมากในรายงาน
+        และทำให้ความน่าเชื่อถือหายไปทันทีเมื่อมีคนจับได้
+      code: |
+        margin_2024 = 28.9
+        margin_2025 = 28.7
+        print(round(margin_2025 - margin_2024, 2))
+        print(round((margin_2025 - margin_2024) / margin_2024 * 100, 2))
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      เตรียมข้อมูลสำหรับกราฟแท่งรายได้แยกหมวดสินค้า (เฉพาะ `completed`) เรียงจากมากไปน้อย
+      เก็บ Series ไว้ในตัวแปร result — เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id').merge(products, on='___')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby('category')['line'].sum().sort_values(ascending=___)
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id').merge(products, on='product_id')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby('category')['line'].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ตาราง products เชื่อมกับ order_items ด้วยคอลัมน์ product_id
+      - เรียงจากมากไปน้อยเพื่อให้กราฟแท่งอ่านง่าย
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลกราฟเส้น — รายได้รายเดือนของทั้งชุดข้อมูล (เฉพาะ `completed`)
+      โดย index เป็นข้อความรูปแบบ `2024-01` เรียงตามเดือน เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby(sales['order_date'].dt.to_period('M').astype(str))['line'].sum()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "dt.to_period('M').astype(str) ให้ป้ายเดือนแบบ 2024-01 ที่เรียงตามเวลาได้ถูกต้อง"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลกราฟแท่ง — จำนวน session ที่ไปถึงแต่ละขั้นของ funnel เรียงตามลำดับขั้นจริง
+      (visit, view_product, add_to_cart, checkout, purchase) เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      steps = ['visit', 'view_product', 'add_to_cart', 'checkout', 'purchase']
+      result = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      steps = ['visit', 'view_product', 'add_to_cart', 'checkout', 'purchase']
+      result = events.groupby('event_type')['session_id'].nunique().reindex(steps)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.reindex(steps)` เรียงผลลัพธ์ตามลำดับที่เรากำหนดเองได้"
+      - นับ session แบบไม่ซ้ำด้วย nunique()
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      เตรียมข้อมูลกราฟแท่ง — รายได้ปี 2025 (เฉพาะ `completed`) แยกตามช่องทางที่ลูกค้าสมัคร
+      เรียงจากมากไปน้อย เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      customers = pd.read_csv("data/customers.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id').merge(customers, on='customer_id')
+      sales = sales[(sales['status'] == 'completed') & (sales['order_date'].dt.year == 2025)]
+      result = sales.groupby('channel')['line'].sum().sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - merge ถึงตาราง customers เพื่อให้ได้คอลัมน์ channel
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ตัวเลขหลักระดับปี (เฉพาะ `completed`) — DataFrame ที่มี index เป็นปี และคอลัมน์
+      revenue, orders, customers เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby(sales['order_date'].dt.year).agg(
+          revenue=('line', 'sum'),
+          orders=('order_id', 'nunique'),
+          customers=('customer_id', 'nunique'),
+      )
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - นับออเดอร์และลูกค้าด้วย nunique เพราะหลัง merge หนึ่งแถวคือหนึ่งรายการสินค้า
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      ตารางประกอบรายงาน — รายได้และ margin แยกตามหมวดสินค้า (เฉพาะ `completed`)
+      คอลัมน์ revenue และ margin_pct (ปัด 1 ตำแหน่ง) เรียงตามรายได้จากมากไปน้อย
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      sales = items.merge(orders, on='order_id').merge(products, on='product_id')
+      sales = sales[sales['status'] == 'completed']
+      sales['line'] = sales['quantity'] * sales['unit_price']
+      sales['profit'] = sales['quantity'] * (sales['unit_price'] - sales['cost'])
+      result = sales.groupby('category').agg(revenue=('line', 'sum'), profit=('profit', 'sum'))
+      result['margin_pct'] = (result['profit'] / result['revenue'] * 100).round(1)
+      result = result[['revenue', 'margin_pct']].sort_values('revenue', ascending=False)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - กำไรต่อรายการ = (ราคาขาย − ต้นทุน) × จำนวน
+      - margin คิดจากผลรวมหารผลรวม ไม่ใช่ค่าเฉลี่ยของอัตราส่วนรายแถว
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      เตรียมข้อมูลกราฟแท่ง retention — สัดส่วนลูกค้าที่กลับมาซื้อในเดือนถัดจากเดือนที่ซื้อครั้งแรก
+      แยกตามช่องทาง (เปอร์เซ็นต์ปัด 1 ตำแหน่ง) เรียงจากมากไปน้อย เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      customers = pd.read_csv("data/customers.csv")
+      completed = orders[orders['status'] == 'completed'].copy()
+      completed['month'] = completed['order_date'].dt.to_period('M')
+      cohort = completed.groupby('customer_id')['month'].min().rename('cohort_month')
+      joined = completed.merge(cohort, on='customer_id')
+      joined['month_no'] = (joined['month'] - joined['cohort_month']).apply(lambda x: x.n)
+      returned = joined[joined['month_no'] == 1]['customer_id'].unique()
+
+      base = cohort.to_frame().merge(customers.set_index('customer_id')[['channel']], on='customer_id')
+      base['returned'] = base.index.isin(returned)
+      result = (base.groupby('channel')['returned'].mean() * 100).round(1).sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "หาเดือนที่ซื้อครั้งแรกด้วย groupby('customer_id')['month'].min()"
+      - "ผลต่างของ Period สองตัวมี .n บอกจำนวนเดือน"
+      - "ค่าเฉลี่ยของคอลัมน์ True/False คือสัดส่วนของ True"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      เตรียมข้อมูลกราฟแท่งซ้อน — รายได้รายเดือนของปี 2025 แยกลูกค้าใหม่/เดิม (ตามปีที่ซื้อครั้งแรก)
+      เป็น DataFrame ที่ index เป็นเดือนแบบ `2025-01` และมีคอลัมน์ existing, new
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed'].copy()
+      first_year = sales.groupby('customer_id')['order_date'].min().dt.year.rename('first_year')
+      sales = sales.merge(first_year, on='customer_id')
+      sales = sales[sales['order_date'].dt.year == 2025]
+      sales['customer_type'] = sales['first_year'].apply(lambda y: 'new' if y == 2025 else 'existing')
+      sales['month'] = sales['order_date'].dt.to_period('M').astype(str)
+      result = sales.pivot_table(index='month', columns='customer_type', values='line', aggfunc='sum')
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - "หาปีที่ซื้อครั้งแรกของแต่ละคนก่อน แล้ว merge กลับเข้าตารางยอดขาย"
+      - "pivot_table(index=..., columns=..., values=..., aggfunc='sum') สร้างตารางสองมิติให้พร้อมวาด"
+  - id: e8
+    level: applied
+    lang: python
+    prompt: |
+      วาดกราฟแท่ง retention แยกช่องทางพร้อม title และชื่อแกนให้ครบ โดยเตรียมข้อมูลไว้ในตัวแปร result
+      (Series เปอร์เซ็นต์ปัด 1 ตำแหน่ง เรียงจากมากไปน้อย เหมือนข้อ e6) แล้ววาดด้วย `plt.bar()`
+    starter: |
+      import pandas as pd
+      import matplotlib.pyplot as plt
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+
+      plt.bar(result.index, result.values)
+    solution: |
+      import pandas as pd
+      import matplotlib.pyplot as plt
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      customers = pd.read_csv("data/customers.csv")
+      completed = orders[orders['status'] == 'completed'].copy()
+      completed['month'] = completed['order_date'].dt.to_period('M')
+      cohort = completed.groupby('customer_id')['month'].min().rename('cohort_month')
+      joined = completed.merge(cohort, on='customer_id')
+      joined['month_no'] = (joined['month'] - joined['cohort_month']).apply(lambda x: x.n)
+      returned = joined[joined['month_no'] == 1]['customer_id'].unique()
+
+      base = cohort.to_frame().merge(customers.set_index('customer_id')[['channel']], on='customer_id')
+      base['returned'] = base.index.isin(returned)
+      result = (base.groupby('channel')['returned'].mean() * 100).round(1).sort_values(ascending=False)
+
+      plt.bar(result.index, result.values)
+      plt.title('retention เดือนที่ 1 แยกตามช่องทาง')
+      plt.xlabel('ช่องทาง')
+      plt.ylabel('ลูกค้าที่กลับมาซื้อ (%)')
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ใช้ข้อมูลชุดเดียวกับข้อ e6
+      - กราฟในรายงานต้องมี title และชื่อแกนครบ เพราะคนอ่านไม่มีเราอยู่ข้างๆ ให้อธิบาย
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      ตารางตัวเลขหลักฉบับเต็มสำหรับ executive summary — DataFrame ที่ index เป็นปี
+      มีคอลัมน์ revenue, orders, customers, aov (ปัด 2 ตำแหน่ง), gross_profit,
+      margin_pct (ปัด 1 ตำแหน่ง) เฉพาะออเดอร์ `completed` เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      sales = items.merge(orders, on='order_id').merge(products, on='product_id')
+      sales = sales[sales['status'] == 'completed'].copy()
+      sales['line'] = sales['quantity'] * sales['unit_price']
+      sales['profit'] = sales['quantity'] * (sales['unit_price'] - sales['cost'])
+      result = sales.groupby(sales['order_date'].dt.year).agg(
+          revenue=('line', 'sum'),
+          orders=('order_id', 'nunique'),
+          customers=('customer_id', 'nunique'),
+          gross_profit=('profit', 'sum'),
+      )
+      result['aov'] = (result['revenue'] / result['orders']).round(2)
+      result['margin_pct'] = (result['gross_profit'] / result['revenue'] * 100).round(1)
+      result = result[['revenue', 'orders', 'customers', 'aov', 'gross_profit', 'margin_pct']]
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - รวมทุกตัวเลขใน agg เดียวก่อน แล้วค่อยคำนวณคอลัมน์ที่เป็นอัตราส่วน
+      - จัดลำดับคอลัมน์ตามที่โจทย์ระบุก่อนเก็บผลลัพธ์
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      ตารางการเปลี่ยนแปลงสำหรับรายงาน — จากตัวเลขหลักระดับปี (revenue, orders, customers, aov,
+      gross_profit) คำนวณเปอร์เซ็นต์การเปลี่ยนแปลงจากปี 2024 เป็นปี 2025 (ปัด 2 ตำแหน่ง)
+      เก็บเป็น Series ที่ index เป็นชื่อตัวชี้วัด ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      sales = items.merge(orders, on='order_id').merge(products, on='product_id')
+      sales = sales[sales['status'] == 'completed'].copy()
+      sales['line'] = sales['quantity'] * sales['unit_price']
+      sales['profit'] = sales['quantity'] * (sales['unit_price'] - sales['cost'])
+      yearly = sales.groupby(sales['order_date'].dt.year).agg(
+          revenue=('line', 'sum'),
+          orders=('order_id', 'nunique'),
+          customers=('customer_id', 'nunique'),
+          gross_profit=('profit', 'sum'),
+      )
+      yearly['aov'] = yearly['revenue'] / yearly['orders']
+      yearly = yearly[['revenue', 'orders', 'customers', 'aov', 'gross_profit']]
+      result = ((yearly.loc[2025] / yearly.loc[2024] - 1) * 100).round(2)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - "`.loc[2025] / .loc[2024] - 1` ให้อัตราการเปลี่ยนแปลงของทุกคอลัมน์ในครั้งเดียว"
+      - AOV ต้องคำนวณจาก revenue ÷ orders ก่อน ไม่ใช่เอา % ของสองตัวมาลบกัน
+
+quiz:
+  - id: q1
+    question: ทำไมรายงานต้องเอาข้อสรุปขึ้นก่อน แทนที่จะเล่าตามลำดับที่ทำงาน
+    choices:
+      - text: เพราะคนอ่านที่มีเวลาน้อยต้องได้สิ่งสำคัญที่สุดจากสามบรรทัดแรก
+        correct: true
+        why: ผู้บริหารส่วนใหญ่อ่านแค่ส่วนแรก รายละเอียดวิธีทำไว้ท้ายสำหรับคนที่อยากตรวจสอบ
+      - text: เพราะวิธีการทำงานไม่สำคัญ
+        why: วิธีการสำคัญมากต่อความน่าเชื่อถือ แค่ไม่ควรอยู่ต้นรายงาน
+      - text: เพราะรายงานต้องสั้นที่สุดเท่าที่เป็นไปได้
+        why: ความสั้นไม่ใช่เป้าหมาย การเรียงลำดับให้คนอ่านได้สิ่งที่ต้องการก่อนต่างหากที่สำคัญ
+      - text: เพราะเครื่องมือทำรายงานบังคับให้เขียนแบบนั้น
+        why: เป็นเรื่องของการสื่อสาร ไม่ใช่ข้อจำกัดของเครื่องมือ
+  - id: q2
+    question: margin ลดจาก 28.9% เหลือ 28.7% ควรเขียนในรายงานว่าอย่างไร
+    choices:
+      - text: ลดลง 0.2 จุดเปอร์เซ็นต์
+        correct: true
+        why: ผลต่างของค่าที่เป็นเปอร์เซ็นต์อยู่แล้วต้องเรียกว่า "จุดเปอร์เซ็นต์" (percentage point)
+      - text: ลดลง 0.2%
+        why: การลดลงเชิงสัมพัทธ์คือ 0.69% ไม่ใช่ 0.2% — การเขียนแบบนี้ทำให้คนอ่านเข้าใจผิด
+      - text: ลดลง 2%
+        why: ไม่ตรงกับตัวเลขใดเลย
+      - text: ลดลงประมาณ 1 ใน 3
+        why: ห่างจากความจริงมาก margin แทบไม่เปลี่ยน
+  - id: q3
+    question: ข้อใดคือ insight ที่ครบสี่ส่วน
+    choices:
+      - text: "\"84% ของรายได้ปี 2025 มาจากลูกค้าใหม่ ขณะที่ลูกค้าปี 2024 กลับมาเพียง 17.5% — รายได้ปีหน้าจะตกทันทีถ้าช่องทางหาลูกค้าสะดุด จึงควรลงทุนกับการรักษาลูกค้าเดิม\""
+        correct: true
+        why: มีสิ่งที่พบ ตัวเลข จุดเทียบ และ "แล้วไง" ครบทั้งสี่ส่วน
+      - text: '"ลูกค้าใหม่เยอะขึ้นมากในปี 2025"'
+        why: ไม่มีตัวเลข ไม่มีจุดเทียบ และไม่บอกว่าควรทำอะไรต่อ
+      - text: '"รายได้ปี 2025 เท่ากับ 17,829,346 บาท"'
+        why: เป็นข้อเท็จจริงที่ถูกต้อง แต่ไม่มีจุดเทียบและไม่มีข้อเสนอ
+      - text: '"ควรลงทุนกับการรักษาลูกค้าเดิม"'
+        why: เป็นข้อเสนอที่ไม่มีหลักฐานประกอบ คนอ่านไม่มีทางรู้ว่าทำไม
+  - id: q4
+    question: กราฟแบบไหนควรตัดออกจากรายงาน
+    choices:
+      - text: กราฟที่ไม่ได้ตอบคำถามไหนของรายงานโดยเฉพาะ
+        correct: true
+        why: กราฟทุกอันควรมีหน้าที่ ถ้าไม่มีก็ทำให้รายงานยาวขึ้นโดยไม่ช่วยตัดสินใจ
+      - text: กราฟที่มีข้อมูลเยอะเกิน 12 จุด
+        why: จำนวนจุดไม่ใช่เกณฑ์ กราฟเส้น 24 เดือนอ่านง่ายกว่าตาราง 24 แถวด้วยซ้ำ
+      - text: กราฟที่เป็นขาวดำ
+        why: สีไม่ใช่เกณฑ์ตัดสินว่ากราฟมีประโยชน์หรือไม่
+      - text: กราฟที่ใช้ matplotlib แทน seaborn
+        why: เครื่องมือที่ใช้วาดไม่เกี่ยวกับคุณค่าของกราฟ
+  - id: q5
+    question: สิ่งใดทำให้ portfolio ของ DA ดูน่าเชื่อถือที่สุดในสายตาคนสัมภาษณ์
+    choices:
+      - text: การเห็นว่าผู้เขียนตั้งคำถามเป็น เลือกวิธีเป็น ตรวจงานตัวเองเป็น และรู้ข้อจำกัดของข้อมูล
+        correct: true
+        why: ทักษะการคิดคือสิ่งที่ทำซ้ำได้กับข้อมูลชุดอื่น ต่างจากผลลัพธ์ของชุดข้อมูลเดียว
+      - text: จำนวนกราฟที่เยอะที่สุด
+        why: กราฟเยอะโดยไม่มีหน้าที่ทำให้รายงานอ่านยากขึ้น
+      - text: การใช้โมเดล machine learning ที่ซับซ้อน
+        why: ความซับซ้อนไม่ใช่เป้าหมาย งาน DA ส่วนใหญ่ตัดสินด้วยคำถามที่ดีและการวัดที่ถูก
+      - text: ความยาวของ notebook
+        why: ความยาวไม่ได้บอกคุณภาพ
+
+summary:
+  - รายงานต้องเอาข้อสรุปขึ้นก่อน แล้วค่อยตามด้วยตัวเลขหลัก insight ข้อเสนอ ข้อจำกัด และภาคผนวก
+  - เตรียมข้อมูลกราฟให้พร้อมก่อนวาดเสมอ และใส่เฉพาะกราฟที่ตอบคำถามของรายงานจริงๆ
+  - portfolio ที่ดีแสดงวิธีคิด — ตั้งคำถาม เลือกวิธี ตรวจงานตัวเอง และบอกข้อจำกัดได้
+
+interview:
+  - id: i1
+    q: มีเวลา 2 นาที เล่าโปรเจกต์นี้ให้ฟัง
+    a: |
+      "คำถามคือรายได้ปี 2025 โต 21% แล้วยั่งยืนไหม ผมแตกเป็นคำถามย่อย 6 ข้อ ใช้ metric tree
+      หาว่าการเติบโตมาจากกิ่งไหน ใช้ cohort retention ดูคุณภาพลูกค้าที่ได้มา และดูกำไรขั้นต้นแยกหมวดสินค้า
+      สิ่งที่พบคือ 84% ของรายได้มาจากลูกค้าใหม่ ลูกค้าปี 2024 กลับมาแค่ 17.5% และช่องทาง promo
+      มี retention 7.3% เทียบกับ organic 22.4% ซึ่งทดสอบแล้วมีนัยสำคัญ (p < 0.001)
+      ข้อเสนอคือปล่อย checkout เวอร์ชัน B ที่ชนะ A/B test ย้ายงบออกจากแคมเปญแบบ promo
+      และทำแคมเปญดึงลูกค้ากลุ่ม at_risk กลับมา ข้อจำกัดคือไม่มีข้อมูลต้นทุนการตลาด จึงคำนวณ ROI ไม่ได้"
+  - id: i2
+    q: ผู้สัมภาษณ์ถามว่า "รู้ได้ยังไงว่าตัวเลขในรายงานถูก" จะตอบยังไง
+    a: |
+      ตอบด้วยขั้นตอนที่ทำจริง: กระทบยอดทุกตารางสรุป (ผลรวมของกลุ่มย่อยต้องเท่ากับผลรวมทั้งหมด),
+      คำนวณตัวเลขหลักซ้ำด้วยเครื่องมืออีกตัว (SQL แล้วทวนด้วย pandas), ทดสอบความไวต่อการเปลี่ยนนิยาม
+      (ลูกค้าใหม่นับจากวันซื้อครั้งแรกหรือวันสมัคร ได้ 84% กับ 82% — เรื่องเดียวกัน),
+      ตัด outlier ส่วนบน 1% ออกแล้วผลแทบไม่เปลี่ยน และทดสอบนัยสำคัญของความต่างที่เป็นหัวใจของข้อสรุป
+      การตอบแบบนี้แสดงว่าเราไม่ได้เชื่อผลลัพธ์แรกที่ได้มาโดยไม่ตรวจอะไรเลย
+
+flashcards:
+  - id: c1
+    front: โครงรายงานวิเคราะห์ข้อมูลที่ใช้ได้เกือบทุกงาน
+    back: executive summary → ตัวเลขหลัก → insight 3-5 ข้อ → ข้อเสนอ → ข้อจำกัด → ภาคผนวก
+  - id: c2
+    front: "28.9% → 28.7% ควรเรียกว่าอะไร"
+    back: ลดลง 0.2 จุดเปอร์เซ็นต์ (ไม่ใช่ลดลง 0.2% ซึ่งเป็นการลดเชิงสัมพัทธ์คนละค่า)
+  - id: c3
+    front: portfolio ของ DA ควรแสดงอะไรมากที่สุด
+    back: วิธีคิด — ตั้งคำถามเป็น เลือกวิธีเป็น ตรวจงานตัวเองเป็น และรู้ว่าข้อมูลตอบอะไรไม่ได้

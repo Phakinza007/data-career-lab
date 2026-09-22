@@ -1,0 +1,496 @@
+goals:
+  - แบ่งลูกค้าเป็น cohort ตามเดือนที่ซื้อครั้งแรก แล้ววัด retention ด้วยนาฬิกาของ cohort ตัวเอง
+  - สร้างตาราง cohort × month_no ด้วย CTE หลายชั้น และหารด้วยขนาด cohort ให้ถูกตัว
+  - รู้ว่า cohort ที่ยังไม่ครบหน้าต่างเวลาต้องเว้นว่าง ไม่ใช่นับเป็น 0
+
+examples:
+  - id: x1
+    title: สร้างตาราง retention ของ cohort ปี 2025
+    lang: sql
+    prompt: |
+      ผู้บริหารถามว่า "ลูกค้าที่เริ่มซื้อเดือนไหนอยู่กับเรานานกว่ากัน" — ต้องทำตาราง cohort × เดือนที่ N
+    steps:
+      - text: |
+          ชั้นแรก หาเดือนที่ลูกค้าแต่ละคนซื้อครั้งแรกด้วย `MIN(order_date)` แล้วตัดให้เหลือระดับเดือน
+        code: |
+          SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+          FROM orders
+          WHERE status = 'completed'
+          GROUP BY 1
+          ORDER BY cohort_month, customer_id
+          LIMIT 10
+      - text: |
+          ชั้นที่สอง ต่อทุกออเดอร์เข้ากับ cohort ของเจ้าของออเดอร์ แล้วคำนวณว่าห่างจากเดือนแรกกี่เดือน
+          ด้วย `DATEDIFF('month', cohort_month, เดือนของออเดอร์)`
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          )
+          SELECT f.cohort_month, o.customer_id,
+                 DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+          FROM orders o
+          JOIN first_order f ON f.customer_id = o.customer_id
+          WHERE o.status = 'completed'
+          ORDER BY f.cohort_month, o.customer_id, month_no
+          LIMIT 10
+      - text: |
+          ชั้นสุดท้าย นับลูกค้าที่ยัง active ในแต่ละช่อง แล้วหารด้วยขนาด cohort ตัวเอง (`month_no = 0`)
+          — ตัวหารที่ถูกต้องคือสิ่งที่ทำให้เทียบข้าม cohort ได้อย่างยุติธรรม
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), activity AS (
+            SELECT f.cohort_month, o.customer_id,
+                   DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+            FROM orders o
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed'
+          ), grid AS (
+            SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+            FROM activity GROUP BY 1, 2
+          )
+          SELECT g.cohort_month, g.month_no, g.customers,
+                 ROUND(g.customers * 100.0 / s.cohort_size, 1) AS retention_pct
+          FROM grid g
+          JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+            ON s.cohort_month = g.cohort_month
+          WHERE g.cohort_month BETWEEN DATE '2025-05-01' AND DATE '2025-08-01'
+            AND g.month_no <= 3
+          ORDER BY g.cohort_month, g.month_no
+    pitfall:
+      text: |
+        ถ้าหารด้วย "จำนวนลูกค้าทั้งระบบ" แทนขนาดของ cohort ตัวเอง ตัวเลขจะเล็กจนแทบไม่เหลืออะไร
+        (ทุกช่องต่ำกว่า 10%) และ cohort ที่ใหญ่จะดูดีกว่า cohort เล็กโดยอัตโนมัติทั้งที่พฤติกรรมลูกค้าอาจแย่กว่า
+        — retention เป็นสัดส่วน "ภายในกลุ่ม" เสมอ ตัวหารผิดตัวเดียวทำให้ทั้งตารางเทียบกันไม่ได้
+      code: |
+        WITH first_order AS (
+          SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+          FROM orders WHERE status = 'completed' GROUP BY 1
+        ), activity AS (
+          SELECT f.cohort_month, o.customer_id,
+                 DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+          FROM orders o
+          JOIN first_order f ON f.customer_id = o.customer_id
+          WHERE o.status = 'completed'
+        )
+        SELECT cohort_month, month_no,
+               ROUND(COUNT(DISTINCT customer_id) * 100.0 / (SELECT COUNT(*) FROM first_order), 1) AS wrong_pct
+        FROM activity
+        WHERE cohort_month BETWEEN DATE '2025-05-01' AND DATE '2025-08-01' AND month_no <= 3
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+  - id: x2
+    title: เจาะหาสาเหตุที่ cohort มิ.ย. 2025 retention ต่ำ
+    lang: sql
+    prompt: |
+      cohort เดือน มิ.ย. 2025 มีลูกค้าใหม่เยอะที่สุด แต่ retention ต่ำที่สุด — อยากรู้ว่าเพราะอะไร
+    steps:
+      - text: |
+          ตั้งสมมติฐานก่อนว่าลูกค้าเดือนนั้น "มาจากคนละที่" กับเดือนอื่น ลองนับลูกค้าที่สมัครเดือน มิ.ย. 2025
+          แยกตามช่องทาง
+        code: |
+          SELECT channel, COUNT(*) AS customers
+          FROM customers
+          WHERE DATE_TRUNC('month', signup_date) = DATE '2025-06-01'
+          GROUP BY 1
+          ORDER BY customers DESC
+      - text: |
+          เจอแล้วว่าเดือนนั้นมีลูกค้าช่องทาง `promo` เข้ามา 300 คนในเดือนเดียว ทีนี้วัด retention เดือนที่ 1
+          แยกตามช่องทาง เพื่อดูว่าลูกค้ากลุ่มนี้ต่างจากกลุ่มอื่นจริงไหม
+        code: |
+          WITH first_order AS (
+            SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+            FROM orders WHERE status = 'completed' GROUP BY 1
+          ), activity AS (
+            SELECT f.customer_id,
+                   DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+            FROM orders o
+            JOIN first_order f ON f.customer_id = o.customer_id
+            WHERE o.status = 'completed'
+          )
+          SELECT c.channel,
+                 COUNT(DISTINCT f.customer_id) AS customers,
+                 ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                       / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+          FROM first_order f
+          JOIN customers c ON c.customer_id = f.customer_id
+          LEFT JOIN activity a ON a.customer_id = f.customer_id
+          GROUP BY 1
+          ORDER BY m1_pct DESC
+    pitfall:
+      text: |
+        ถ้าดูแค่ "จำนวนลูกค้าใหม่ต่อเดือน" เดือน มิ.ย. 2025 จะเป็นเดือนที่ดีที่สุดของทั้งชุดข้อมูลทันที
+        (257 คน มากกว่าเดือนข้างเคียงเกือบสองเท่า) — ตัวเลขนี้ถูกต้อง แต่เล่าเรื่องผิด เพราะแคมเปญนั้น
+        ได้ลูกค้าที่ไม่กลับมาซื้อซ้ำ การวัดผลแคมเปญด้วยยอดลูกค้าใหม่อย่างเดียวจึงอันตราย
+        ต้องดู retention ของ cohort นั้นควบคู่เสมอ
+      code: |
+        SELECT DATE_TRUNC('month', first_day) AS cohort_month, COUNT(*) AS new_customers
+        FROM (
+          SELECT customer_id, MIN(order_date) AS first_day
+          FROM orders WHERE status = 'completed' GROUP BY 1
+        )
+        WHERE first_day >= DATE '2025-04-01' AND first_day < DATE '2025-09-01'
+        GROUP BY 1
+        ORDER BY 1
+
+faded:
+  - id: f1
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าใหม่ (นับจากเดือนที่ซื้อครั้งแรก) ของแต่ละเดือน แสดง cohort_month, new_customers
+      เรียงตามเดือน เติม `___` ให้ครบ
+    starter: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', ___(order_date)) AS cohort_month
+        FROM orders
+        WHERE status = ___
+        GROUP BY 1
+      )
+      SELECT cohort_month, COUNT(*) AS new_customers
+      FROM first_order
+      GROUP BY 1
+      ORDER BY 1
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders
+        WHERE status = 'completed'
+        GROUP BY 1
+      )
+      SELECT cohort_month, COUNT(*) AS new_customers
+      FROM first_order
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - เดือนที่ซื้อครั้งแรกคือวันที่น้อยที่สุดของลูกค้าคนนั้น
+      - นิยามรายได้/ออเดอร์ของเว็บนี้ใช้เฉพาะสถานะ completed
+
+exercises:
+  - id: e1
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่ซื้อครั้งแรกในเดือน มิ.ย. 2025 แสดงคอลัมน์เดียวชื่อ new_customers
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      )
+      SELECT COUNT(*) AS new_customers
+      FROM first_order
+      WHERE cohort_month = DATE '2025-06-01'
+    hints:
+      - หา cohort_month ของทุกคนก่อนใน CTE แล้วค่อยกรองเดือนที่ต้องการ
+  - id: e2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อ (completed) ทั้งหมด และจำนวนที่ซื้อมากกว่า 1 ออเดอร์
+      แสดงคอลัมน์ customers, repeat_customers
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH per_customer AS (
+        SELECT customer_id, COUNT(DISTINCT order_id) AS orders
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      )
+      SELECT COUNT(*) AS customers,
+             COUNT(CASE WHEN orders > 1 THEN 1 END) AS repeat_customers
+      FROM per_customer
+    hints:
+      - นับออเดอร์ต่อคนก่อน แล้วค่อยนับว่ามีกี่คนที่ออเดอร์มากกว่า 1
+  - id: e3
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อ (completed) แยกตามช่องทางที่สมัคร (`customers.channel`)
+      แสดงคอลัมน์ channel, customers เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT c.channel, COUNT(DISTINCT o.customer_id) AS customers
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY customers DESC
+    ordered: true
+    hints:
+      - ลูกค้าหนึ่งคนมีหลายออเดอร์ ต้องนับแบบไม่ซ้ำ
+  - id: e4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าใหม่ (เดือนที่ซื้อครั้งแรก) รายเดือนของปี 2025 แสดงคอลัมน์ cohort_month, new_customers
+      เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      )
+      SELECT cohort_month, COUNT(*) AS new_customers
+      FROM first_order
+      WHERE EXTRACT(year FROM cohort_month) = 2025
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - กรองปีจาก cohort_month ที่คำนวณไว้แล้วใน CTE
+  - id: e5
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง cohort ของลูกค้าที่เริ่มซื้อปี 2025 เฉพาะเดือนที่ 0–3 แสดงคอลัมน์ cohort_month, month_no, customers
+      เรียงตาม cohort_month แล้วตาม month_no
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+      FROM activity
+      WHERE EXTRACT(year FROM cohort_month) = 2025 AND month_no <= 3
+      GROUP BY 1, 2
+      ORDER BY 1, 2
+    ordered: true
+    hints:
+      - "DATEDIFF('month', a, b) บอกว่า b ห่างจาก a กี่เดือน"
+      - นับลูกค้าแบบไม่ซ้ำในแต่ละช่องของตาราง
+  - id: e6
+    level: applied
+    lang: sql
+    prompt: |
+      ต่อจากข้อที่แล้ว เพิ่มคอลัมน์ retention_pct (หารด้วยขนาด cohort ตัวเอง เป็นเปอร์เซ็นต์ปัด 1 ตำแหน่ง)
+      แสดง cohort_month, month_no, customers, retention_pct เรียงตาม cohort_month แล้วตาม month_no
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), grid AS (
+        SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+        FROM activity GROUP BY 1, 2
+      )
+      SELECT g.cohort_month, g.month_no, g.customers,
+             ROUND(g.customers * 100.0 / s.cohort_size, 1) AS retention_pct
+      FROM grid g
+      JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+        ON s.cohort_month = g.cohort_month
+      WHERE EXTRACT(year FROM g.cohort_month) = 2025 AND g.month_no <= 3
+      ORDER BY 1, 2
+    ordered: true
+    hints:
+      - ขนาด cohort คือจำนวนลูกค้าที่ month_no = 0 ของ cohort นั้น
+      - "join ตาราง grid กลับเข้ากับตัวมันเองเพื่อดึง cohort_size มาเป็นตัวหาร"
+  - id: e7
+    level: applied
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของทุก cohort แสดงคอลัมน์ cohort_month, cohort_size, m1_pct (ปัด 1 ตำแหน่ง)
+      เฉพาะ cohort ที่มีข้อมูลเดือนที่ 1 แล้ว เรียงจาก m1_pct น้อยไปมาก
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), grid AS (
+        SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+        FROM activity GROUP BY 1, 2
+      )
+      SELECT g.cohort_month, s.cohort_size,
+             ROUND(g.customers * 100.0 / s.cohort_size, 1) AS m1_pct
+      FROM grid g
+      JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+        ON s.cohort_month = g.cohort_month
+      WHERE g.month_no = 1
+      ORDER BY m1_pct, g.cohort_month
+    ordered: true
+    hints:
+      - กรองเฉพาะแถว month_no = 1 หลัง join ขนาด cohort เข้ามาแล้ว
+      - cohort ที่ยังไม่มีเดือนที่ 1 จะไม่มีแถวใน grid อยู่แล้ว ไม่ต้องกรองเพิ่ม
+  - id: e8
+    level: challenge
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 แยกตามช่องทางที่ลูกค้าสมัคร แสดงคอลัมน์ channel, customers, m1_pct (ปัด 1 ตำแหน่ง)
+      เรียงจาก m1_pct มากไปน้อย — นับเฉพาะลูกค้าที่เคยซื้อ
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT c.channel,
+             COUNT(DISTINCT f.customer_id) AS customers,
+             ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                   / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+      FROM first_order f
+      JOIN customers c ON c.customer_id = f.customer_id
+      LEFT JOIN activity a ON a.customer_id = f.customer_id
+      GROUP BY 1
+      ORDER BY m1_pct DESC
+    ordered: true
+    hints:
+      - "LEFT JOIN activity เพื่อไม่ทิ้งลูกค้าที่ไม่เคยกลับมาซื้อเลย"
+      - "นับตัวตั้งด้วย COUNT(DISTINCT CASE WHEN month_no = 1 THEN customer_id END)"
+  - id: e9
+    level: challenge
+    lang: sql
+    prompt: |
+      cohort ไหนที่มีลูกค้าอย่างน้อย 100 คน แต่ retention เดือนที่ 1 ต่ำที่สุด
+      แสดงคอลัมน์ cohort_month, cohort_size, m1_pct (ปัด 1 ตำแหน่ง) แถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), grid AS (
+        SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+        FROM activity GROUP BY 1, 2
+      )
+      SELECT g.cohort_month, s.cohort_size,
+             ROUND(g.customers * 100.0 / s.cohort_size, 1) AS m1_pct
+      FROM grid g
+      JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+        ON s.cohort_month = g.cohort_month
+      WHERE g.month_no = 1 AND s.cohort_size >= 100
+      ORDER BY m1_pct
+      LIMIT 1
+    hints:
+      - กรองขนาด cohort ก่อนเรียง เพื่อไม่ให้ cohort เล็กๆ ที่ผันผวนมากติดอันดับ
+      - ต่อยอดจากข้อ e7 ได้เลย
+
+quiz:
+  - id: q1
+    question: ทำไมต้องดู retention แบบ cohort แทนที่จะดูตัวเลขรวมของทั้งบริษัท
+    choices:
+      - text: เพราะตัวเลขรวมเอาลูกค้าเก่ากับลูกค้าที่เพิ่งซื้อเมื่อวานมาปนกัน จนขึ้นกับจำนวนลูกค้าใหม่มากกว่าคุณภาพลูกค้า
+        correct: true
+        why: cohort ทำให้เทียบ "เดือนที่ 1 ของแต่ละกลุ่ม" กันได้อย่างยุติธรรม
+      - text: เพราะตัวเลขรวมคำนวณยากกว่า
+        why: ตัวเลขรวมคำนวณง่ายกว่าด้วยซ้ำ ปัญหาคือมันตีความไม่ได้
+      - text: เพราะ cohort ให้ตัวเลขที่สูงกว่าเสมอ
+        why: cohort ไม่ได้ทำให้ตัวเลขสวยขึ้น แค่ทำให้เทียบกันได้อย่างถูกต้อง
+      - text: เพราะฐานข้อมูลเก็บข้อมูลเป็น cohort อยู่แล้ว
+        why: ต้องคำนวณ cohort เองจากวันที่ซื้อครั้งแรก ฐานข้อมูลไม่ได้เก็บไว้ให้
+  - id: q2
+    question: ตัวหารของ retention เดือนที่ 2 ของ cohort เดือน พ.ค. คืออะไร
+    choices:
+      - text: จำนวนลูกค้าใน cohort เดือน พ.ค. ทั้งหมด (เดือนที่ 0)
+        correct: true
+        why: retention คือสัดส่วนภายในกลุ่มตัวเอง จึงต้องหารด้วยขนาดของ cohort นั้น
+      - text: จำนวนลูกค้าที่ยัง active ในเดือนที่ 1
+        why: การหารด้วยเดือนก่อนหน้าให้ค่าคนละอย่าง (อัตราอยู่ต่อแบบขั้นต่อขั้น) ซึ่งต้องระบุให้ชัดว่าใช้แบบไหน
+      - text: จำนวนลูกค้าทั้งหมดในฐานข้อมูล
+        why: แบบนี้ทำให้ทุก cohort เทียบกันไม่ได้ และ cohort ใหญ่จะดูดีกว่าโดยอัตโนมัติ
+      - text: จำนวนออเดอร์ของ cohort นั้น
+        why: retention นับ "คน" ไม่ใช่ออเดอร์ ลูกค้าคนเดียวซื้อ 5 ครั้งก็ยังนับเป็นหนึ่งคน
+  - id: q3
+    question: cohort เดือน ธ.ค. 2025 มีช่อง "เดือนที่ 1" ว่างอยู่ ควรทำยังไง
+    choices:
+      - text: เว้นว่างไว้ เพราะข้อมูลจบที่ ธ.ค. 2025 เดือนที่ 1 ยังมาไม่ถึง
+        correct: true
+        why: '"ยังไม่เกิด" ไม่เหมือน "เกิดแล้วแต่ไม่มีใครกลับมา" การเติม 0 จะดึงค่าเฉลี่ยลงโดยไม่มีเหตุผล'
+      - text: เติม 0 เพราะไม่มีลูกค้ากลับมาซื้อ
+        why: ยังไม่ถึงเวลาที่ลูกค้าจะกลับมาได้เลย การนับเป็น 0 ทำให้ retention ของทั้งบริษัทดูแย่ลงผิดๆ
+      - text: เอาค่าเฉลี่ยของ cohort อื่นมาเติม
+        why: การเติมค่าที่ไม่ได้มาจากข้อมูลจริงทำให้รายงานเชื่อถือไม่ได้
+      - text: ลบ cohort นั้นทิ้งจากตารางทั้งแถว
+        why: ข้อมูลเดือนที่ 0 ของ cohort นั้นยังใช้ได้ (บอกจำนวนลูกค้าใหม่) แค่ช่องที่ยังไม่ถึงเวลาเท่านั้นที่ต้องเว้น
+  - id: q4
+    question: แคมเปญเดือน มิ.ย. 2025 ได้ลูกค้าใหม่ 257 คน มากกว่าเดือนอื่นเกือบเท่าตัว ควรสรุปว่าอย่างไร
+    choices:
+      - text: ยังสรุปไม่ได้จนกว่าจะดู retention ของ cohort นั้น — ซึ่งพบว่าต่ำผิดปกติ (15.2% เทียบค่าเฉลี่ย 23.4%)
+        correct: true
+        why: ยอดลูกค้าใหม่เป็นตัวเลขระยะสั้น ต้องดูว่าลูกค้าที่ได้มาอยู่กับเราต่อหรือไม่
+      - text: แคมเปญสำเร็จ เพราะได้ลูกค้าใหม่มากที่สุด
+        why: ลูกค้าที่ไม่กลับมาซื้อซ้ำสร้างรายได้ระยะยาวน้อยมาก การวัดด้วยยอดลูกค้าใหม่อย่างเดียวจึงหลอกตา
+      - text: แคมเปญล้มเหลว เพราะ retention ต่ำ
+        why: ต้องเทียบกับต้นทุนและรายได้ที่ได้จริงก่อน ข้อมูลเท่าที่มีบอกได้แค่ว่าลูกค้ากลุ่มนี้คุณภาพต่ำกว่า
+      - text: ข้อมูลผิด เพราะลูกค้าใหม่ไม่ควรเพิ่มเป็นเท่าตัวในเดือนเดียว
+        why: เพิ่มเป็นเท่าตัวได้ปกติเมื่อมีแคมเปญ ข้อมูลไม่ได้ผิด
+
+summary:
+  - cohort จับลูกค้าที่เริ่มพร้อมกันเป็นกลุ่ม แล้ววัดด้วยนาฬิกาของกลุ่มตัวเอง (month_no) ทำให้เทียบข้ามกลุ่มได้
+  - retention ต้องหารด้วยขนาดของ cohort ตัวเองเสมอ ไม่ใช่จำนวนลูกค้าทั้งระบบ
+  - cohort ที่ยังไม่ครบหน้าต่างเวลาให้เว้นว่าง ไม่ใช่เติม 0 และยอดลูกค้าใหม่ต้องอ่านคู่กับ retention เสมอ
+
+interview:
+  - id: i1
+    q: อธิบายวิธีสร้างตาราง cohort retention จากตารางออเดอร์
+    a: |
+      สามชั้น: (1) หาเดือนที่ลูกค้าแต่ละคนซื้อครั้งแรก (`DATE_TRUNC('month', MIN(order_date))`) เป็น cohort
+      (2) join ออเดอร์ทุกใบกลับเข้ากับ cohort ของเจ้าของ แล้วคำนวณ `month_no` = จำนวนเดือนที่ห่างจากเดือนแรก
+      (3) นับลูกค้าไม่ซ้ำในแต่ละช่อง (cohort × month_no) แล้วหารด้วยขนาด cohort ตัวเอง (แถว month_no = 0)
+      สิ่งที่ต้องระวังคือนิยาม cohort (วันสมัคร vs วันซื้อครั้งแรก) สถานะออเดอร์ที่นับ
+      และต้องเว้นช่องของ cohort ที่ยังมีอายุไม่ถึง ไม่ใช่เติมศูนย์
+  - id: i2
+    q: retention curve ของธุรกิจหนึ่งดิ่งลงเรื่อยๆ ไม่แบนราบเลย บอกอะไรเรา
+    a: |
+      แปลว่าแทบไม่มีลูกค้ากลุ่มที่อยู่กับเราในระยะยาวเลย ธุรกิจต้องหาลูกค้าใหม่มาเติมตลอดเวลาเพื่อรักษายอดเดิม
+      ซึ่งแพงและเปราะบาง (ถ้าค่าโฆษณาขึ้นหรือช่องทางตัน ยอดจะตกทันที) เส้นที่ลดแล้วแบนราบแปลว่ามีลูกค้าประจำจริง
+      สิ่งที่ควรทำต่อคือแยก cohort ตามช่องทางหรือแคมเปญที่ได้ลูกค้ามา เพื่อดูว่ากลุ่มไหนสร้างลูกค้าประจำได้
+      แล้วย้ายงบไปทางนั้น — เหมือนกรณีช่องทาง promo ในบทนี้ที่ retention ต่ำกว่าช่องทางอื่นราว 3 เท่า
+
+flashcards:
+  - id: c1
+    front: cohort analysis คืออะไร
+    back: จับลูกค้าที่เริ่มพร้อมกันเป็นกลุ่ม แล้ววัดพฤติกรรมตามอายุของกลุ่ม (เดือนที่ 0, 1, 2, ...)
+  - id: c2
+    front: ตัวหารของ retention คืออะไร
+    back: ขนาดของ cohort ตัวเอง (จำนวนลูกค้าที่ month_no = 0) ไม่ใช่จำนวนลูกค้าทั้งระบบ
+  - id: c3
+    front: retention curve ที่ดีหน้าตาเป็นยังไง
+    back: ลดลงช่วงแรกแล้วแบนราบ แปลว่ามีลูกค้าประจำจริง ถ้าดิ่งลงไม่หยุดแปลว่าต้องหาลูกค้าใหม่เติมตลอด

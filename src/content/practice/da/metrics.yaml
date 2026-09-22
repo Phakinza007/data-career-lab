@@ -1,0 +1,436 @@
+title: "ชุดฝึกท้าย module: Business metrics"
+exercises:
+  - id: p1
+    level: basic
+    lang: sql
+    prompt: |
+      รายได้รวมของปี 2024 (เฉพาะออเดอร์ `completed`) แสดงคอลัมน์เดียวชื่อ revenue
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT SUM(li.quantity * li.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+        AND EXTRACT(year FROM o.order_date) = 2024
+    hints:
+      - ทบทวนบทที่ 1 (นิยามรายได้ของเว็บนี้)
+  - id: p2
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวนออเดอร์และจำนวนลูกค้าที่ซื้อจริงในปี 2025 (เฉพาะ `completed`) แสดงคอลัมน์ orders, customers
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT COUNT(DISTINCT order_id) AS orders,
+             COUNT(DISTINCT customer_id) AS customers
+      FROM orders
+      WHERE status = 'completed'
+        AND EXTRACT(year FROM order_date) = 2025
+    hints:
+      - ทั้งสองคอลัมน์อยู่ในตาราง orders ไม่ต้อง join
+  - id: p3
+    level: basic
+    lang: sql
+    prompt: |
+      AOV แยกตามวิธีจ่ายเงิน (เฉพาะ `completed`) ปัด 2 ตำแหน่ง แสดง payment_method, aov
+      เรียงจาก aov มากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT o.payment_method,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+      ORDER BY aov DESC
+    ordered: true
+    hints:
+      - อย่าลืมนับออเดอร์แบบไม่ซ้ำหลัง join
+  - id: p4
+    level: basic
+    lang: sql
+    prompt: |
+      จำนวน session ที่ไปถึงแต่ละขั้นของ funnel แสดง event_type, sessions เรียงจากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT event_type, COUNT(DISTINCT session_id) AS sessions
+      FROM events
+      GROUP BY 1
+      ORDER BY sessions DESC
+    ordered: true
+    hints:
+      - ทบทวนบทที่ 2 (funnel)
+  - id: p5
+    level: basic
+    lang: sql
+    prompt: |
+      conversion rate รวมของ funnel บนมือถือ (`device = 'mobile'`) เป็นเปอร์เซ็นต์ปัด 2 ตำแหน่ง
+      แสดงคอลัมน์เดียวชื่อ cvr_pct
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+      WHERE device = 'mobile'
+    hints:
+      - กรอง device ก่อน แล้วนับสองขั้นด้วย CASE WHEN
+  - id: p6
+    level: basic
+    lang: python
+    prompt: |
+      ยอดซื้อรวม (จากออเดอร์ `completed`) ของลูกค้าแต่ละคน เรียงจากมากไปน้อย เอาเฉพาะ 10 อันดับแรก
+      เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      result = sales.groupby('customer_id')['line'].sum().sort_values(ascending=False).head(10)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - merge แล้วกรองสถานะก่อน จึงค่อยรวมยอดต่อลูกค้า
+  - id: p7
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง KPI รายเดือนของปี 2024 (เฉพาะ `completed`) แสดง month, revenue, orders, aov (ปัด 2 ตำแหน่ง)
+      เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+          AND EXTRACT(year FROM o.order_date) = 2024
+        GROUP BY 1
+      )
+      SELECT month, revenue, orders, ROUND(revenue / orders, 2) AS aov
+      FROM monthly
+      ORDER BY month
+    ordered: true
+    hints:
+      - สรุประดับเดือนใน CTE ก่อน แล้วค่อยหาร
+  - id: p8
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้รายเดือนของปี 2025 พร้อม MoM เป็นเปอร์เซ็นต์ปัด 1 ตำแหน่ง แสดง month, revenue, mom_pct
+      เรียงตามเดือน (เดือน ม.ค. 2025 เทียบกับ ธ.ค. 2024 ไม่ได้เพราะกรองปีไว้ จึงเป็น NULL)
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_date) AS month,
+               SUM(li.quantity * li.unit_price) AS revenue
+        FROM orders o
+        JOIN order_items li ON li.order_id = o.order_id
+        WHERE o.status = 'completed'
+          AND EXTRACT(year FROM o.order_date) = 2025
+        GROUP BY 1
+      )
+      SELECT month, revenue,
+             ROUND((revenue - LAG(revenue) OVER (ORDER BY month))
+                   / LAG(revenue) OVER (ORDER BY month) * 100, 1) AS mom_pct
+      FROM monthly
+      ORDER BY month
+    ordered: true
+    hints:
+      - หารด้วยค่าของเดือนก่อนหน้า ไม่ใช่เดือนปัจจุบัน
+  - id: p9
+    level: applied
+    lang: sql
+    prompt: |
+      ตาราง funnel พร้อมอัตราผ่านต่อเทียบขั้นก่อนหน้า แสดง step_no, event_type, sessions, pct_of_prev
+      (ปัด 2 ตำแหน่ง) เรียงตามลำดับขั้น
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH funnel AS (
+        SELECT CASE event_type
+                 WHEN 'visit' THEN 1 WHEN 'view_product' THEN 2 WHEN 'add_to_cart' THEN 3
+                 WHEN 'checkout' THEN 4 WHEN 'purchase' THEN 5
+               END AS step_no,
+               event_type,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM events
+        GROUP BY 1, 2
+      )
+      SELECT step_no, event_type, sessions,
+             ROUND(sessions * 100.0 / LAG(sessions) OVER (ORDER BY step_no), 2) AS pct_of_prev
+      FROM funnel
+      ORDER BY step_no
+    ordered: true
+    hints:
+      - ใส่หมายเลขขั้นด้วย CASE เพื่อบังคับลำดับก่อนใช้ LAG
+  - id: p10
+    level: applied
+    lang: sql
+    prompt: |
+      conversion rate ของ funnel แยกตามอุปกรณ์และเดือน เฉพาะเดือน ส.ค. 2025
+      แสดง device, visits, purchases, cvr_pct (ปัด 2 ตำแหน่ง) เรียงตาม cvr_pct จากมากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT device,
+             COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END) AS visits,
+             COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) AS purchases,
+             ROUND(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) * 100.0
+                   / COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END), 2) AS cvr_pct
+      FROM events
+      WHERE DATE_TRUNC('month', CAST(event_time AS TIMESTAMP)) = DATE '2025-08-01'
+      GROUP BY 1
+      ORDER BY cvr_pct DESC
+    ordered: true
+    hints:
+      - "event_time เป็นข้อความ ต้อง CAST เป็น TIMESTAMP ก่อนใช้ DATE_TRUNC"
+  - id: p11
+    level: applied
+    lang: sql
+    prompt: |
+      จำนวนลูกค้าใหม่ (เดือนที่ซื้อครั้งแรก) รายเดือนของปี 2024 แสดง cohort_month, new_customers
+      เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      )
+      SELECT cohort_month, COUNT(*) AS new_customers
+      FROM first_order
+      WHERE EXTRACT(year FROM cohort_month) = 2024
+      GROUP BY 1
+      ORDER BY 1
+    ordered: true
+    hints:
+      - ทบทวนบทที่ 3 (cohort)
+  - id: p12
+    level: applied
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 ของ cohort ปี 2024 แสดง cohort_month, cohort_size, m1_pct (ปัด 1 ตำแหน่ง)
+      เรียงตามเดือน
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.cohort_month, o.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      ), grid AS (
+        SELECT cohort_month, month_no, COUNT(DISTINCT customer_id) AS customers
+        FROM activity GROUP BY 1, 2
+      )
+      SELECT g.cohort_month, s.cohort_size,
+             ROUND(g.customers * 100.0 / s.cohort_size, 1) AS m1_pct
+      FROM grid g
+      JOIN (SELECT cohort_month, customers AS cohort_size FROM grid WHERE month_no = 0) s
+        ON s.cohort_month = g.cohort_month
+      WHERE g.month_no = 1 AND EXTRACT(year FROM g.cohort_month) = 2024
+      ORDER BY g.cohort_month
+    ordered: true
+    hints:
+      - หารด้วยขนาดของ cohort ตัวเอง (แถว month_no = 0)
+  - id: p13
+    level: applied
+    lang: python
+    prompt: |
+      ตาราง RFM ระดับลูกค้า (recency ถึง 31 ธ.ค. 2025, frequency, monetary) เฉพาะออเดอร์ `completed`
+      แล้วนับจำนวนลูกค้าในแต่ละคะแนน F (1 ครั้ง = 1, 2 ครั้ง = 2, 3 ครั้ง = 3, ตั้งแต่ 4 ครั้งขึ้นไป = 4)
+      เรียงตามคะแนน เก็บ Series ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      completed = orders[orders['status'] == 'completed']
+      frequency = completed.groupby('customer_id')['order_id'].nunique()
+      result = frequency.apply(lambda n: n if n <= 3 else 4).value_counts().sort_index()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ทบทวนบทที่ 4 (RFM) — เกณฑ์ F กำหนดเองเพราะ qcut ใช้ไม่ได้
+  - id: p14
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าและรายได้รวมของแต่ละ segment ตามกติกาในบทที่ 4 (champions, at_risk, new_one_time,
+      lost, others) แสดงคอลัมน์ customers, revenue เรียงตามรายได้จากมากไปน้อย
+      เก็บ DataFrame ไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv", parse_dates=['order_date'])
+      items = pd.read_csv("data/order_items.csv")
+      items['line'] = items['quantity'] * items['unit_price']
+      sales = items.merge(orders, on='order_id')
+      sales = sales[sales['status'] == 'completed']
+      asof = pd.Timestamp('2025-12-31')
+      rfm = sales.groupby('customer_id').agg(
+          recency=('order_date', lambda s: (asof - s.max()).days),
+          frequency=('order_id', 'nunique'),
+          monetary=('line', 'sum'),
+      )
+      rfm['R'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['F'] = rfm['frequency'].apply(lambda n: n if n <= 3 else 4)
+
+      def segment(row):
+          if row['R'] >= 4 and row['F'] >= 3:
+              return 'champions'
+          if row['R'] <= 2 and row['F'] >= 3:
+              return 'at_risk'
+          if row['R'] >= 3 and row['F'] == 1:
+              return 'new_one_time'
+          if row['R'] == 1 and row['F'] <= 2:
+              return 'lost'
+          return 'others'
+
+      rfm['segment'] = rfm.apply(segment, axis=1)
+      result = rfm.groupby('segment').agg(customers=('monetary', 'size'), revenue=('monetary', 'sum'))
+      result = result.sort_values('revenue', ascending=False)
+    check: |
+      check_df(result, _sol["result"], ordered=True)
+    hints:
+      - คะแนน R มาจาก qcut labels กลับหัว ส่วน F ใช้เกณฑ์ที่กำหนดเอง
+  - id: p15
+    level: applied
+    lang: sql
+    prompt: |
+      รายได้ก่อนและหลังหักส่วนลดของทั้งชุดข้อมูล (เฉพาะ `completed`) แสดง gross_revenue, net_revenue
+      (ปัดทั้งคู่ 2 ตำแหน่ง) แถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT ROUND(SUM(li.quantity * li.unit_price), 2) AS gross_revenue,
+             ROUND(SUM(li.quantity * li.unit_price * (1 - COALESCE(o.discount_pct, 0) / 100.0)), 2) AS net_revenue
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+    hints:
+      - "discount_pct ที่เป็น NULL แปลว่าไม่มีส่วนลด"
+  - id: p16
+    level: challenge
+    lang: sql
+    prompt: |
+      เดือนไหนของปี 2025 ที่ conversion rate ของ funnel สูงที่สุด แสดง month, cvr_pct (ปัด 2 ตำแหน่ง) แถวเดียว
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH monthly AS (
+        SELECT DATE_TRUNC('month', CAST(event_time AS TIMESTAMP)) AS month,
+               COUNT(DISTINCT CASE WHEN event_type = 'visit' THEN session_id END) AS visits,
+               COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN session_id END) AS purchases
+        FROM events
+        GROUP BY 1
+      )
+      SELECT month, ROUND(purchases * 100.0 / visits, 2) AS cvr_pct
+      FROM monthly
+      ORDER BY cvr_pct DESC
+      LIMIT 1
+    hints:
+      - คำนวณ conversion รายเดือนก่อน แล้วค่อยเรียงและตัดด้วย LIMIT
+  - id: p17
+    level: challenge
+    lang: sql
+    prompt: |
+      retention เดือนที่ 1 แยกตามช่องทางที่ลูกค้าสมัคร (นับเฉพาะลูกค้าที่เคยซื้อ)
+      แสดง channel, customers, m1_pct (ปัด 1 ตำแหน่ง) เรียงจาก m1_pct มากไปน้อย
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      WITH first_order AS (
+        SELECT customer_id, DATE_TRUNC('month', MIN(order_date)) AS cohort_month
+        FROM orders WHERE status = 'completed' GROUP BY 1
+      ), activity AS (
+        SELECT f.customer_id,
+               DATEDIFF('month', f.cohort_month, DATE_TRUNC('month', o.order_date)) AS month_no
+        FROM orders o
+        JOIN first_order f ON f.customer_id = o.customer_id
+        WHERE o.status = 'completed'
+      )
+      SELECT c.channel,
+             COUNT(DISTINCT f.customer_id) AS customers,
+             ROUND(COUNT(DISTINCT CASE WHEN a.month_no = 1 THEN a.customer_id END) * 100.0
+                   / COUNT(DISTINCT f.customer_id), 1) AS m1_pct
+      FROM first_order f
+      JOIN customers c ON c.customer_id = f.customer_id
+      LEFT JOIN activity a ON a.customer_id = f.customer_id
+      GROUP BY 1
+      ORDER BY m1_pct DESC
+    ordered: true
+    hints:
+      - "ใช้ LEFT JOIN เพื่อไม่ทิ้งลูกค้าที่ไม่เคยกลับมาซื้อ"
+  - id: p18
+    level: challenge
+    lang: sql
+    prompt: |
+      เทียบ metric tree ของครึ่งปีแรก (ม.ค.–มิ.ย.) กับครึ่งปีหลัง (ก.ค.–ธ.ค.) ของปี 2025
+      แสดง half ('H1' / 'H2'), revenue, orders, customers, aov (ปัด 2 ตำแหน่ง) เรียงตาม half
+      — ใช้ตอบว่าการเปลี่ยนแปลงมาจากจำนวนออเดอร์หรือจากยอดต่อบิล
+    starter: |
+      -- เขียน SQL ตรงนี้
+      SELECT ___
+    solution: |
+      SELECT CASE WHEN EXTRACT(month FROM o.order_date) <= 6 THEN 'H1' ELSE 'H2' END AS half,
+             SUM(li.quantity * li.unit_price) AS revenue,
+             COUNT(DISTINCT o.order_id) AS orders,
+             COUNT(DISTINCT o.customer_id) AS customers,
+             ROUND(SUM(li.quantity * li.unit_price) / COUNT(DISTINCT o.order_id), 2) AS aov
+      FROM orders o
+      JOIN order_items li ON li.order_id = o.order_id
+      WHERE o.status = 'completed'
+        AND EXTRACT(year FROM o.order_date) = 2025
+      GROUP BY 1
+      ORDER BY half
+    ordered: true
+    hints:
+      - "แบ่งครึ่งปีด้วย CASE WHEN EXTRACT(month FROM order_date) <= 6"
+      - อย่าลืมนับออเดอร์และลูกค้าแบบไม่ซ้ำ
