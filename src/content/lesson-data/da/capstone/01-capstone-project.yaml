@@ -1,0 +1,85 @@
+goals:
+  - เลือกคำถามธุรกิจ 1 ข้อแล้วตอบให้ครบวงจร ตั้งแต่เตรียมข้อมูลจนถึงเขียน insight
+  - ใช้เกณฑ์ตรวจงานตัวเอง (self-review checklist) ก่อนเผยแพร่ผลงาน
+  - รู้ขั้นตอนคร่าวๆ ในการเผยแพร่โปรเจกต์บน GitHub
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      โหลดตาราง customers, orders, order_items, products ด้วย pandas แล้วเก็บจำนวนแถวรวมของทั้ง 4 ตาราง
+      (ผลรวมเดียว) ไว้ในตัวแปร total_rows — เช็คว่าพร้อมเริ่มโปรเจกต์จริง
+    starter: |
+      import pandas as pd
+
+      total_rows = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      products = pd.read_csv("data/products.csv")
+      total_rows = len(customers) + len(orders) + len(order_items) + len(products)
+    check: |
+      check_value(total_rows, _sol["total_rows"], name="total_rows")
+    hints:
+      - อ่านทั้ง 4 ไฟล์ด้วย pd.read_csv แล้วรวม len() ของแต่ละตาราง
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      คำนวณรายได้รวมทั้งหมด (completed orders เท่านั้น) ของทั้งร้าน เก็บไว้ในตัวแปร total_revenue
+      — ตัวเลขตั้งต้นที่มักใช้เปรียบเทียบใน insight ของ capstone
+    starter: |
+      import pandas as pd
+
+      total_revenue = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      total_revenue = rev['line'].sum()
+    check: |
+      check_value(total_revenue, _sol["total_revenue"], name="total_revenue")
+    hints:
+      - merge order_items กับ orders กรอง completed แล้วรวม quantity*unit_price
+  - id: e3
+    level: applied
+    lang: python
+    prompt: |
+      เลือกหมวดสินค้า (category) ที่ตัวเองสนใจจะลงลึกในโปรเจกต์ แล้วเก็บจำนวนสินค้าทั้งหมดในหมวดนั้นไว้ในตัวแปร
+      n_products_chosen — โจทย์นี้ตรวจแค่ว่าค่าที่ได้ตรงกับหมวดที่เลือกจริง
+    starter: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      chosen_category = 'Electronics'
+      n_products_chosen = ___
+    solution: |
+      import pandas as pd
+
+      products = pd.read_csv("data/products.csv")
+      chosen_category = 'Electronics'
+      n_products_chosen = len(products[products['category'] == chosen_category])
+    check: |
+      check_value(n_products_chosen, _sol["n_products_chosen"], name="n_products_chosen")
+    hints:
+      - กรอง products ด้วย category ที่เลือกแล้วนับจำนวนแถว
+
+summary:
+  - Capstone คือการเอาทุกทักษะจาก module ก่อนหน้ามารวมกันตอบคำถามธุรกิจหนึ่งข้อให้ครบวงจร ตั้งแต่ตั้งคำถามจนถึงเขียน insight ที่มีตัวเลขและ action ชัดเจน
+  - ใช้ notebook ที่ดาวน์โหลดด้านบนเป็นจุดเริ่มต้น ไม่จำเป็นต้องเริ่มจากศูนย์
+  - เกณฑ์ตรวจงานตัวเองไว้ในบทนี้ ใช้เช็คก่อนเผยแพร่ทุกครั้ง
+
+interview:
+  - id: i1
+    q: อธิบายโปรเจกต์ capstone ของตัวเองใน 30 วินาที ให้คนสัมภาษณ์ฟัง
+    a: |
+      ใช้โครง: โจทย์ (ตั้งคำถามธุรกิจอะไร) → วิธีตอบ (ใช้ข้อมูลและเทคนิคอะไรบ้าง เช่น SQL/pandas/สถิติ) →
+      ผลลัพธ์ (พบอะไร มีตัวเลขอะไรที่สำคัญ) → แล้วไง (ควรทำอะไรต่อจากสิ่งที่พบ) — โครงนี้ทำให้คำตอบกระชับ
+      มีเหตุผล และแสดงให้เห็นว่าเข้าใจภาพรวมของงาน DA ทั้งวงจร ไม่ใช่แค่ท่องขั้นตอนทางเทคนิค

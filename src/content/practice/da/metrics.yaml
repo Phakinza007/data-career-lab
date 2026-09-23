@@ -1,0 +1,361 @@
+title: "ชุดฝึกท้าย module: Business metrics"
+exercises:
+  - id: p1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวน session ต่อขั้นของ funnel ทั้งหมด (Series, index ตามลำดับ visit, view_product, add_to_cart, checkout, purchase)
+      เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      counts = events.groupby('event_type')['session_id'].nunique()
+      result = counts.reindex(FUNNEL)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - ทบทวนบทที่ 2 (funnel)
+  - id: p2
+    level: basic
+    lang: python
+    prompt: |
+      overall conversion rate (%) จาก visit ไปถึง purchase เก็บไว้ในตัวแปร overall_conversion_pct
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      overall_conversion_pct = round(counts['purchase'] / counts['visit'] * 100, 2)
+    check: |
+      check_value(overall_conversion_pct, _sol["overall_conversion_pct"], name="overall_conversion_pct", tol=0.01)
+    hints:
+      - purchase/visit*100
+  - id: p3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่ active (มีออเดอร์ completed) ในเดือน มิ.ย. 2025 เก็บไว้ในตัวแปร mac_june
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      mac_june = mac['2025-06']
+    check: |
+      check_value(mac_june, _sol["mac_june"], name="mac_june")
+    hints:
+      - ทบทวนบทที่ 1 (KPI)
+  - id: p4
+    level: basic
+    lang: python
+    prompt: |
+      retention rate (%) ของ cohort เดือน ม.ค. 2025 เก็บไว้ในตัวแปร retention_jan
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      retention_jan = round(cohort_repeat['2025-01'] * 100, 2)
+    check: |
+      check_value(retention_jan, _sol["retention_jan"], name="retention_jan", tol=0.01)
+    hints:
+      - ทบทวนบทที่ 3 (cohort/retention)
+  - id: p5
+    level: basic
+    lang: python
+    prompt: |
+      retention rate (%) ของ cohort เดือน มิ.ย. 2025 เก็บไว้ในตัวแปร retention_jun
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      retention_jun = round(cohort_repeat['2025-06'] * 100, 2)
+    check: |
+      check_value(retention_jun, _sol["retention_jun"], name="retention_jun", tol=0.01)
+    hints:
+      - เหมือน p4 แค่เปลี่ยนเดือน
+  - id: p6
+    level: applied
+    lang: python
+    prompt: |
+      step conversion (%) จาก view_product ไป add_to_cart เก็บไว้ในตัวแปร step_conv_pct
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      step_conv_pct = round(counts['add_to_cart'] / counts['view_product'] * 100, 2)
+    check: |
+      check_value(step_conv_pct, _sol["step_conv_pct"], name="step_conv_pct", tol=0.01)
+    hints:
+      - ทบทวนบทที่ 2
+  - id: p7
+    level: applied
+    lang: python
+    prompt: |
+      % ของลูกค้าที่สมัครเดือน มิ.ย. 2025 ที่มาจากช่องทาง promo เก็บไว้ในตัวแปร pct_promo_june
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      june = c[c['cohort'] == '2025-06']
+      pct_promo_june = round((june['channel'] == 'promo').mean() * 100, 2)
+    check: |
+      check_value(pct_promo_june, _sol["pct_promo_june"], name="pct_promo_june", tol=0.01)
+    hints:
+      - ทบทวนบทที่ 3
+  - id: p8
+    level: applied
+    lang: python
+    prompt: |
+      retention rate (%) แยกตามช่องทางสมัคร ทุกช่องทาง เรียงมากไปน้อย (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = customers.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      by_channel = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('channel')['repeat'].mean()
+      result = round(by_channel * 100, 2).sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ทบทวนบทที่ 3
+  - id: p9
+    level: applied
+    lang: python
+    prompt: |
+      รายได้เฉลี่ยต่อลูกค้า active เดือน ธ.ค. 2025 และ ม.ค. 2025 (สองตัวแปร) เก็บไว้ในตัวแปร dec_avg, jan_avg
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+      monthly_rev = r25.groupby('month')['line'].sum()
+      monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      dec_avg = round(monthly_rev['2025-12'] / monthly_mac['2025-12'], 2)
+      jan_avg = round(monthly_rev['2025-01'] / monthly_mac['2025-01'], 2)
+    check: |
+      check_value(dec_avg, _sol["dec_avg"], name="dec_avg", tol=0.1)
+      check_value(jan_avg, _sol["jan_avg"], name="jan_avg", tol=0.1)
+    hints:
+      - ทบทวนบทที่ 1
+  - id: p10
+    level: applied
+    lang: python
+    prompt: |
+      recency/frequency/monetary เฉลี่ยของลูกค้าทั้งหมด (สามตัวแปร, snapshot 2026-01-01)
+      เก็บไว้ในตัวแปร avg_recency, avg_frequency, avg_monetary
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      recency = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days
+      frequency = comp.groupby('customer_id').size()
+      monetary = rev.groupby('customer_id')['line'].sum()
+      avg_recency = round(recency.mean(), 2)
+      avg_frequency = round(frequency.mean(), 2)
+      avg_monetary = round(monetary.mean(), 2)
+    check: |
+      check_value(avg_recency, _sol["avg_recency"], name="avg_recency", tol=0.1)
+      check_value(avg_frequency, _sol["avg_frequency"], name="avg_frequency", tol=0.01)
+      check_value(avg_monetary, _sol["avg_monetary"], name="avg_monetary", tol=0.1)
+    hints:
+      - ทบทวนบทที่ 4 (RFM)
+  - id: p11
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวน session ต่อขั้นของ funnel เฉพาะ device เป็น mobile (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      mobile = events[events['device'] == 'mobile']
+      counts = mobile.groupby('event_type')['session_id'].nunique()
+      result = counts.reindex(FUNNEL)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - ทบทวนบทที่ 2
+  - id: p12
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในกลุ่ม Champions (RFM: r_score==4 และ f_score==4 และ m_score==4) เก็บไว้ในตัวแปร n_champions
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      champions = (rfm['r_score'] == 4) & (rfm['f_score'] == 4) & (rfm['m_score'] == 4)
+      n_champions = int(champions.sum())
+    check: |
+      check_value(n_champions, _sol["n_champions"], name="n_champions")
+    hints:
+      - ทบทวนบทที่ 4
+  - id: p13
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในกลุ่ม At Risk (RFM: r_score==1 และ f_score>=3) เก็บไว้ในตัวแปร n_at_risk
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm = pd.concat([rfm_r, rfm_f], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      at_risk = (rfm['r_score'] == 1) & (rfm['f_score'] >= 3)
+      n_at_risk = int(at_risk.sum())
+    check: |
+      check_value(n_at_risk, _sol["n_at_risk"], name="n_at_risk")
+    hints:
+      - ทบทวนบทที่ 4
+  - id: p14
+    level: challenge
+    lang: python
+    prompt: |
+      % ของรายได้รวมที่มาจากกลุ่ม Champions (RFM) เก็บไว้ในตัวแปร champions_rev_share_pct
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      champions = (rfm['r_score'] == 4) & (rfm['f_score'] == 4) & (rfm['m_score'] == 4)
+      champions_rev_share_pct = round(rfm.loc[champions, 'monetary'].sum() / rfm['monetary'].sum() * 100, 2)
+    check: |
+      check_value(champions_rev_share_pct, _sol["champions_rev_share_pct"], name="champions_rev_share_pct", tol=0.05)
+    hints:
+      - ทบทวนบทที่ 4
+  - id: p15
+    level: challenge
+    lang: python
+    prompt: |
+      เดือนที่มีลูกค้า active มากที่สุดและน้อยที่สุดในปี 2025 (สองตัวแปร) เก็บไว้ในตัวแปร peak_month, low_month
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      peak_month = mac.idxmax()
+      low_month = mac.idxmin()
+    check: |
+      check_value(peak_month, _sol["peak_month"], name="peak_month")
+      check_value(low_month, _sol["low_month"], name="low_month")
+    hints:
+      - ทบทวนบทที่ 1
+  - id: p16
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อสำเร็จ (completed) และจำนวนที่ซื้อซ้ำ (≥2 ครั้ง completed, สองตัวแปร)
+      เก็บไว้ในตัวแปร n_paying, n_repeat
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_order_count = rev.groupby('customer_id')['order_id'].nunique()
+      n_paying = len(cust_order_count)
+      n_repeat = int((cust_order_count >= 2).sum())
+    check: |
+      check_value(n_paying, _sol["n_paying"], name="n_paying")
+      check_value(n_repeat, _sol["n_repeat"], name="n_repeat")
+    hints:
+      - ทบทวนบทที่ 1

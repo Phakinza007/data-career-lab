@@ -1,0 +1,54 @@
+---
+track: da
+module: metrics
+order: 4
+title: "RFM segmentation"
+minutes: 30
+prereqs: [da/metrics/03-cohort-retention]
+---
+
+## ทำไมยอดขายรวมไม่พอ
+
+ลูกค้าสองคนที่ยอดขายรวมเท่ากันอาจมีพฤติกรรมต่างกันมาก — คนหนึ่งซื้อครั้งเดียวแพงๆ อีกคนซื้อบ่อยๆ ทีละน้อย
+**RFM** ช่วยแยกแยะพฤติกรรมนี้ด้วย 3 มิติ:
+
+- **Recency** — ซื้อครั้งล่าสุดเมื่อไร (วัน ยิ่งน้อยยิ่งดี)
+- **Frequency** — ซื้อบ่อยแค่ไหน (จำนวนออเดอร์)
+- **Monetary** — ใช้จ่ายรวมเท่าไร
+
+```python
+snapshot = pd.Timestamp('2026-01-01')  # กำหนดวันที่คงที่ ไม่ใช้ pd.Timestamp.now()
+recency = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days
+frequency = comp.groupby('customer_id').size()
+monetary = rev.groupby('customer_id')['line'].sum()
+```
+
+**ระวัง:** ต้องกำหนด `snapshot` เป็นวันที่คงที่เสมอ ไม่ใช้ `pd.Timestamp.now()` เพราะจะทำให้ผลลัพธ์เปลี่ยนไปทุกครั้ง
+ที่รันโค้ด
+
+## ให้คะแนนด้วย quartile
+
+แปลงแต่ละมิติเป็นคะแนน 1-4 (4 = ดีที่สุด) ด้วย `pd.qcut` เพื่อเทียบกันได้ข้ามมิติ:
+
+```python
+rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)  # recency น้อย = คะแนนสูง
+rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+rfm['rfm_score'] = rfm['r_score'] + rfm['f_score'] + rfm['m_score']
+```
+
+**ระวัง:** `frequency` มีค่าซ้ำกันเยอะมาก (ลูกค้าหลายร้อยคนซื้อแค่ 1 ครั้งเท่ากัน) การใช้ `pd.qcut` ตรงๆ กับคอลัมน์นี้
+จะได้ error `ValueError: Bin edges must be unique` เพราะแบ่ง 4 กลุ่มเท่าๆ กันไม่ได้ — ต้องใช้ `.rank(method='first')`
+ก่อนเพื่อกระจายค่าที่ซ้ำกันให้ตัดกลุ่มได้
+
+## นิยาม segment
+
+จากคะแนนสามมิติ นิยาม segment ที่ใช้บ่อยได้ เช่น:
+
+| segment | เงื่อนไข | ความหมาย |
+| --- | --- | --- |
+| Champions | r_score=4, f_score=4, m_score=4 | ลูกค้าดีเยี่ยมทุกด้าน ควรรักษาไว้ |
+| At Risk | r_score=1, f_score≥3 | เคยซื้อบ่อยแต่นานแล้วไม่กลับมา เสี่ยงจะเสียไป |
+| Lost | r_score=1, f_score=1 | ซื้อครั้งเดียวแล้วหายไปนาน |
+
+แต่ละกลุ่มควรได้รับกลยุทธ์ต่างกัน — Champions ควรได้รับการดูแลรักษา ส่วน At Risk ควรได้รับแคมเปญกระตุ้นให้กลับมา

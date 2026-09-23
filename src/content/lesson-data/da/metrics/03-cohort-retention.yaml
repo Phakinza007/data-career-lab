@@ -1,0 +1,401 @@
+goals:
+  - นิยาม cohort (กลุ่มลูกค้าตามเดือนที่สมัคร) และ retention
+  - อ่านค่า retention ที่ต่ำผิดปกติแล้วสืบสาเหตุถึงต้นตอ
+  - เชื่อมโยง cohort กับคุณภาพของช่องทางที่พาลูกค้าเข้ามา
+
+examples:
+  - id: x1
+    title: cohort ตามเดือนสมัคร มี retention ต่างกันแค่ไหน
+    lang: python
+    prompt: |
+      อยากรู้ว่าลูกค้าที่สมัครในแต่ละเดือนของปี 2025 กลับมาซื้อซ้ำมากน้อยแค่ไหน
+    steps:
+      - text: |
+          แบ่งลูกค้าเป็น cohort ตามเดือนที่สมัคร (signup_date) แล้วหา retention (สั่งซื้อตั้งแต่ 2 ครั้งขึ้นไป นับทุกสถานะ)
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          orders = pd.read_csv("data/orders.csv")
+          c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+          k = orders.groupby('customer_id').size().rename('n_orders')
+          merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+          cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+          round(cohort_repeat.loc[['2025-05', '2025-06', '2025-07']] * 100, 2)
+      - text: |
+          เห็นชัดว่า cohort เดือน มิ.ย. 2025 มี retention ต่ำกว่าเดือนข้างเคียงมาก (21.41% เทียบกับ ~50%)
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          orders = pd.read_csv("data/orders.csv")
+          c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+          k = orders.groupby('customer_id').size().rename('n_orders')
+          merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+          cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+          round(cohort_repeat.loc['2025-06'] * 100, 2)
+    pitfall:
+      text: |
+        เจอ cohort หนึ่งมี retention ต่ำผิดปกติแล้วสรุปทันทีว่า "เดือนนั้นเป็นเดือนที่แย่" โดยไม่ตรวจสอบองค์ประกอบของ
+        cohort นั้นก่อน — ในตัวอย่างนี้ปัญหาไม่ได้อยู่ที่ตัวเดือน มิ.ย. เอง แต่อยู่ที่องค์ประกอบของคนที่สมัครเดือนนั้น
+        (ดูตัวอย่างถัดไป)
+  - id: x2
+    title: สืบสาเหตุ — cohort มิ.ย. มีองค์ประกอบต่างจากปกติ
+    lang: python
+    prompt: |
+      ทำไม cohort มิ.ย. 2025 ถึง retention ต่ำผิดปกติ
+    steps:
+      - text: |
+          เช็คสัดส่วนช่องทางสมัคร (channel) ของคนที่สมัครเดือน มิ.ย. 2025 เทียบกับภาพรวมทั้งหมด
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+          june = c[c['cohort'] == '2025-06']
+          pct_promo_june = round((june['channel'] == 'promo').mean() * 100, 2)
+          pct_promo_overall = round((customers['channel'] == 'promo').mean() * 100, 2)
+          pct_promo_june, pct_promo_overall
+      - text: |
+          70.59% ของคนที่สมัครเดือน มิ.ย. มาจากช่องทาง promo (เทียบกับแค่ 9.09% โดยรวม) — cohort นี้ retention ต่ำ
+          เพราะองค์ประกอบเป็นลูกค้าจากแคมเปญ promo เป็นส่วนใหญ่ ไม่ใช่เพราะเป็นเดือน มิ.ย. โดยตัวมันเอง
+        code: |
+          import pandas as pd
+
+          customers = pd.read_csv("data/customers.csv")
+          orders = pd.read_csv("data/orders.csv")
+          k = orders.groupby('customer_id').size().rename('n_orders')
+          merged = customers.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+          by_channel = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('channel')['repeat'].mean()
+          round(by_channel.loc['promo'] * 100, 2)
+    pitfall:
+      text: |
+        การรีบสรุปว่า "เดือน มิ.ย. เป็นเดือนที่ลูกค้าไม่ค่อยกลับมาซื้อซ้ำ" โดยไม่เช็คว่าคนที่สมัครเดือนนั้นมาจากไหน
+        อาจทำให้ทีมพลาดประเด็นจริง (คุณภาพของแคมเปญ promo) ไปเลย
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      แบ่งลูกค้าเป็น cohort ตามเดือนที่สมัคร เก็บไว้ในคอลัมน์ cohort เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.assign(cohort=lambda d: d.signup_date.___[:7])
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ตัด string ต้องใช้ .str ก่อนเสมอ
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      retention rate (%) ของ cohort เดือน ม.ค. 2025 เก็บไว้ในตัวแปร retention_jan
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      retention_jan = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      retention_jan = round(cohort_repeat['2025-01'] * 100, 2)
+    check: |
+      check_value(retention_jan, _sol["retention_jan"], name="retention_jan", tol=0.01)
+    hints:
+      - "retention = สัดส่วนลูกค้าที่มีจำนวนออเดอร์ (ทุกสถานะ) >= 2"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      retention rate (%) ของ cohort เดือน มิ.ย. 2025 เก็บไว้ในตัวแปร retention_jun
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      retention_jun = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      retention_jun = round(cohort_repeat['2025-06'] * 100, 2)
+    check: |
+      check_value(retention_jun, _sol["retention_jun"], name="retention_jun", tol=0.01)
+    hints:
+      - เหมือน e1 แค่เปลี่ยนเดือน
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      cohort มิ.ย. 2025 มี retention ต่ำกว่า cohort ม.ค. 2025 ไหม (bool) เก็บไว้ในตัวแปร jun_lower
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      jun_lower = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      jun_lower = cohort_repeat['2025-06'] < cohort_repeat['2025-01']
+    check: |
+      check_value(jun_lower, _sol["jun_lower"], name="jun_lower")
+    hints:
+      - เทียบค่าจาก e1 กับ e2 ตรงๆ
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      สัดส่วนช่องทางสมัคร (channel) ของลูกค้าที่สมัครเดือน มิ.ย. 2025 (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      june = c[c['cohort'] == '2025-06']
+      result = june['channel'].value_counts()
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - กรอง cohort == '2025-06' ก่อน แล้ว value_counts()
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      % ของลูกค้าที่สมัครเดือน มิ.ย. 2025 ที่มาจากช่องทาง promo เก็บไว้ในตัวแปร pct_promo_june
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      pct_promo_june = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      june = c[c['cohort'] == '2025-06']
+      pct_promo_june = round((june['channel'] == 'promo').mean() * 100, 2)
+    check: |
+      check_value(pct_promo_june, _sol["pct_promo_june"], name="pct_promo_june", tol=0.01)
+    hints:
+      - "`(series == 'promo').mean()*100` คือ % ของแถวที่ตรงเงื่อนไข"
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      % ของลูกค้าทั้งหมด (ทุกเดือน) ที่มาจากช่องทาง promo เก็บไว้ในตัวแปร pct_promo_overall
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      pct_promo_overall = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      pct_promo_overall = round((customers['channel'] == 'promo').mean() * 100, 2)
+    check: |
+      check_value(pct_promo_overall, _sol["pct_promo_overall"], name="pct_promo_overall", tol=0.01)
+    hints:
+      - เหมือน e5 แต่ไม่ต้องกรอง cohort
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      retention rate (%) แยกตามช่องทางสมัคร ทุกช่องทาง เรียงมากไปน้อย (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = customers.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      by_channel = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('channel')['repeat'].mean()
+      result = round(by_channel * 100, 2).sort_values(ascending=False)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - group by channel แทน cohort เดือน แล้ว sort_values(ascending=False)
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      ช่องทางไหนมี retention สูงที่สุด และต่ำที่สุด (สองตัวแปร, string) เก็บไว้ในตัวแปร best_channel, worst_channel
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      best_channel = ___
+      worst_channel = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = customers.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      by_channel = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('channel')['repeat'].mean()
+      best_channel = by_channel.idxmax()
+      worst_channel = by_channel.idxmin()
+    check: |
+      check_value(best_channel, _sol["best_channel"], name="best_channel")
+      check_value(worst_channel, _sol["worst_channel"], name="worst_channel")
+    hints:
+      - "`.idxmax()` / `.idxmin()` บน Series retention ต่อช่องทาง"
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      retention rate (%) ของ cohort 3 เดือนติดกัน (พ.ค./มิ.ย./ก.ค. 2025) เรียงตามเดือน (ไม่ใช่เรียงตามค่า) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      customers = pd.read_csv("data/customers.csv")
+      orders = pd.read_csv("data/orders.csv")
+      c = customers.assign(cohort=lambda d: d.signup_date.str[:7])
+      k = orders.groupby('customer_id').size().rename('n_orders')
+      merged = c.merge(k, on='customer_id', how='left').fillna({'n_orders': 0})
+      cohort_repeat = merged.assign(repeat=lambda d: (d.n_orders >= 2).astype(int)).groupby('cohort')['repeat'].mean()
+      result = round(cohort_repeat.loc[['2025-05', '2025-06', '2025-07']] * 100, 2)
+    check: |
+      check_series(result, _sol["result"], ordered=True)
+    hints:
+      - ใช้ .loc กับ list ของเดือนตามลำดับที่ต้องการ ไม่ต้อง sort_values
+
+quiz:
+  - id: q1
+    question: cohort ในบริบทนี้หมายถึงอะไร
+    choices:
+      - text: กลุ่มลูกค้าที่สมัครในช่วงเวลาเดียวกัน (เช่น เดือนเดียวกัน)
+        correct: true
+        why: ถูกต้อง — cohort แบ่งตามช่วงเวลาที่เข้าร่วม/สมัครสมาชิก
+      - text: กลุ่มลูกค้าที่ซื้อสินค้าหมวดเดียวกัน
+        why: นั่นคือการแบ่งกลุ่มตามพฤติกรรมซื้อ ไม่ใช่ cohort ตามเวลาสมัคร
+      - text: กลุ่มลูกค้าที่อยู่จังหวัดเดียวกัน
+        why: cohort ในบทนี้แบ่งตามเวลาสมัคร ไม่ใช่ตามพื้นที่
+      - text: ลูกค้าทั้งหมดในระบบโดยไม่แบ่งกลุ่ม
+        why: ตรงข้าม cohort คือการแบ่งกลุ่มย่อย ไม่ใช่มองรวมทั้งหมด
+  - id: q2
+    question: retention ในบทนี้นิยามว่าอะไร
+    choices:
+      - text: ลูกค้าที่สั่งซื้อตั้งแต่ 2 ครั้งขึ้นไป (นับทุกสถานะออเดอร์)
+        correct: true
+        why: ถูกต้อง — นิยามนี้ใช้ตลอดทั้งบท ต่างจากบทที่แล้วที่นับเฉพาะออเดอร์ completed
+      - text: ลูกค้าที่ล็อกอินเข้าเว็บซ้ำ
+        why: บทนี้วัดจากการสั่งซื้อ ไม่ใช่การล็อกอิน
+      - text: ลูกค้าที่ไม่เคยยกเลิกออเดอร์เลย
+        why: ไม่เกี่ยวกับการยกเลิก retention วัดจากจำนวนครั้งที่สั่งซื้อ
+      - text: ลูกค้าที่ใช้จ่ายเกินค่าเฉลี่ย
+        why: retention วัดความถี่ในการกลับมาซื้อ ไม่ใช่มูลค่าที่ใช้จ่าย
+  - id: q3
+    question: เจอ cohort หนึ่งมี retention ต่ำผิดปกติ ขั้นแรกที่ควรทำคืออะไร
+    choices:
+      - text: ตรวจดูองค์ประกอบของ cohort นั้น (เช่น ช่องทางสมัคร) ก่อนสรุปว่าเป็นปัญหาของช่วงเวลานั้นเอง
+        correct: true
+        why: ถูกต้อง — ตัวอย่างในบทนี้แสดงให้เห็นว่าปัญหาจริงอยู่ที่องค์ประกอบของ cohort ไม่ใช่ตัวเดือนเอง
+      - text: ลบข้อมูล cohort นั้นออกเพราะน่าจะเป็นข้อมูลผิดพลาด
+        why: ไม่ควรลบข้อมูลโดยไม่ตรวจสอบสาเหตุก่อน
+      - text: สรุปทันทีว่าเดือนนั้นเป็นเดือนที่ลูกค้าไม่ดี
+        why: การรีบสรุปแบบนี้คือ pitfall ที่บทนี้เตือนไว้โดยตรง
+      - text: ไม่ต้องทำอะไร เพราะ retention ผันผวนเป็นปกติอยู่แล้ว
+        why: ความต่างขนาดนี้ (21% เทียบ ~50%) ควรค่าแก่การสืบสาเหตุ ไม่ใช่มองข้าม
+  - id: q4
+    question: แคมเปญที่ดึงคนเข้ามาเยอะแต่ retention ต่ำ บอกอะไรเกี่ยวกับคุณภาพของแคมเปญนั้น
+    choices:
+      - text: อาจได้ลูกค้าปริมาณเยอะแต่คุณภาพต่ำ (ขาจรที่ไม่กลับมาซื้อซ้ำ) ต้องชั่งน้ำหนักระหว่างปริมาณกับคุณภาพ
+        correct: true
+        why: ถูกต้อง — ตรงกับ pattern ของช่องทาง promo ในตัวอย่างบทนี้
+      - text: แคมเปญนั้นล้มเหลวโดยสิ้นเชิง ไม่มีประโยชน์เลย
+        why: อาจยังมีประโยชน์ด้านอื่น (เช่น brand awareness) แค่ต้องประเมินให้ครบมิติ ไม่ใช่ตัดสินจาก retention อย่างเดียว
+      - text: จำนวนลูกค้าใหม่สำคัญกว่า retention เสมอ
+        why: ทั้งสองสำคัญคู่กัน ไม่ควรมองข้ามด้านใดด้านหนึ่ง
+      - text: retention ต่ำเกิดจากปัญหาสินค้า ไม่เกี่ยวกับแคมเปญ
+        why: ในกรณีนี้ retention ต่ำสัมพันธ์ชัดเจนกับช่องทางที่มา ไม่ใช่ตัวสินค้า
+  - id: q5
+    question: ทำไมควรดู retention แยกตามช่องทางสมัคร ไม่ใช่แค่ดูรวม
+    choices:
+      - text: ตัวเลขรวมอาจกลบปัญหาของช่องทางที่แย่ไว้ด้วยช่องทางที่ดี ทำให้มองไม่เห็นจุดที่ควรแก้
+        correct: true
+        why: ถูกต้อง — เหมือนหลักการเดียวกับการแบ่ง funnel ตาม segment ในบทก่อน
+      - text: เพราะแต่ละช่องทางมีจำนวนลูกค้าเท่ากันเสมอ
+        why: ไม่จริง จำนวนลูกค้าต่อช่องทางต่างกันมาก (organic เยอะสุด, promo น้อยสุด)
+      - text: การแยกตามช่องทางไม่มีผลต่อการตัดสินใจใดๆ
+        why: มีผลโดยตรงต่อการตัดสินใจจัดสรรงบการตลาด
+      - text: retention รวมมักแม่นยำกว่าแยกตามช่องทางเสมอ
+        why: ตรงข้าม การแยกตามช่องทางให้ข้อมูลที่ละเอียดและนำไปใช้ได้มากกว่า
+
+summary:
+  - cohort คือกลุ่มลูกค้าที่สมัครในช่วงเวลาเดียวกัน ใช้เปรียบเทียบพฤติกรรมข้ามช่วงเวลาได้
+  - retention ต่ำผิดปกติของ cohort หนึ่ง มักมีสาเหตุจากองค์ประกอบของ cohort นั้น (เช่น ช่องทางสมัคร) ไม่ใช่ตัวช่วงเวลาเอง
+  - "cohort มิ.ย. 2025 retention ต่ำเพราะ 70.59% มาจากช่องทาง promo (เทียบกับ 9.09% โดยรวม) — promo channel มี retention ต่ำสุดในทุกช่องทาง (10.33%)"
+
+interview:
+  - id: i1
+    q: เจอ cohort หนึ่งมี retention ต่ำกว่าปกติมาก จะสืบสาเหตุยังไง
+    a: |
+      เริ่มจากตรวจสอบองค์ประกอบของ cohort นั้นก่อน เช่น ช่องทางสมัคร กลุ่มอายุ พื้นที่ หรือแคมเปญที่พาเข้ามา
+      แล้วเทียบสัดส่วนกับภาพรวมทั้งหมดว่าต่างกันชัดเจนไหม ถ้าพบว่า cohort นั้นมีองค์ประกอบเฉพาะที่ต่างจากปกติ
+      (เช่น ส่วนใหญ่มาจากแคมเปญเดียว) ให้ตรวจ retention ของแต่ละองค์ประกอบแยกกันเพื่อยืนยันว่าปัญหาจริงๆ อยู่ตรงไหน
+  - id: i2
+    q: ทีมการตลาดอยากรู้ว่าแคมเปญ promo คุ้มไหม จะตอบยังไงโดยใช้ทั้งจำนวนลูกค้าใหม่และ retention ประกอบกัน
+    a: |
+      ต้องดูสองด้านคู่กัน: (1) แคมเปญพาลูกค้าใหม่เข้ามาได้เท่าไร (ในกรณีนี้ 300 คน เป็นสัดส่วนใหญ่ของ cohort มิ.ย.)
+      (2) ลูกค้ากลุ่มนั้นกลับมาซื้อซ้ำมากแค่ไหน (promo channel มี retention แค่ 10.33% ต่ำที่สุดในทุกช่องทาง) แล้วเทียบ
+      ต้นทุนแคมเปญกับมูลค่าที่ได้จากลูกค้ากลุ่มนี้ในระยะยาว — ถ้าต้นทุนสูงแต่ลูกค้าส่วนใหญ่ไม่กลับมาซื้อซ้ำเลย
+      แคมเปญนี้อาจไม่คุ้มในระยะยาวแม้จะได้ลูกค้าใหม่เยอะในระยะสั้น
+
+flashcards:
+  - id: c1
+    front: cohort คืออะไร
+    back: กลุ่มลูกค้าที่สมัครหรือเข้าร่วมในช่วงเวลาเดียวกัน ใช้เปรียบเทียบพฤติกรรมข้ามช่วงเวลา
+  - id: c2
+    front: retention ในบทนี้นิยามยังไง
+    back: ลูกค้าที่สั่งซื้อตั้งแต่ 2 ครั้งขึ้นไป นับทุกสถานะออเดอร์ (ไม่ใช่แค่ completed)
+  - id: c3
+    front: "ทำไม cohort เดือน มิ.ย. 2025 ถึง retention ต่ำ"
+    back: เพราะ 70.59% ของคนที่สมัครเดือนนั้นมาจากช่องทาง promo ซึ่งมี retention ต่ำสุดในทุกช่องทาง (10.33%)

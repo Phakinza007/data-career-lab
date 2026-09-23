@@ -1,0 +1,553 @@
+goals:
+  - เข้าใจ Recency, Frequency, Monetary และทำไมสามตัวนี้บอกอะไรที่ยอดขายรวมบอกไม่ได้
+  - ให้คะแนนลูกค้าแต่ละมิติด้วย quartile (qcut)
+  - นิยาม segment (Champions, At Risk, Lost) และแนวทางทำกับแต่ละกลุ่ม
+
+examples:
+  - id: x1
+    title: สร้างตาราง RFM
+    lang: python
+    prompt: |
+      อยากจัดกลุ่มลูกค้าตามพฤติกรรมการซื้อ ไม่ใช่แค่ดูยอดขายรวมของแต่ละคน
+    steps:
+      - text: |
+          คำนวณ recency (จำนวนวันตั้งแต่ซื้อครั้งล่าสุด), frequency (จำนวนออเดอร์ completed), monetary (รายได้รวม)
+          ของลูกค้าแต่ละคน — กำหนด snapshot วันที่คงที่ (2026-01-01) เพื่อให้ผลลัพธ์เหมือนเดิมทุกครั้งที่รัน
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          snapshot = pd.Timestamp('2026-01-01')
+          orders_dt = orders.copy()
+          orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+          comp = orders_dt[orders_dt['status'] == 'completed']
+          rev = order_items.merge(orders, on='order_id')
+          rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+          rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+          rfm_f = comp.groupby('customer_id').size().rename('frequency')
+          rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+          rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+          rfm[['recency', 'frequency', 'monetary']].mean().round(2)
+      - text: |
+          ดูภาพรวมของตาราง RFM ที่ได้ — มีลูกค้า 2707 คน ที่เคยซื้อสำเร็จอย่างน้อย 1 ครั้ง
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          snapshot = pd.Timestamp('2026-01-01')
+          orders_dt = orders.copy()
+          orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+          comp = orders_dt[orders_dt['status'] == 'completed']
+          rev = order_items.merge(orders, on='order_id')
+          rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+          rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+          rfm_f = comp.groupby('customer_id').size().rename('frequency')
+          rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+          rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+          len(rfm)
+    pitfall:
+      text: |
+        ใช้ `pd.Timestamp.now()` เป็น snapshot date แทนที่จะกำหนดวันที่คงที่ — ทำให้ค่า recency (และคะแนนทุกอย่างที่
+        คำนวณต่อจากนั้น) เปลี่ยนไปทุกครั้งที่รันโค้ด ทำให้ผลลัพธ์ไม่ reproducible และตรวจคำตอบไม่ได้เลย
+  - id: x2
+    title: ให้คะแนนด้วย quartile แล้วรวมเป็น RFM score
+    lang: python
+    prompt: |
+      อยากแปลง recency/frequency/monetary ให้เป็นคะแนนเทียบกันได้ (1-4) แล้วรวมเป็นคะแนนเดียว
+    steps:
+      - text: |
+          แบ่งแต่ละมิติเป็น 4 กลุ่มเท่าๆ กันด้วย qcut — recency ยิ่งน้อยยิ่งดี (labels กลับด้าน) ส่วน frequency/monetary
+          ยิ่งมากยิ่งดี
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          snapshot = pd.Timestamp('2026-01-01')
+          orders_dt = orders.copy()
+          orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+          comp = orders_dt[orders_dt['status'] == 'completed']
+          rev = order_items.merge(orders, on='order_id')
+          rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+          rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+          rfm_f = comp.groupby('customer_id').size().rename('frequency')
+          rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+          rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+          rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+          rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+          rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+          rfm[['r_score', 'f_score', 'm_score']].head()
+      - text: |
+          รวมสามคะแนนเป็น rfm_score (ตั้งแต่ 3 ถึง 12) — ค่าเฉลี่ยของทั้งร้านอยู่ที่ 7.5
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          snapshot = pd.Timestamp('2026-01-01')
+          orders_dt = orders.copy()
+          orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+          comp = orders_dt[orders_dt['status'] == 'completed']
+          rev = order_items.merge(orders, on='order_id')
+          rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+          rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+          rfm_f = comp.groupby('customer_id').size().rename('frequency')
+          rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+          rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+          rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+          rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+          rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+          rfm['rfm_score'] = rfm['r_score'] + rfm['f_score'] + rfm['m_score']
+          round(rfm['rfm_score'].mean(), 2)
+    pitfall:
+      text: |
+        ใช้ `pd.qcut(rfm['frequency'], 4, ...)` ตรงๆ โดยไม่ผ่าน `.rank(method='first')` ก่อน — จะได้ error
+        `ValueError: Bin edges must be unique` เพราะ frequency มีแค่ 12 ค่าที่ต่างกันและซ้ำกันเยอะมาก
+        (เช่นลูกค้าหลายร้อยคนซื้อแค่ 1 ครั้งเท่ากันหมด) ทำให้แบ่ง 4 กลุ่มเท่าๆ กันตรงๆ ไม่ได้ ต้อง rank ก่อนเพื่อ
+        กระจายค่าที่ซ้ำกันให้ตัดกลุ่มได้
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      คำนวณ recency (จำนวนวันตั้งแต่ซื้อครั้งล่าสุด) ของลูกค้าแต่ละคน เก็บไว้ในตัวแปร result เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      result = (___ - comp.groupby('customer_id')['order_date'].max()).dt.days
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      result = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - recency นับจาก snapshot ลบด้วยวันที่ซื้อครั้งล่าสุด
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      recency (วัน) เฉลี่ยของลูกค้าทั้งหมด (snapshot = 2026-01-01) เก็บไว้ในตัวแปร avg_recency
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      avg_recency = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      recency = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days
+      avg_recency = round(recency.mean(), 2)
+    check: |
+      check_value(avg_recency, _sol["avg_recency"], name="avg_recency", tol=0.1)
+    hints:
+      - เหมือนตัวอย่าง faded ข้างบน แค่หา .mean() ต่อ
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      frequency (จำนวนออเดอร์ completed) เฉลี่ยของลูกค้าทั้งหมด เก็บไว้ในตัวแปร avg_frequency
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      avg_frequency = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      comp = orders[orders['status'] == 'completed']
+      frequency = comp.groupby('customer_id').size()
+      avg_frequency = round(frequency.mean(), 2)
+    check: |
+      check_value(avg_frequency, _sol["avg_frequency"], name="avg_frequency", tol=0.01)
+    hints:
+      - นับจำนวนออเดอร์ completed ต่อลูกค้าหนึ่งคน แล้วหาค่าเฉลี่ย
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      monetary (รายได้รวม) เฉลี่ยของลูกค้าทั้งหมด เก็บไว้ในตัวแปร avg_monetary
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      avg_monetary = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      monetary = rev.groupby('customer_id')['line'].sum()
+      avg_monetary = round(monetary.mean(), 2)
+    check: |
+      check_value(avg_monetary, _sol["avg_monetary"], name="avg_monetary", tol=0.1)
+    hints:
+      - เหมือนการคำนวณรายได้ต่อลูกค้าในบทก่อนๆ
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าทั้งหมดในตาราง RFM (ลูกค้าที่เคยซื้อสำเร็จอย่างน้อย 1 ครั้ง) เก็บไว้ในตัวแปร n_customers_rfm
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_customers_rfm = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      n_customers_rfm = len(rfm)
+    check: |
+      check_value(n_customers_rfm, _sol["n_customers_rfm"], name="n_customers_rfm")
+    hints:
+      - สร้างตาราง RFM แบบเดียวกับตัวอย่าง x1 แล้ว len()
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      สร้างตาราง RFM แบบเต็ม (คอลัมน์ recency, frequency, monetary, r_score, f_score, m_score, rfm_score)
+      เก็บไว้ในตัวแปร result — ใช้ pipeline เดียวกับตัวอย่าง x1/x2 เป๊ะ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      result = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      result['r_score'] = pd.qcut(result['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      result['f_score'] = pd.qcut(result['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      result['m_score'] = pd.qcut(result['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      result['rfm_score'] = result['r_score'] + result['f_score'] + result['m_score']
+    check: |
+      check_df(result, _sol["result"])
+    hints:
+      - ทำตามขั้นตอนในตัวอย่าง x1 แล้ว x2 ต่อกันให้ครบ
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      ค่าเฉลี่ยของ rfm_score ทั้งหมด เก็บไว้ในตัวแปร avg_rfm_score
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      avg_rfm_score = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['rfm_score'] = rfm['r_score'] + rfm['f_score'] + rfm['m_score']
+      avg_rfm_score = round(rfm['rfm_score'].mean(), 2)
+    check: |
+      check_value(avg_rfm_score, _sol["avg_rfm_score"], name="avg_rfm_score", tol=0.01)
+    hints:
+      - เหมือนตัวอย่าง x2 ขั้นสุดท้าย
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในกลุ่ม Champions (r_score==4 และ f_score==4 และ m_score==4) เก็บไว้ในตัวแปร n_champions
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_champions = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      champions = (rfm['r_score'] == 4) & (rfm['f_score'] == 4) & (rfm['m_score'] == 4)
+      n_champions = int(champions.sum())
+    check: |
+      check_value(n_champions, _sol["n_champions"], name="n_champions")
+    hints:
+      - Champions คือคนที่ได้คะแนนสูงสุดทั้งสามมิติพร้อมกัน
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในกลุ่ม At Risk (r_score==1 และ f_score>=3) เก็บไว้ในตัวแปร n_at_risk
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_at_risk = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      at_risk = (rfm['r_score'] == 1) & (rfm['f_score'] >= 3)
+      n_at_risk = int(at_risk.sum())
+    check: |
+      check_value(n_at_risk, _sol["n_at_risk"], name="n_at_risk")
+    hints:
+      - At Risk คือเคยซื้อบ่อย (f_score สูง) แต่นานแล้วไม่กลับมาซื้อ (r_score ต่ำสุด)
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      % ของรายได้รวมที่มาจากกลุ่ม Champions เก็บไว้ในตัวแปร champions_rev_share_pct
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      champions_rev_share_pct = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      champions = (rfm['r_score'] == 4) & (rfm['f_score'] == 4) & (rfm['m_score'] == 4)
+      champions_rev_share_pct = round(rfm.loc[champions, 'monetary'].sum() / rfm['monetary'].sum() * 100, 2)
+    check: |
+      check_value(champions_rev_share_pct, _sol["champions_rev_share_pct"], name="champions_rev_share_pct", tol=0.05)
+    hints:
+      - รวม monetary ของกลุ่ม Champions หารด้วยผลรวม monetary ทั้งหมด
+  - id: e10
+    level: challenge
+    lang: python
+    prompt: |
+      จำนวนลูกค้าในกลุ่ม Lost (r_score==1 และ f_score==1) และ % รายได้ที่กลุ่ม At Risk สร้าง (สองตัวแปร)
+      เก็บไว้ในตัวแปร n_lost, at_risk_rev_share_pct
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_lost = ___
+      at_risk_rev_share_pct = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      snapshot = pd.Timestamp('2026-01-01')
+      orders_dt = orders.copy()
+      orders_dt['order_date'] = pd.to_datetime(orders_dt['order_date'])
+      comp = orders_dt[orders_dt['status'] == 'completed']
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      rfm_r = (snapshot - comp.groupby('customer_id')['order_date'].max()).dt.days.rename('recency')
+      rfm_f = comp.groupby('customer_id').size().rename('frequency')
+      rfm_m = rev.groupby('customer_id')['line'].sum().rename('monetary')
+      rfm = pd.concat([rfm_r, rfm_f, rfm_m], axis=1).dropna()
+      rfm['r_score'] = pd.qcut(rfm['recency'], 4, labels=[4, 3, 2, 1]).astype(int)
+      rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 4, labels=[1, 2, 3, 4]).astype(int)
+      rfm['m_score'] = pd.qcut(rfm['monetary'], 4, labels=[1, 2, 3, 4]).astype(int)
+      lost = (rfm['r_score'] == 1) & (rfm['f_score'] == 1)
+      at_risk = (rfm['r_score'] == 1) & (rfm['f_score'] >= 3)
+      n_lost = int(lost.sum())
+      at_risk_rev_share_pct = round(rfm.loc[at_risk, 'monetary'].sum() / rfm['monetary'].sum() * 100, 2)
+    check: |
+      check_value(n_lost, _sol["n_lost"], name="n_lost")
+      check_value(at_risk_rev_share_pct, _sol["at_risk_rev_share_pct"], name="at_risk_rev_share_pct", tol=0.05)
+    hints:
+      - Lost คือคะแนนต่ำสุดทั้ง recency และ frequency
+
+quiz:
+  - id: q1
+    question: RFM ย่อมาจากอะไร
+    choices:
+      - text: Recency, Frequency, Monetary
+        correct: true
+        why: ถูกต้อง
+      - text: Revenue, Frequency, Margin
+        why: ไม่ใช่ — RFM ไม่เกี่ยวกับ margin โดยตรง
+      - text: Retention, Funnel, Metric
+        why: คำเหล่านี้เป็นแนวคิดจากบทอื่น ไม่ใช่ส่วนประกอบของ RFM
+      - text: Recency, Funnel, Monetary
+        why: F ใน RFM คือ Frequency ไม่ใช่ Funnel
+  - id: q2
+    question: recency ยิ่งค่าน้อย (วันน้อย) หมายความว่าอะไร
+    choices:
+      - text: ลูกค้าเพิ่งซื้อล่าสุดเมื่อไม่นานมานี้ (ดีกว่า)
+        correct: true
+        why: ถูกต้อง — recency คือจำนวนวันตั้งแต่ซื้อครั้งล่าสุด ยิ่งน้อยยิ่งเพิ่งซื้อมา
+      - text: ลูกค้าซื้อบ่อยมาก
+        why: ความถี่วัดด้วย frequency ไม่ใช่ recency
+      - text: ลูกค้าใช้จ่ายเยอะ
+        why: มูลค่าการใช้จ่ายวัดด้วย monetary ไม่ใช่ recency
+      - text: ลูกค้าสมัครสมาชิกมานานแล้ว
+        why: recency วัดจากการซื้อครั้งล่าสุด ไม่ใช่วันที่สมัครสมาชิก
+  - id: q3
+    question: ทำไมต้องใช้ `rank(method='first')` ก่อน `qcut` กับ frequency
+    choices:
+      - text: เพราะ frequency มีค่าซ้ำกันเยอะ ทำให้แบ่ง 4 กลุ่มเท่าๆ กันตรงๆ ไม่ได้ (bin edges ไม่ unique)
+        correct: true
+        why: ถูกต้อง — ยืนยันแล้วว่า qcut ตรงๆ กับ frequency จะ error เพราะมีแค่ 12 ค่าที่ต่างกัน
+      - text: เพราะ rank ทำให้คำนวณเร็วขึ้น
+        why: ไม่เกี่ยวกับความเร็ว แต่เกี่ยวกับการแบ่งกลุ่มที่ทำไม่ได้ถ้าค่าซ้ำกันเยอะ
+      - text: เพราะ qcut ใช้กับข้อมูลตัวเลขไม่ได้โดยตรง
+        why: qcut ใช้กับข้อมูลตัวเลขได้ปกติ ปัญหาคือค่าซ้ำกันของ frequency
+      - text: rank ทำให้ผลลัพธ์แม่นยำกว่าเสมอ ไม่เกี่ยวกับ error
+        why: ประเด็นคือป้องกัน error ไม่ใช่แค่เรื่องความแม่นยำ
+  - id: q4
+    question: กลุ่ม "At Risk" ในบทนี้นิยามว่าอะไร
+    choices:
+      - text: เคยซื้อบ่อย (f_score สูง) แต่นานแล้วไม่กลับมาซื้อ (r_score ต่ำสุด)
+        correct: true
+        why: ถูกต้อง — เป็นกลุ่มที่เคยมีคุณค่าสูงแต่กำลังจะหายไป
+      - text: ลูกค้าที่ไม่เคยซื้อเลย
+        why: ลูกค้าที่ไม่เคยซื้อเลยไม่ได้อยู่ในตาราง RFM (ซึ่งกรองเฉพาะคนที่เคยซื้อสำเร็จ)
+      - text: ลูกค้าที่ใช้จ่ายสูงสุดในระบบ
+        why: นั่นใกล้เคียงกับ Champions มากกว่า ไม่ใช่ At Risk
+      - text: ลูกค้าที่เพิ่งสมัครสมาชิกใหม่
+        why: At Risk วัดจากพฤติกรรมการซื้อ ไม่ใช่วันที่สมัครสมาชิก
+  - id: q5
+    question: ทำไม RFM ถึงมีประโยชน์กว่าดูแค่ยอดขายรวมของลูกค้าคนหนึ่ง
+    choices:
+      - text: บอกทั้งความถี่ ความใหม่ และมูลค่า ทำให้แยกแยะพฤติกรรมลูกค้าได้ละเอียดกว่าตัวเลขเดียว
+        correct: true
+        why: ถูกต้อง — ลูกค้าสองคนที่ยอดขายรวมเท่ากันอาจมีพฤติกรรมต่างกันมากเมื่อดู R/F แยก
+      - text: RFM คำนวณง่ายกว่ายอดขายรวมมาก
+        why: ไม่ใช่ประเด็นเรื่องความง่าย แต่เป็นเรื่องมิติของข้อมูลที่ได้มากกว่า
+      - text: ยอดขายรวมมักคำนวณผิดพลาดบ่อยกว่า RFM
+        why: ไม่เกี่ยวกับความผิดพลาดในการคำนวณ
+      - text: RFM ใช้ได้เฉพาะกับร้านค้าออนไลน์เท่านั้น
+        why: RFM ใช้ได้กับธุรกิจที่มีข้อมูลการซื้อซ้ำแทบทุกประเภท ไม่ใช่แค่ร้านค้าออนไลน์
+
+summary:
+  - RFM วัดพฤติกรรมลูกค้า 3 มิติ (Recency/Frequency/Monetary) ให้ภาพที่ละเอียดกว่ายอดขายรวมตัวเดียว
+  - ให้คะแนนแบบ quartile ต้องระวัง frequency ที่มีค่าซ้ำเยอะ — ใช้ rank(method='first') ก่อน qcut เสมอ
+  - "Champions (168 คน) สร้างรายได้ 18.2% ของทั้งหมด ส่วน At Risk (163 คน) คือกลุ่มที่เคยซื้อบ่อยแต่กำลังจะหายไป ควรได้รับความสนใจต่างกัน"
+
+interview:
+  - id: i1
+    q: อธิบาย RFM segmentation ให้ทีมการตลาดที่ไม่ถนัดสถิติฟัง
+    a: |
+      RFM คือการดูลูกค้าสามด้าน — ซื้อล่าสุดเมื่อไร (Recency) ซื้อบ่อยแค่ไหน (Frequency) และใช้จ่ายรวมเท่าไร
+      (Monetary) แล้วให้คะแนนแต่ละด้านเทียบกับลูกค้าคนอื่น จากนั้นรวมคะแนนเพื่อแบ่งลูกค้าเป็นกลุ่มๆ เช่น
+      "ลูกค้าดีเยี่ยม" (คะแนนสูงทุกด้าน) หรือ "เคยดีแต่กำลังจะหายไป" (เคยซื้อบ่อยแต่นานแล้วไม่กลับมา) เพื่อให้ทีม
+      การตลาดออกแบบแคมเปญที่เหมาะกับแต่ละกลุ่มแทนที่จะส่งข้อความเดียวกันให้ทุกคน
+  - id: i2
+    q: เจอลูกค้ากลุ่ม "At Risk" (เคยซื้อบ่อยแต่หายไป) ควรทำแคมเปญแบบไหนต่างจากกลุ่ม "Champions"
+    a: |
+      กลุ่ม At Risk ควรได้รับแคมเปญกระตุ้นให้กลับมา เช่น ส่วนลดพิเศษเฉพาะบุคคล หรือข้อความถามไถ่ว่าทำไมหายไป
+      เพราะเป็นกลุ่มที่เคยมีคุณค่าสูงและมีความเสี่ยงจะเสียไปให้คู่แข่ง ส่วนกลุ่ม Champions ควรได้รับการดูแลรักษาไว้
+      (เช่น โปรแกรมสมาชิก VIP หรือสิทธิพิเศษ) มากกว่าแคมเปญกระตุ้นให้ซื้อ เพราะพวกเขาซื้ออยู่แล้วสม่ำเสมอ
+      การส่งแคมเปญเดียวกันให้ทั้งสองกลุ่มจะสิ้นเปลืองงบและไม่ตรงจุด
+  - id: i3
+    q: ทำไมการกำหนด snapshot date ให้คงที่ (ไม่ใช้วันที่ปัจจุบันจริง) ถึงสำคัญตอนเขียนโค้ดวิเคราะห์แบบนี้
+    a: |
+      ถ้าใช้วันที่ปัจจุบันจริง (เช่น `pd.Timestamp.now()`) ค่า recency และคะแนนทุกอย่างที่คำนวณต่อจากนั้นจะเปลี่ยนไป
+      ทุกครั้งที่รันโค้ดในวันที่ต่างกัน ทำให้ผลลัพธ์ไม่ reproducible — คนอื่นรันโค้ดเดียวกันในวันอื่นจะได้คำตอบไม่ตรงกัน
+      และตรวจสอบความถูกต้องของโค้ดไม่ได้เลย การกำหนดวันที่คงที่ทำให้ทุกคนได้ผลลัพธ์เดียวกันเสมอ
+
+flashcards:
+  - id: c1
+    front: RFM ย่อมาจากอะไร
+    back: Recency (ซื้อล่าสุดเมื่อไร), Frequency (ซื้อบ่อยแค่ไหน), Monetary (ใช้จ่ายรวมเท่าไร)
+  - id: c2
+    front: "Champions กับ At Risk ต่างกันยังไง"
+    back: Champions คือคะแนนสูงสุดทั้ง 3 มิติ ส่วน At Risk คือเคยซื้อบ่อย (f_score สูง) แต่นานแล้วไม่กลับมาซื้อ (r_score ต่ำสุด)
+  - id: c3
+    front: ทำไมต้องกำหนด snapshot date คงที่ตอนคำนวณ RFM
+    back: ถ้าใช้วันที่ปัจจุบันจริง ค่า recency และคะแนนทั้งหมดจะเปลี่ยนทุกครั้งที่รัน ทำให้ผลลัพธ์ไม่ reproducible

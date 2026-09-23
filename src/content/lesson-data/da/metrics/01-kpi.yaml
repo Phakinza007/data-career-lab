@@ -1,0 +1,414 @@
+goals:
+  - แยกความต่างระหว่าง leading indicator กับ lagging indicator
+  - รู้ว่า KPI ตัวเดียวโดดๆ อาจทำให้เข้าใจสถานการณ์ผิด (vanity metric)
+  - เลือก KPI ให้ตรงกับคำถามธุรกิจจริงๆ ไม่ใช่แค่ตัวที่วัดง่าย
+
+examples:
+  - id: x1
+    title: อัตราการเปลี่ยนเป็นลูกค้า (conversion rate) เป็น KPI แบบ leading
+    lang: python
+    prompt: |
+      ทีมอยากรู้ภาพรวมว่าจาก session ที่เข้ามาดูเว็บ มีกี่ % ที่ซื้อสำเร็จ
+    steps:
+      - text: |
+          นับจำนวน session ที่ไปถึงขั้น visit และขั้น purchase จาก events
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          counts = events.groupby('event_type')['session_id'].nunique()
+          n_visit = counts['visit']
+          n_purchase = counts['purchase']
+          n_visit, n_purchase
+      - text: |
+          คำนวณ % conversion — นี่คือ leading indicator (สัญญาณล่วงหน้า) ต่างจากรายได้ที่เป็น lagging indicator (ผลลัพธ์สุดท้าย)
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          counts = events.groupby('event_type')['session_id'].nunique()
+          n_visit = counts['visit']
+          n_purchase = counts['purchase']
+          overall_conversion_pct = round(n_purchase / n_visit * 100, 2)
+          overall_conversion_pct
+    pitfall:
+      text: |
+        ถ้าติดตามแค่รายได้ (lagging indicator) อย่างเดียว จะรู้ปัญหาก็ต่อเมื่อผลลัพธ์สุดท้ายออกมาแย่แล้ว
+        ซึ่งอาจสายเกินไปที่จะแก้ทัน — leading indicator อย่าง conversion rate ให้สัญญาณเตือนได้เร็วกว่า
+  - id: x2
+    title: "ระวัง vanity metric: รายได้สูงไม่ได้แปลว่าฐานลูกค้าโตขึ้นเสมอไป"
+    lang: python
+    prompt: |
+      เดือน ธ.ค. 2025 มีรายได้สูงสุดของปี — ทีมอยากรู้ว่านี่คือสัญญาณที่ดีจริงไหม
+    steps:
+      - text: |
+          หารายได้และจำนวนลูกค้า active (มีออเดอร์ completed อย่างน้อย 1 ครั้ง) ของเดือน ธ.ค. และ ม.ค. 2025 เทียบกัน
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+          r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+          r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+          monthly_rev = r25.groupby('month')['line'].sum()
+          monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+          dec_revenue, dec_mac = monthly_rev['2025-12'], monthly_mac['2025-12']
+          jan_revenue, jan_mac = monthly_rev['2025-01'], monthly_mac['2025-01']
+          dec_revenue, dec_mac, jan_revenue, jan_mac
+      - text: |
+          คำนวณรายได้เฉลี่ยต่อลูกค้า active — ธ.ค. มีรายได้เฉลี่ยต่อคนเกือบสองเท่าของ ม.ค. ทั้งที่จำนวนลูกค้า active ต่ำสุดของปี
+          แปลว่ารายได้ที่สูงมาจากลูกค้าเดิม/กลุ่มเดิมใช้จ่ายมากขึ้น ไม่ใช่ฐานลูกค้าโตขึ้น
+        code: |
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          order_items = pd.read_csv("data/order_items.csv")
+          o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+          r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+          r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+          monthly_rev = r25.groupby('month')['line'].sum()
+          monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+          dec_avg = monthly_rev['2025-12'] / monthly_mac['2025-12']
+          jan_avg = monthly_rev['2025-01'] / monthly_mac['2025-01']
+          round(dec_avg, 2), round(jan_avg, 2)
+    pitfall:
+      text: |
+        การรายงาน "รายได้เดือน ธ.ค. สูงสุดของปี!" เฉยๆ โดยไม่เช็คจำนวนลูกค้า active ประกอบ
+        เป็นตัวอย่างคลาสสิกของ vanity metric — ตัวเลขดูดีแต่ไม่ได้บอกว่าธุรกิจกำลังเติบโตแบบยั่งยืนจริงหรือเปล่า
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      หาอัตราการซื้อซ้ำของลูกค้าที่เคยซื้อสำเร็จ (completed) อย่างน้อย 1 ครั้ง เก็บไว้ในตัวแปร repeat_rate_pct
+      เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_order_count = rev.groupby('customer_id')['order_id'].nunique()
+      n_paying = len(cust_order_count)
+      n_repeat = int((cust_order_count ___ 2).sum())
+      repeat_rate_pct = round(n_repeat / n_paying * 100, 2)
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_order_count = rev.groupby('customer_id')['order_id'].nunique()
+      n_paying = len(cust_order_count)
+      n_repeat = int((cust_order_count >= 2).sum())
+      repeat_rate_pct = round(n_repeat / n_paying * 100, 2)
+    check: |
+      check_value(repeat_rate_pct, _sol["repeat_rate_pct"], name="repeat_rate_pct")
+    hints:
+      - ซื้อซ้ำหมายถึงมีจำนวนออเดอร์ตั้งแต่ 2 ขึ้นไป ใช้ >=
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวน session ทั้งหมด (visit) และจำนวน session ที่ซื้อสำเร็จ (purchase) เก็บไว้ในตัวแปร n_visit, n_purchase
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      n_visit = ___
+      n_purchase = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      n_visit = counts['visit']
+      n_purchase = counts['purchase']
+    check: |
+      check_value(n_visit, _sol["n_visit"], name="n_visit")
+      check_value(n_purchase, _sol["n_purchase"], name="n_purchase")
+    hints:
+      - "`events.groupby('event_type')['session_id'].nunique()`"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      อัตราการเปลี่ยนเป็นลูกค้ารวม (%) จาก visit ไปถึง purchase เก็บไว้ในตัวแปร overall_conversion_pct
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      overall_conversion_pct = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      overall_conversion_pct = round(counts['purchase'] / counts['visit'] * 100, 2)
+    check: |
+      check_value(overall_conversion_pct, _sol["overall_conversion_pct"], name="overall_conversion_pct", tol=0.01)
+    hints:
+      - "conversion% = purchase/visit*100"
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่เคยซื้อสำเร็จ (completed) อย่างน้อย 1 ครั้ง และจำนวนที่ซื้อซ้ำ (≥2 ครั้ง) เก็บไว้ในตัวแปร n_paying, n_repeat
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      n_paying = ___
+      n_repeat = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_order_count = rev.groupby('customer_id')['order_id'].nunique()
+      n_paying = len(cust_order_count)
+      n_repeat = int((cust_order_count >= 2).sum())
+    check: |
+      check_value(n_paying, _sol["n_paying"], name="n_paying")
+      check_value(n_repeat, _sol["n_repeat"], name="n_repeat")
+    hints:
+      - merge order_items กับ orders กรอง completed แล้ว group by customer_id นับ order_id ไม่ซ้ำ
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      อัตราการซื้อซ้ำของลูกค้าที่เคยซื้อสำเร็จ (%) เก็บไว้ในตัวแปร repeat_rate_pct
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      repeat_rate_pct = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      rev = order_items.merge(orders, on='order_id')
+      rev = rev[rev['status'] == 'completed'].assign(line=lambda d: d.quantity * d.unit_price)
+      cust_order_count = rev.groupby('customer_id')['order_id'].nunique()
+      n_paying = len(cust_order_count)
+      n_repeat = int((cust_order_count >= 2).sum())
+      repeat_rate_pct = round(n_repeat / n_paying * 100, 2)
+    check: |
+      check_value(repeat_rate_pct, _sol["repeat_rate_pct"], name="repeat_rate_pct", tol=0.01)
+    hints:
+      - เหมือนตัวอย่าง faded ข้างบน
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนลูกค้าที่ active (มีออเดอร์ completed อย่างน้อย 1 ครั้ง) ในแต่ละเดือนของปี 2025 เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      result = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - กรอง completed และปี 2025 ก่อน แล้ว group by เดือน นับ customer_id ไม่ซ้ำ
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      เดือนที่มีลูกค้า active มากที่สุด และน้อยที่สุดในปี 2025 (สองตัวแปร เป็น string เช่น '2025-06') เก็บไว้ในตัวแปร peak_month, low_month
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      peak_month = ___
+      low_month = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      peak_month = mac.idxmax()
+      low_month = mac.idxmin()
+    check: |
+      check_value(peak_month, _sol["peak_month"], name="peak_month")
+      check_value(low_month, _sol["low_month"], name="low_month")
+    hints:
+      - "`.idxmax()` / `.idxmin()` คืนชื่อ index ของค่าสูงสุด/ต่ำสุด"
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      รายได้เฉลี่ยต่อลูกค้า active ของเดือน ธ.ค. 2025 และ ม.ค. 2025 (สองตัวแปร) เก็บไว้ในตัวแปร dec_avg, jan_avg
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      dec_avg = ___
+      jan_avg = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+      monthly_rev = r25.groupby('month')['line'].sum()
+      monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      dec_avg = round(monthly_rev['2025-12'] / monthly_mac['2025-12'], 2)
+      jan_avg = round(monthly_rev['2025-01'] / monthly_mac['2025-01'], 2)
+    check: |
+      check_value(dec_avg, _sol["dec_avg"], name="dec_avg", tol=0.1)
+      check_value(jan_avg, _sol["jan_avg"], name="jan_avg", tol=0.1)
+    hints:
+      - รายได้เฉลี่ยต่อคน = รายได้เดือนนั้น / จำนวนลูกค้า active เดือนนั้น
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      รายได้เฉลี่ยต่อลูกค้า active เดือน ธ.ค. 2025 สูงกว่า ม.ค. 2025 ไหม (bool) เก็บไว้ในตัวแปร is_dec_avg_higher
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      is_dec_avg_higher = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+      monthly_rev = r25.groupby('month')['line'].sum()
+      monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      dec_avg = monthly_rev['2025-12'] / monthly_mac['2025-12']
+      jan_avg = monthly_rev['2025-01'] / monthly_mac['2025-01']
+      is_dec_avg_higher = dec_avg > jan_avg
+    check: |
+      check_value(is_dec_avg_higher, _sol["is_dec_avg_higher"], name="is_dec_avg_higher")
+    hints:
+      - เทียบค่าที่คำนวณได้จาก e7 ตรงๆ
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      คำนวณรายได้เฉลี่ยต่อลูกค้า active ของทั้ง 12 เดือนปี 2025 แล้วหาว่าเดือนไหนมีค่านี้สูงที่สุด (string) เก็บไว้ในตัวแปร top_avg_month
+    starter: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      top_avg_month = ___
+    solution: |
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      order_items = pd.read_csv("data/order_items.csv")
+      o25 = orders[(orders['status'] == 'completed') & (orders['order_date'].str.startswith('2025'))]
+      r25 = order_items.merge(o25, on='order_id').assign(line=lambda d: d.quantity * d.unit_price)
+      r25 = r25.assign(month=lambda d: d.order_date.str[:7])
+      monthly_rev = r25.groupby('month')['line'].sum()
+      monthly_mac = o25.assign(month=lambda d: d.order_date.str[:7]).groupby('month')['customer_id'].nunique()
+      avg_rev_per_customer = monthly_rev / monthly_mac
+      top_avg_month = avg_rev_per_customer.idxmax()
+    check: |
+      check_value(top_avg_month, _sol["top_avg_month"], name="top_avg_month")
+    hints:
+      - หา Series รายได้เฉลี่ยต่อคนของทุกเดือนก่อน (รายได้/จำนวนลูกค้า active) แล้ว idxmax()
+
+quiz:
+  - id: q1
+    question: leading indicator กับ lagging indicator ต่างกันยังไง
+    choices:
+      - text: leading คือสัญญาณล่วงหน้าที่เปลี่ยนก่อนผลลัพธ์สุดท้าย ส่วน lagging คือผลลัพธ์สุดท้ายที่รู้ทีหลัง
+        correct: true
+        why: ถูกต้อง — leading ให้เวลาทีมแก้ไขก่อนผลลัพธ์สุดท้ายจะออกมา
+      - text: ทั้งสองแบบวัดสิ่งเดียวกัน แค่เรียกชื่อต่างกัน
+        why: ไม่ใช่ ทั้งสองวัดคนละช่วงเวลาของ funnel/กระบวนการ
+      - text: leading indicator วัดได้แค่ในอดีต
+        why: กลับกัน leading indicator คือสัญญาณล่วงหน้า ไม่ใช่ข้อมูลอดีต
+      - text: lagging indicator เปลี่ยนแปลงเร็วกว่า leading เสมอ
+        why: ตรงข้าม lagging indicator คือผลลัพธ์สุดท้ายที่รู้ช้ากว่า
+  - id: q2
+    question: "\"รายได้เดือนนี้สูงสุดของปี\" อันตรายตรงไหนถ้าดูตัวเลขนี้ตัวเดียว"
+    choices:
+      - text: ไม่รู้ว่าสูงเพราะฐานลูกค้าโตขึ้นจริง หรือแค่คนกลุ่มเดิมใช้จ่ายมากขึ้น (vanity metric)
+        correct: true
+        why: ถูกต้อง — ต้องเช็คจำนวนลูกค้า active ประกอบเพื่อรู้ที่มาของรายได้ที่แท้จริง
+      - text: ไม่มีอันตรายเลย ตัวเลขรายได้บอกทุกอย่างที่ต้องรู้
+        why: ไม่จริง รายได้อย่างเดียวไม่บอกว่าฐานลูกค้าโตขึ้นหรือไม่
+      - text: อันตรายเฉพาะตอนรายได้ต่ำเท่านั้น
+        why: อันตรายเกิดได้ทั้งตอนรายได้สูงและต่ำถ้าดูตัวเดียวโดดๆ
+      - text: ควรดูแค่ % การเติบโตแทน ไม่ต้องดูรายได้จริง
+        why: "% การเติบโตก็เป็น KPI ตัวเดียวเหมือนกัน ยังต้องดูควบคู่กับตัวอื่น"
+  - id: q3
+    question: North Star Metric ควรมีลักษณะแบบไหน
+    choices:
+      - text: สะท้อนคุณค่าที่ลูกค้าได้รับจริง และเชื่อมโยงกับรายได้ในระยะยาว ไม่ใช่แค่วัดง่าย
+        correct: true
+        why: ถูกต้อง — เป้าหมายคือ metric ที่ทั้งบริษัทใช้ร่วมกันเป็นทิศทางหลัก
+      - text: ต้องเป็นตัวเลขที่คำนวณง่ายที่สุดในระบบ
+        why: ความง่ายในการคำนวณไม่ใช่เกณฑ์หลักในการเลือก North Star Metric
+      - text: ควรเปลี่ยนทุกเดือนตามที่ทีมสนใจ
+        why: North Star Metric ควรคงที่พอสมควรเพื่อเป็นทิศทางระยะยาวของทั้งบริษัท
+      - text: ต้องเป็นตัวเลขทางการเงินเท่านั้น
+        why: ไม่จำเป็น หลายบริษัทเลือก North Star Metric ที่ไม่ใช่ตัวเงินโดยตรง เช่น จำนวนลูกค้า active
+  - id: q4
+    question: ทำไมควรดู KPI มากกว่า 1 ตัวพร้อมกันเสมอ
+    choices:
+      - text: KPI ตัวเดียวบอกภาพได้ไม่ครบ อาจถูกตีความผิดถ้าขาดบริบทจากตัวอื่น
+        correct: true
+        why: ถูกต้อง — ตัวอย่างเดือน ธ.ค. ในบทนี้แสดงให้เห็นชัดว่าดูรายได้อย่างเดียวพลาดประเด็นสำคัญไปเลย
+      - text: เพราะ KPI แต่ละตัวมักผิดพลาดบ่อย ต้องมีตัวสำรอง
+        why: ไม่ใช่ประเด็นเรื่องความผิดพลาดของการคำนวณ แต่เป็นเรื่องบริบทที่ขาดหายไป
+      - text: เพื่อให้รายงานดูน่าเชื่อถือมากขึ้นเท่านั้น
+        why: เหตุผลหลักคือป้องกันการเข้าใจผิด ไม่ใช่เรื่องความน่าเชื่อถือของรายงาน
+      - text: ไม่จำเป็นต้องดูหลายตัว ถ้าเลือก KPI ตัวเดียวที่ดีพอ
+        why: แม้ KPI ตัวเดียวจะดี ก็ยังเสี่ยงเป็น vanity metric ได้ถ้าไม่มีตัวอื่นประกอบ
+
+summary:
+  - leading indicator ให้สัญญาณล่วงหน้า ส่วน lagging indicator คือผลลัพธ์สุดท้ายที่รู้ทีหลัง
+  - KPI ตัวเดียวโดดๆ อาจทำให้เข้าใจผิด (vanity metric) — ต้องดูควบคู่กับตัวชี้วัดอื่นเสมอ
+  - "ตัวอย่างจริงจากข้อมูล: ธ.ค. 2025 รายได้สูงสุดของปีแต่ลูกค้า active ต่ำสุด — รายได้มาจากการใช้จ่ายต่อคนที่สูงขึ้น ไม่ใช่ฐานลูกค้าที่โตขึ้น"
+
+interview:
+  - id: i1
+    q: ผู้บริหารบอกว่า "ยอดขายเดือนนี้สูงสุดในรอบปี ดีมากเลย" จะถามอะไรต่อก่อนเห็นด้วยเต็มที่
+    a: |
+      ควรถามต่อว่ารายได้ที่สูงขึ้นมาจากอะไร — ลูกค้าใหม่เพิ่มขึ้นจริง หรือลูกค้าเดิมกลุ่มเล็กใช้จ่ายมากขึ้น
+      (เช็คจำนวนลูกค้า active ประกอบเสมอ) และเทียบกับช่วงเวลาเดียวกันของปีก่อนหรือฤดูกาลปกติด้วย
+      เพราะยอดขายสูงในเดือนที่มีฤดูกาล/แคมเปญพิเศษอาจไม่ยั่งยืนในเดือนถัดไป
+  - id: i2
+    q: ถ้าให้เลือก North Star Metric ตัวเดียวสำหรับร้านค้าออนไลน์นี้ จะเลือกอะไรและทำไม
+    a: |
+      ตัวเลือกที่สมเหตุสมผลคือ "รายได้จากลูกค้าที่ซื้อซ้ำ" หรือ "จำนวนลูกค้า active ต่อเดือน" มากกว่ารายได้รวมเฉยๆ
+      เพราะสะท้อนทั้งคุณค่าที่ลูกค้าได้รับ (กลับมาซื้อซ้ำ) และการเติบโตของฐานลูกค้าไปพร้อมกัน
+      ไม่ใช่แค่ตัวเลขที่ถูกดันขึ้นได้ง่ายจากลูกค้ากลุ่มเล็กกลุ่มเดียว
+
+flashcards:
+  - id: c1
+    front: leading indicator ต่างจาก lagging indicator ยังไง
+    back: leading คือสัญญาณล่วงหน้าที่เปลี่ยนก่อนผลลัพธ์ (เช่น conversion rate) ส่วน lagging คือผลลัพธ์สุดท้ายที่รู้ทีหลัง (เช่น รายได้)
+  - id: c2
+    front: "ทำไม \"รายได้เดือนนี้สูงสุดของปี\" อาจเป็น vanity metric"
+    back: ถ้าไม่เช็คจำนวนลูกค้า active ประกอบ อาจไม่รู้ว่ารายได้สูงเพราะฐานลูกค้าโตจริง หรือแค่ลูกค้ากลุ่มเดิมใช้จ่ายมากขึ้น

@@ -63,6 +63,18 @@ const quiz = data.quiz.map((q) => quizView(ref.id, q));
         <ul>{data.goals.map((g) => <li set:html={mdInline(g)} />)}</ul>
       </section>
 
+      {entry.data.notebook && (
+        <section class="card">
+          <h2>Notebook</h2>
+          <p class="muted">งานหลักของบทนี้ทำใน Jupyter notebook ไม่ใช่ในเว็บ — โหลดไฟล์ไปเปิดในเครื่อง หรือเปิดตรงบน Google Colab ก็ได้</p>
+          <p>
+            <a href={url(`/notebooks/${entry.data.notebook}`)} download>⬇ ดาวน์โหลด notebook</a>
+            {' · '}
+            <a href={`https://colab.research.google.com/github/Phakinza007/data-career-lab/blob/main/notebooks/${entry.data.notebook}`} target="_blank" rel="noopener">เปิดใน Google Colab ↗</a>
+          </p>
+        </section>
+      )}
+
       <div class="prose"><Content /></div>
 
       {examples.length > 0 && (

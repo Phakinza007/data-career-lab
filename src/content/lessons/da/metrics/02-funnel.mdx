@@ -1,0 +1,50 @@
+---
+track: da
+module: metrics
+order: 2
+title: "วิเคราะห์ funnel"
+minutes: 30
+prereqs: [da/metrics/01-kpi]
+---
+
+## funnel คืออะไร
+
+funnel คือลำดับขั้นที่ผู้ใช้ต้องผ่านก่อนจะถึงเป้าหมาย เช่นร้านค้าออนไลน์นี้มี funnel:
+`visit → view_product → add_to_cart → checkout → purchase` (ข้อมูลอยู่ใน `events.csv`, นับที่ระดับ `session_id`)
+
+```python
+import pandas as pd
+
+events = pd.read_csv("data/events.csv")
+FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+counts = events.groupby('event_type')['session_id'].nunique()
+```
+
+**หมายเหตุ:** `events.csv` เป็นคนละแหล่งข้อมูลกับ `orders`/`order_items` ที่ใช้คำนวณรายได้ในบทก่อนๆ — `events`
+วัดพฤติกรรมระดับ session (การเข้าชม คลิก ไปจนถึงกดซื้อ) ส่วน `orders` วัดออเดอร์ที่เกิดขึ้นจริง ทั้งสองเกี่ยวข้องกัน
+แต่ไม่ใช่ตารางเดียวกัน
+
+## step-conversion ต่างจาก absolute drop-off
+
+**Absolute drop-off** คือจำนวนคนที่หายไประหว่างสองขั้น (ขั้นก่อน − ขั้นถัดไป)
+
+**Step-conversion** คือสัดส่วน (%) ของคนที่ผ่านขั้นนั้นได้ เทียบกับฐานของขั้นก่อนหน้า:
+
+```python
+step_conv_pct = round(counts['add_to_cart'] / counts['view_product'] * 100, 2)
+```
+
+ขั้นที่มี absolute drop-off เยอะที่สุดไม่จำเป็นต้องเป็นขั้นที่แย่ที่สุด — ขั้นต้นๆ ของ funnel มักมีคนเยอะอยู่แล้ว
+ดรอปเป็นตัวเลขเยอะเป็นเรื่องปกติ ต้องดู step-conversion (%) ประกอบเสมอเพื่อรู้ว่าขั้นไหนควรแก้ก่อนจริงๆ
+
+## แบ่ง funnel ตาม segment
+
+การดู funnel รวมอย่างเดียวอาจกลบปัญหาของ segment ใดๆ ไว้ ลองแบ่งตาม `device` (`mobile`/`desktop`) ดู:
+
+```python
+mobile = events[events['device'] == 'mobile']
+desktop = events[events['device'] == 'desktop']
+```
+
+แล้วคำนวณ funnel/conversion แยกกัน — ถ้า conversion รวมใกล้เคียงกันแต่ step ใดขั้นหนึ่งต่างกันมาก แปลว่ามีจุดที่ควร
+โฟกัสเฉพาะ segment นั้น

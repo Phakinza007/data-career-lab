@@ -1,0 +1,384 @@
+goals:
+  - อ่าน funnel ทีละขั้นด้วย step-over-step conversion
+  - แยกความต่างระหว่าง absolute drop-off กับ relative step-conversion
+  - เปรียบเทียบ funnel ระหว่างกลุ่มย่อย เช่น device
+
+examples:
+  - id: x1
+    title: อ่าน funnel ทีละขั้น
+    lang: python
+    prompt: |
+      อยากรู้ว่าขั้นไหนของ funnel (visit → view_product → add_to_cart → checkout → purchase) ที่คนหลุดออกเยอะที่สุด
+    steps:
+      - text: |
+          นับจำนวน session ต่อขั้นของ funnel ทั้งหมด
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+          counts = events.groupby('event_type')['session_id'].nunique()
+          steps_n = [int(counts.get(f, 0)) for f in FUNNEL]
+          steps_n
+      - text: |
+          คำนวณ step-conversion (%) ของแต่ละขั้นเทียบกับขั้นก่อนหน้า — พบว่าขั้น add_to_cart มี step-conversion ต่ำสุด (34.56%)
+          ทั้งที่ขั้น visit→view_product มีคนหายไปเยอะกว่าในแง่จำนวนคน (absolute drop-off)
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+          counts = events.groupby('event_type')['session_id'].nunique()
+          steps_n = [int(counts.get(f, 0)) for f in FUNNEL]
+          step_conv = [round(steps_n[i] / steps_n[i-1] * 100, 2) for i in range(1, len(steps_n))]
+          list(zip(FUNNEL[1:], step_conv))
+    pitfall:
+      text: |
+        ขั้น visit→view_product มีคนหายไปมากที่สุดในแง่จำนวนคน (11,217 คน) แต่นั่นเป็นเรื่องปกติเพราะขั้นต้นๆ
+        ของ funnel มีคนเยอะอยู่แล้ว การสรุปว่า "ขั้นนี้แย่ที่สุด" จากจำนวนคนที่หายไปเฉยๆ โดยไม่ดู % เทียบกับฐาน
+        ของขั้นนั้น อาจทำให้โฟกัสผิดจุด — ขั้น add_to_cart ที่มี step-conversion ต่ำสุด (34.56%) ต่างหากที่ควรแก้ก่อน
+  - id: x2
+    title: เทียบ funnel ระหว่าง device
+    lang: python
+    prompt: |
+      อยากรู้ว่า funnel ของคนที่ใช้มือถือกับคอมพิวเตอร์ต่างกันไหม
+    steps:
+      - text: |
+          นับจำนวน session ต่อขั้นของ funnel แยกตาม device
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+          mobile = events[events['device'] == 'mobile']
+          desktop = events[events['device'] == 'desktop']
+          c_mobile = mobile.groupby('event_type')['session_id'].nunique()
+          c_desktop = desktop.groupby('event_type')['session_id'].nunique()
+          [int(c_mobile.get(f, 0)) for f in FUNNEL], [int(c_desktop.get(f, 0)) for f in FUNNEL]
+      - text: |
+          เทียบ overall conversion ของทั้งสอง device — ใกล้เคียงกันแต่ mobile สูงกว่าเล็กน้อย
+        code: |
+          import pandas as pd
+
+          events = pd.read_csv("data/events.csv")
+          FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+          mobile = events[events['device'] == 'mobile']
+          desktop = events[events['device'] == 'desktop']
+          c_mobile = mobile.groupby('event_type')['session_id'].nunique()
+          c_desktop = desktop.groupby('event_type')['session_id'].nunique()
+          conv_mobile = round(c_mobile['purchase'] / c_mobile['visit'] * 100, 2)
+          conv_desktop = round(c_desktop['purchase'] / c_desktop['visit'] * 100, 2)
+          conv_mobile, conv_desktop
+    pitfall:
+      text: |
+        ถ้าดูแค่ overall conversion รวมของทั้งเว็บ จะไม่เห็นว่าปัญหาอาจกระจุกอยู่ที่ device ใด device หนึ่ง
+        การแบ่ง funnel ตาม segment (device, channel, ฯลฯ) ช่วยให้แก้ปัญหาได้ตรงจุดกว่าดูภาพรวมอย่างเดียว
+
+faded:
+  - id: f1
+    lang: python
+    prompt: |
+      คำนวณ step-conversion (%) จาก view_product ไป add_to_cart เก็บไว้ในตัวแปร step_conv_pct เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      step_conv_pct = round(counts['add_to_cart'] / counts[___] * 100, 2)
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      step_conv_pct = round(counts['add_to_cart'] / counts['view_product'] * 100, 2)
+    check: |
+      check_value(step_conv_pct, _sol["step_conv_pct"], name="step_conv_pct")
+    hints:
+      - step-conversion หารด้วยจำนวนคนของ "ขั้นก่อนหน้า" เสมอ
+
+exercises:
+  - id: e1
+    level: basic
+    lang: python
+    prompt: |
+      จำนวน session ต่อขั้นของ funnel ทั้งหมด (Series, index ตามลำดับ visit, view_product, add_to_cart, checkout, purchase)
+      เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      counts = events.groupby('event_type')['session_id'].nunique()
+      result = counts.reindex(FUNNEL)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "`.reindex(FUNNEL)` เรียง Series ตามลำดับ list ที่กำหนด"
+  - id: e2
+    level: basic
+    lang: python
+    prompt: |
+      อัตราการเปลี่ยนเป็นลูกค้ารวม (%) จาก visit ไปถึง purchase เก็บไว้ในตัวแปร overall_conversion_pct
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      overall_conversion_pct = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      overall_conversion_pct = round(counts['purchase'] / counts['visit'] * 100, 2)
+    check: |
+      check_value(overall_conversion_pct, _sol["overall_conversion_pct"], name="overall_conversion_pct", tol=0.01)
+    hints:
+      - เหมือนบทที่แล้ว
+  - id: e3
+    level: basic
+    lang: python
+    prompt: |
+      step conversion (%) จาก view_product ไป add_to_cart เก็บไว้ในตัวแปร step_conv_pct
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      step_conv_pct = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      counts = events.groupby('event_type')['session_id'].nunique()
+      step_conv_pct = round(counts['add_to_cart'] / counts['view_product'] * 100, 2)
+    check: |
+      check_value(step_conv_pct, _sol["step_conv_pct"], name="step_conv_pct", tol=0.01)
+    hints:
+      - เหมือนตัวอย่าง faded ข้างบน
+  - id: e4
+    level: basic
+    lang: python
+    prompt: |
+      ขั้นไหนของ funnel (ไม่นับ visit) มี step-conversion ต่ำที่สุด (string เช่น 'add_to_cart') เก็บไว้ในตัวแปร worst_step
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      worst_step = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      counts = events.groupby('event_type')['session_id'].nunique()
+      steps_n = [counts[f] for f in FUNNEL]
+      step_conv = pd.Series(
+          [steps_n[i] / steps_n[i - 1] * 100 for i in range(1, len(steps_n))],
+          index=FUNNEL[1:],
+      )
+      worst_step = step_conv.idxmin()
+    check: |
+      check_value(worst_step, _sol["worst_step"], name="worst_step")
+    hints:
+      - หา step conversion ของทุกขั้น (ไม่นับ visit) แล้ว idxmin()
+  - id: e5
+    level: applied
+    lang: python
+    prompt: |
+      จำนวนคนที่หายไป (absolute drop-off) ในแต่ละคู่ขั้นของ funnel เก็บไว้ในตัวแปร result
+      (Series, index เป็น 'visit_to_view_product', 'view_product_to_add_to_cart', 'add_to_cart_to_checkout', 'checkout_to_purchase')
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      counts = events.groupby('event_type')['session_id'].nunique()
+      steps_n = [counts[f] for f in FUNNEL]
+      idx = [f"{FUNNEL[i]}_to_{FUNNEL[i+1]}" for i in range(len(FUNNEL) - 1)]
+      result = pd.Series([steps_n[i] - steps_n[i + 1] for i in range(len(steps_n) - 1)], index=idx)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - drop-off ของแต่ละคู่ขั้น = จำนวนขั้นก่อนหน้า - จำนวนขั้นถัดไป ตั้งชื่อ index ให้ตรงกับที่โจทย์กำหนด
+  - id: e6
+    level: applied
+    lang: python
+    prompt: |
+      จำนวน session ต่อขั้นของ funnel เฉพาะ device เป็น mobile (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      mobile = events[events['device'] == 'mobile']
+      counts = mobile.groupby('event_type')['session_id'].nunique()
+      result = counts.reindex(FUNNEL)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - กรอง device == 'mobile' ก่อน แล้วนับเหมือน e1
+  - id: e7
+    level: applied
+    lang: python
+    prompt: |
+      จำนวน session ต่อขั้นของ funnel เฉพาะ device เป็น desktop (Series) เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      result = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      FUNNEL = ["visit", "view_product", "add_to_cart", "checkout", "purchase"]
+      desktop = events[events['device'] == 'desktop']
+      counts = desktop.groupby('event_type')['session_id'].nunique()
+      result = counts.reindex(FUNNEL)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - กรอง device == 'desktop' ก่อน แล้วนับเหมือน e1
+  - id: e8
+    level: challenge
+    lang: python
+    prompt: |
+      overall conversion ของ mobile สูงกว่า desktop ไหม (bool) เก็บไว้ในตัวแปร mobile_higher
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      mobile_higher = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      mobile = events[events['device'] == 'mobile']
+      desktop = events[events['device'] == 'desktop']
+      c_mobile = mobile.groupby('event_type')['session_id'].nunique()
+      c_desktop = desktop.groupby('event_type')['session_id'].nunique()
+      conv_mobile = c_mobile['purchase'] / c_mobile['visit'] * 100
+      conv_desktop = c_desktop['purchase'] / c_desktop['visit'] * 100
+      mobile_higher = conv_mobile > conv_desktop
+    check: |
+      check_value(mobile_higher, _sol["mobile_higher"], name="mobile_higher")
+    hints:
+      - คำนวณ overall conversion ของแต่ละ device แล้วเทียบกัน
+  - id: e9
+    level: challenge
+    lang: python
+    prompt: |
+      step-conversion (%) ของขั้น add_to_cart (view_product→add_to_cart) เทียบระหว่าง mobile กับ desktop (สองตัวแปร)
+      เก็บไว้ในตัวแปร conv_mobile, conv_desktop
+    starter: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      conv_mobile = ___
+      conv_desktop = ___
+    solution: |
+      import pandas as pd
+
+      events = pd.read_csv("data/events.csv")
+      mobile = events[events['device'] == 'mobile']
+      desktop = events[events['device'] == 'desktop']
+      c_mobile = mobile.groupby('event_type')['session_id'].nunique()
+      c_desktop = desktop.groupby('event_type')['session_id'].nunique()
+      conv_mobile = round(c_mobile['add_to_cart'] / c_mobile['view_product'] * 100, 2)
+      conv_desktop = round(c_desktop['add_to_cart'] / c_desktop['view_product'] * 100, 2)
+    check: |
+      check_value(conv_mobile, _sol["conv_mobile"], name="conv_mobile", tol=0.01)
+      check_value(conv_desktop, _sol["conv_desktop"], name="conv_desktop", tol=0.01)
+    hints:
+      - กรองแต่ละ device ก่อน แล้วคำนวณ step conversion เหมือน e3
+
+quiz:
+  - id: q1
+    question: step-conversion กับ absolute drop-off ต่างกันยังไง
+    choices:
+      - text: step-conversion คือสัดส่วน (%) ของคนที่ผ่านขั้นนั้นได้ ส่วน absolute drop-off คือจำนวนคนที่หายไปตรงๆ
+        correct: true
+        why: ถูกต้อง — สองตัวนี้ตอบคำถามคนละแบบ
+      - text: ทั้งสองคำนวณจากสูตรเดียวกัน แค่หน่วยต่างกัน
+        why: ไม่ใช่ สูตรต่างกันจริงๆ (สัดส่วน vs จำนวนคน)
+      - text: step-conversion ใช้ได้แค่กับขั้นแรกของ funnel เท่านั้น
+        why: ใช้ได้กับทุกคู่ขั้นที่ติดกัน ไม่ใช่แค่ขั้นแรก
+      - text: absolute drop-off คำนวณจาก % เสมอ
+        why: absolute drop-off คือจำนวนคน ไม่ใช่ %
+  - id: q2
+    question: ทำไมขั้นที่มี absolute drop-off เยอะที่สุดไม่จำเป็นต้องเป็นขั้นที่แย่ที่สุด
+    choices:
+      - text: ขั้นต้นๆ ของ funnel มักมีคนเยอะอยู่แล้ว ดรอปเป็นตัวเลขเยอะเป็นธรรมดา ต้องดู % เทียบกับฐานของขั้นนั้นด้วย
+        correct: true
+        why: ถูกต้อง — ต้องดู step-conversion (%) ประกอบเสมอ ไม่ใช่แค่จำนวนคนที่หายไป
+      - text: absolute drop-off ไม่เกี่ยวกับคุณภาพของขั้นนั้นเลย
+        why: เกี่ยวข้องอยู่ แต่ต้องตีความร่วมกับ % ไม่ใช่ดูตัวเดียว
+      - text: เพราะ absolute drop-off คำนวณผิดพลาดบ่อย
+        why: ไม่ใช่เรื่องความผิดพลาดในการคำนวณ แต่เป็นเรื่องการตีความ
+      - text: ขั้นท้ายๆ ของ funnel มักมี drop-off เยอะกว่าขั้นต้นเสมอ
+        why: ตรงข้าม ขั้นต้นๆ มักมีจำนวนคนเยอะกว่าจึงดรอปเป็นตัวเลขเยอะกว่าธรรมดา
+  - id: q3
+    question: เทียบ funnel ระหว่าง mobile กับ desktop มีประโยชน์ยังไง
+    choices:
+      - text: เจอได้ว่าปัญหาของ funnel อาจกระจุกอยู่ที่ device ใด device หนึ่ง ทำให้แก้ปัญหาได้ตรงจุดกว่า
+        correct: true
+        why: ถูกต้อง — การแบ่ง segment ช่วยเห็นปัญหาที่ภาพรวมอาจกลบไว้
+      - text: ไม่มีประโยชน์ เพราะ funnel ควรเหมือนกันทุก device
+        why: ในทางปฏิบัติ funnel มักต่างกันตาม device จริง มีประโยชน์ที่จะเทียบ
+      - text: ใช้ได้แค่ตอนอยากรู้ว่า device ไหนมีคนใช้เยอะกว่าเท่านั้น
+        why: ประโยชน์หลักคือเจอปัญหาเฉพาะจุด ไม่ใช่แค่นับจำนวนผู้ใช้
+      - text: เทียบ funnel ตาม device ทำได้เฉพาะกับเว็บที่มี native app เท่านั้น
+        why: ไม่จำเป็น ใช้ได้กับข้อมูล session ทั่วไปที่มีคอลัมน์ device
+  - id: q4
+    question: ถ้าอยากเพิ่ม purchase โดยงบจำกัด ควรโฟกัสขั้นไหนของ funnel นี้ก่อน
+    choices:
+      - text: add_to_cart เพราะเป็นขั้นที่มี step-conversion ต่ำที่สุด
+        correct: true
+        why: ถูกต้อง — แก้ขั้นที่มี step-conversion ต่ำสุดมักให้ผลตอบแทนสูงสุดต่อความพยายามที่ใส่ลงไป
+      - text: visit เพราะมีคนหายไปเยอะที่สุดในแง่จำนวนคน
+        why: จำนวนคนที่หายไปเยอะเป็นเรื่องปกติของขั้นต้น ไม่ได้แปลว่าขั้นนั้นมีปัญหาที่สุด
+      - text: purchase เพราะเป็นขั้นสุดท้ายที่ใกล้เป้าหมายที่สุด
+        why: การแก้ที่ขั้นสุดท้ายช่วยได้น้อยกว่าถ้าคนหลุดไปตั้งแต่ขั้นก่อนหน้ามากแล้ว
+      - text: ขั้นไหนก็ได้ เพราะทุกขั้นสำคัญเท่ากันหมด
+        why: ขั้นที่มี step-conversion ต่ำสุดมักคุ้มค่าที่จะแก้ก่อนขั้นอื่น
+
+summary:
+  - อ่าน funnel ทีละขั้นด้วย step-conversion (%) ไม่ใช่แค่ดูจำนวนคนที่หายไป
+  - absolute drop-off เยอะไม่ได้แปลว่าขั้นนั้นแย่ที่สุด ต้องดู % เทียบกับฐานของขั้นนั้นเสมอ
+  - แบ่ง funnel ตาม segment (เช่น device) ช่วยเจอปัญหาที่ภาพรวมอาจกลบไว้
+
+interview:
+  - id: i1
+    q: เจอ funnel ที่ conversion ตกฮวบขั้นหนึ่ง จะสืบสาเหตุต่อยังไง (ไม่ใช่แค่รายงานตัวเลข)
+    a: |
+      ควรแยกดูว่าปัญหากระจุกอยู่ที่ segment ไหน (device, channel, ช่วงเวลา) แล้วดูข้อมูลเชิงคุณภาพประกอบ เช่น
+      รีวิวผู้ใช้ หรือทดลองใช้งานจริงในขั้นนั้นด้วยตัวเอง ก่อนจะสรุปว่าสาเหตุคืออะไร ตัวเลขบอกแค่ "ตรงไหน" ที่มีปัญหา
+      แต่ไม่บอก "ทำไม" — ต้องหาข้อมูลเพิ่มเพื่อตอบ "ทำไม"
+  - id: i2
+    q: ทำไมการแบ่ง funnel ตาม segment (เช่น device, channel) ถึงสำคัญกว่าดู funnel รวมอย่างเดียว
+    a: |
+      เพราะตัวเลขรวมอาจกลบปัญหาของ segment หนึ่งไว้ด้วยผลงานที่ดีของอีก segment เช่น ถ้า mobile กับ desktop
+      มี conversion รวมใกล้เคียงกัน อาจดูเหมือนไม่มีปัญหา ทั้งที่จริงขั้นใดขั้นหนึ่งของ device หนึ่งแย่กว่าอีก device
+      มากอย่างมีนัยสำคัญ การแบ่ง segment ช่วยให้เจอจุดที่ควรแก้ไขได้ตรงกว่า
+
+flashcards:
+  - id: c1
+    front: step-conversion คำนวณยังไง
+    back: จำนวนคนในขั้นปัจจุบัน หารด้วยจำนวนคนในขั้นก่อนหน้า คูณ 100
+  - id: c2
+    front: absolute drop-off กับ relative step-conversion ต่างกันยังไงในหนึ่งประโยค
+    back: absolute drop-off คือจำนวนคนที่หายไปตรงๆ ส่วน step-conversion คือสัดส่วน (%) เทียบกับฐานของขั้นก่อนหน้า
