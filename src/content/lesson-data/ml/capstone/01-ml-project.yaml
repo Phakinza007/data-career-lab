@@ -1,0 +1,94 @@
+goals:
+  - "ทำโปรเจกต์ ML แบบ end-to-end ที่ทำนายการซื้อซ้ำ โดยมี baseline, CV และการทดสอบครั้งสุดท้ายที่ซื่อตรง"
+  - "ใช้ rubric ตรวจงานตัวเอง (leakage, pipeline, การเทียบกับ baseline, ข้อจำกัด) ก่อนเผยแพร่"
+  - "เผยแพร่ notebook พร้อม README บน GitHub"
+examples: []
+faded: []
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      โหลด data/ml_customers.csv แล้วเก็บจำนวนแถวไว้ใน n_customers และอัตราซื้อซ้ำ (ค่าเฉลี่ยของ repeated ปัด 4 ตำแหน่ง) ไว้ใน repeat_rate — ตัวเลขตั้งต้นของโปรเจกต์
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_customers = ___
+      repeat_rate = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_customers = len(df)
+      repeat_rate = round(df['repeated'].mean(), 4)
+    check: |
+      check_value(n_customers, _sol["n_customers"], name="n_customers")
+      check_value(repeat_rate, _sol["repeat_rate"], name="repeat_rate", tol=0.001)
+    hints:
+      - "len(df) และ df[\"repeated\"].mean()"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      baseline: accuracy ที่ได้จากการเดาคลาสส่วนใหญ่เสมอ = สัดส่วนของคลาสที่พบมากกว่าใน repeated (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร baseline_acc — ทุกโมเดลต้องเอาชนะค่านี้
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      baseline_acc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      share = df['repeated'].value_counts(normalize=True)
+      baseline_acc = round(share.max(), 4)
+    check: |
+      check_value(baseline_acc, _sol["baseline_acc"], name="baseline_acc", tol=0.001)
+    hints:
+      - "value_counts(normalize=True).max()"
+  - id: "e3"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ X, y มาตรฐาน (get_dummies drop_first=True) แล้ววัด ROC-AUC เฉลี่ยของ pipeline StandardScaler + LogisticRegression(max_iter=2000) ด้วย StratifiedKFold(5, shuffle=True, random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร logreg_cv_auc — ผลอ้างอิงเริ่มต้นสำหรับเทียบโมเดลอื่น
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+      from sklearn.pipeline import make_pipeline
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      logreg_cv_auc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+      from sklearn.pipeline import make_pipeline
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000))
+      logreg_cv_auc = round(cross_val_score(pipe, X, y, cv=skf, scoring='roc_auc').mean(), 4)
+    check: |
+      check_value(logreg_cv_auc, _sol["logreg_cv_auc"], name="logreg_cv_auc", tol=0.001)
+    hints:
+      - "make_pipeline แล้ว cross_val_score(scoring=\"roc_auc\")"
+quiz: []
+summary:
+  - "ML capstone = baseline → split → pipeline → เทียบ ≥3 โมเดลด้วย CV → จูนบน train → อธิบาย → ทดสอบครั้งเดียว → สรุปตามจริง"
+  - "ข้อมูลนี้สัญญาณอ่อน (แทบมีแค่ promo) ผลจะอยู่ราว AUC 0.62–0.66 — รายงานว่าดีกว่า baseline ≈ 0.59 แค่ไหนและข้อจำกัดอย่างตรงไปตรงมา"
+  - "ใช้ notebook เริ่มต้นและ rubric ในบทนี้ แล้วเผยแพร่พร้อม README"
+interview:
+  - id: "i1"
+    q: "เล่าโปรเจกต์ ML ของคุณใน 1 นาที ให้คนสัมภาษณ์ฟัง"
+    a: |
+      โครง: โจทย์ธุรกิจและ metric (ทำไมเลือก AUC/accuracy) → baseline → วิธีแบ่งข้อมูลและป้องกัน leakage → โมเดลที่เทียบและผล CV (mean ± std) → โมเดลที่เลือกและเหตุผล → ผลบน test ครั้งเดียว → ข้อจำกัดและขั้นต่อไป การพูดถึงข้อจำกัดอย่างตรงไปตรงมาทำให้น่าเชื่อถือกว่าการโชว์ตัวเลขสวย
+flashcards:
+  - id: "c1"
+    front: "สิ่งแรกที่ต้องมีในโปรเจกต์ ML ก่อนเทรนโมเดล"
+    back: "baseline (เช่น เดาคลาสส่วนใหญ่) และการแบ่ง train/test ที่กัน test ไว้จนถึงตอนท้าย"

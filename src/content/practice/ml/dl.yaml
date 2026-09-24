@@ -1,0 +1,478 @@
+title: "ชุดฝึกท้าย module: Deep learning เบื้องต้น"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      neuron หนึ่งตัวมีน้ำหนัก w = [0.4, −0.6], bias b = 0.2 และรับ x = [2.0, 1.0]: คำนวณ z, ผลผ่าน ReLU และผลผ่าน sigmoid (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร z, relu_out, sigmoid_out
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+      w = np.array([0.4, -0.6])
+      x = np.array([2.0, 1.0])
+      b = 0.2
+      z = round(float(w @ x + b), 4)
+      relu_out = round(float(max(0.0, w @ x + b)), 4)
+      sigmoid_out = round(float(1 / (1 + np.exp(-(w @ x + b)))), 4)
+    check: |
+      check_value(z, _sol["z"], name="z", tol=0.001)
+      check_value(relu_out, _sol["relu_out"], name="relu_out", tol=0.001)
+      check_value(sigmoid_out, _sol["sigmoid_out"], name="sigmoid_out", tol=0.001)
+    hints:
+      - "z = w @ x + b"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จำนวนพารามิเตอร์ (น้ำหนัก + bias) ของ MLP ที่มี input 21 → hidden 32 → output 1 (n_params_32) และ 21 → 16 → 8 → 1 (n_params_16_8) เก็บไว้ในตัวแปรตามชื่อ
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+      n_params_32 = (21 * 32 + 32) + (32 * 1 + 1)
+      n_params_16_8 = (21 * 16 + 16) + (16 * 8 + 8) + (8 * 1 + 1)
+    check: |
+      check_value(n_params_32, _sol["n_params_32"], name="n_params_32")
+      check_value(n_params_16_8, _sol["n_params_16_8"], name="n_params_16_8")
+    hints:
+      - "แต่ละ layer มี n_in × n_out + n_out"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MLPClassifier(hidden_layer_sizes=(8,), max_iter=200, random_state=42) บน Z_train: accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(8,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      test_acc = round(mlp.score(Z_test, y_test), 4)
+    check: |
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "fit บน Z_train แล้ว .score(Z_test, y_test)"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      โมเดล ŷ = w·x + b ที่ w = 1, b = 0 บนข้อมูลตัวอย่าง (x, y ที่ให้ไว้): MSE loss เก็บไว้ในตัวแปร mse
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 1.0, 0.0
+      mse = float(np.mean((w * x + b - y) ** 2))
+    check: |
+      check_value(mse, _sol["mse"], name="mse", tol=0.001)
+    hints:
+      - "np.mean((pred - y) ** 2)"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      gradient ของ MSE ที่ w = 1, b = 0 (ข้อมูลเดิม): grad_w = 2·mean((ŷ − y)·x), grad_b = 2·mean(ŷ − y) เก็บไว้ในตัวแปร grad_w, grad_b
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 1.0, 0.0
+      pred = w * x + b
+      grad_w = float(2 * np.mean((pred - y) * x))
+      grad_b = float(2 * np.mean(pred - y))
+    check: |
+      check_value(grad_w, _sol["grad_w"], name="grad_w", tol=0.001)
+      check_value(grad_b, _sol["grad_b"], name="grad_b", tol=0.001)
+    hints:
+      - "ใช้สูตรเดียวกับในบทเรียน"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เริ่มที่ w = b = 0 ทำ gradient descent 10 ก้าวด้วย lr = 0.05 (ข้อมูล x, y ที่ให้ไว้) เก็บ w และ b ที่ได้ (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร w10, b10
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 0.0, 0.0
+      for _ in range(10):
+          pred = w * x + b
+          grad_w = 2 * np.mean((pred - y) * x)
+          grad_b = 2 * np.mean(pred - y)
+          w -= 0.05 * grad_w
+          b -= 0.05 * grad_b
+      w10 = round(float(w), 4)
+      b10 = round(float(b), 4)
+    check: |
+      check_value(w10, _sol["w10"], name="w10", tol=0.001)
+      check_value(b10, _sol["b10"], name="b10", tol=0.001)
+    hints:
+      - "วนลูป 10 ครั้ง อัปเดตแบบ w -= lr * grad"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ด้วย lr = 0.1 เริ่ม w = b = 0 ต้องใช้กี่ก้าวจึงทำให้ MSE ต่ำกว่า 0.001 เป็นครั้งแรก (นับก้าวที่หนึ่งเป็น 1) เก็บไว้ในตัวแปร steps_needed
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 0.0, 0.0
+      steps_needed = None
+      for step in range(1, 1001):
+          pred = w * x + b
+          w -= 0.1 * 2 * np.mean((pred - y) * x)
+          b -= 0.1 * 2 * np.mean(pred - y)
+          if np.mean((w * x + b - y) ** 2) < 0.001:
+              steps_needed = step
+              break
+    check: |
+      check_value(steps_needed, _sol["steps_needed"], name="steps_needed")
+    hints:
+      - "อัปเดตแล้วค่อยตรวจ MSE ในแต่ละก้าว"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MLP (16,) (max_iter=200, random_state=42) ที่ alpha = 3.0: accuracy บน train และ test (ปัด 4 ตำแหน่ง) และจำนวน iteration ที่ใช้ เก็บไว้ในตัวแปร train_acc, test_acc, iters
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), alpha=3.0, max_iter=200, random_state=42).fit(Z_train, y_train)
+      train_acc = round(mlp.score(Z_train, y_train), 4)
+      test_acc = round(mlp.score(Z_test, y_test), 4)
+      iters = mlp.n_iter_
+    check: |
+      check_value(train_acc, _sol["train_acc"], name="train_acc", tol=0.001)
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+      check_value(iters, _sol["iters"], name="iters")
+    hints:
+      - "alpha=3.0 และ n_iter_"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MLP (4,) (max_iter=200, random_state=42): จำนวนพารามิเตอร์ทั้งหมด และ ROC-AUC บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร n_params, mlp_auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(4,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      n_params = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+      mlp_auc = round(roc_auc_score(y_test, mlp.predict_proba(Z_test)[:, 1]), 4)
+    check: |
+      check_value(n_params, _sol["n_params"], name="n_params")
+      check_value(mlp_auc, _sol["mlp_auc"], name="mlp_auc", tol=0.001)
+    hints:
+      - "นับจาก coefs_ และ intercepts_"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MLP (16,) ที่เปิด early_stopping=True และ n_iter_no_change=5 (max_iter=200, random_state=42): หยุดที่กี่รอบ และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร stopped_at, test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, n_iter_no_change=5, max_iter=200, random_state=42).fit(Z_train, y_train)
+      stopped_at = mlp.n_iter_
+      test_acc = round(mlp.score(Z_test, y_test), 4)
+    check: |
+      check_value(stopped_at, _sol["stopped_at"], name="stopped_at")
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "n_iter_no_change=5"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit MLP (8,) (max_iter=200, random_state=42) แล้ว forward pass ด้วยมือสำหรับแถวแรกของชุดทดสอบ (ReLU ที่ hidden, sigmoid ที่ output): เก็บความน่าจะเป็นที่คำนวณเอง (ปัด 4 ตำแหน่ง) ไว้ใน manual_proba และคลาสที่ทำนาย (1 ถ้า proba ≥ 0.5 ไม่งั้น 0, เป็น int) ไว้ใน manual_class
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(8,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      hidden = np.maximum(Z_test[0] @ mlp.coefs_[0] + mlp.intercepts_[0], 0)
+      out = hidden @ mlp.coefs_[1] + mlp.intercepts_[1]
+      prob = float(1 / (1 + np.exp(-out[0])))
+      manual_proba = round(prob, 4)
+      manual_class = int(prob >= 0.5)
+    check: |
+      check_value(manual_proba, _sol["manual_proba"], name="manual_proba", tol=0.001)
+      check_value(manual_class, _sol["manual_class"], name="manual_class")
+    hints:
+      - "coefs_[0], intercepts_[0], coefs_[1], intercepts_[1]"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทรน MLP (16,) (early_stopping=True, max_iter=200) ด้วย random_state = 0..4 แล้ววัด ROC-AUC บนชุดทดสอบของแต่ละ seed: ค่าเฉลี่ยและ std (np.std) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร auc_mean, auc_std
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      aucs = []
+      for s in range(5):
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=s).fit(Z_train, y_train)
+          aucs.append(roc_auc_score(y_test, mlp.predict_proba(Z_test)[:, 1]))
+      auc_mean = round(float(np.mean(aucs)), 4)
+      auc_std = round(float(np.std(aucs)), 4)
+    check: |
+      check_value(auc_mean, _sol["auc_mean"], name="auc_mean", tol=0.001)
+      check_value(auc_std, _sol["auc_std"], name="auc_std", tol=0.001)
+    hints:
+      - "วนสร้างโมเดลต่อ seed แล้วเก็บ AUC"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      MLP (16,) (max_iter=200, random_state=42): loss_curve_ ที่รอบที่ 1, 50, 100 และ 200 (ปัด 4 ตำแหน่ง; รอบที่ k อยู่ที่ index k−1) เก็บไว้ในตัวแปร loss_1, loss_50, loss_100, loss_200
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      curve = mlp.loss_curve_
+      loss_1 = round(float(curve[0]), 4)
+      loss_50 = round(float(curve[49]), 4)
+      loss_100 = round(float(curve[99]), 4)
+      loss_200 = round(float(curve[199]), 4)
+    check: |
+      check_value(loss_1, _sol["loss_1"], name="loss_1", tol=0.001)
+      check_value(loss_50, _sol["loss_50"], name="loss_50", tol=0.001)
+      check_value(loss_100, _sol["loss_100"], name="loss_100", tol=0.001)
+      check_value(loss_200, _sol["loss_200"], name="loss_200", tol=0.001)
+    hints:
+      - "mlp.loss_curve_"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ผลของขนาดข้อมูลเทรน: fit MLP (8,) ที่เปิด early_stopping=True (max_iter=200, random_state=42) บน 500 แถวแรกของ Z_train, 1,000 แถวแรก และทั้งหมด แล้ววัด accuracy บน Z_test (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร acc_500, acc_1000, acc_all
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      def acc(n):
+          mlp = MLPClassifier(hidden_layer_sizes=(8,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train[:n], y_train.iloc[:n])
+          return round(mlp.score(Z_test, y_test), 4)
+
+
+      acc_500 = acc(500)
+      acc_1000 = acc(1000)
+      acc_all = acc(len(Z_train))
+    check: |
+      check_value(acc_500, _sol["acc_500"], name="acc_500", tol=0.001)
+      check_value(acc_1000, _sol["acc_1000"], name="acc_1000", tol=0.001)
+      check_value(acc_all, _sol["acc_all"], name="acc_all", tol=0.001)
+    hints:
+      - "Z_train[:n] คู่กับ y_train.iloc[:n]"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      CV 5-fold (StratifiedKFold shuffle=True, random_state=42) บน X, y ทั้งชุด วัด ROC-AUC เฉลี่ยของ pipeline StandardScaler + MLPClassifier((8,), early_stopping=True, max_iter=200, random_state=42) และ StandardScaler + LogisticRegression(max_iter=2000) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร mlp_cv_auc, logreg_cv_auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      mlp_pipe = make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(8,), early_stopping=True, max_iter=200, random_state=42))
+      lr_pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000))
+      mlp_cv_auc = round(cross_val_score(mlp_pipe, X, y, cv=skf, scoring='roc_auc').mean(), 4)
+      logreg_cv_auc = round(cross_val_score(lr_pipe, X, y, cv=skf, scoring='roc_auc').mean(), 4)
+    check: |
+      check_value(mlp_cv_auc, _sol["mlp_cv_auc"], name="mlp_cv_auc", tol=0.001)
+      check_value(logreg_cv_auc, _sol["logreg_cv_auc"], name="logreg_cv_auc", tol=0.001)
+    hints:
+      - "make_pipeline + cross_val_score(scoring=\"roc_auc\")"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ด้วยข้อมูล x, y ที่ให้ไว้ ทำ gradient descent 100 ก้าวจาก w = b = 0 ที่ lr = 0.2: เก็บ MSE สุดท้าย (float) ไว้ใน loss_02 และ True/False ว่า MSE < 1e-6 ไว้ใน converged
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 0.0, 0.0
+      for _ in range(100):
+          pred = w * x + b
+          w -= 0.2 * 2 * np.mean((pred - y) * x)
+          b -= 0.2 * 2 * np.mean(pred - y)
+      loss_02 = float(np.mean((w * x + b - y) ** 2))
+      converged = bool(loss_02 < 1e-6)
+    check: |
+      check_value(loss_02, _sol["loss_02"], name="loss_02", tol=1e-06)
+      check_value(converged, _sol["converged"], name="converged")
+    hints:
+      - "ก้าวใหญ่ขึ้น (0.2) ยังลงตัวหรือไม่"

@@ -1,0 +1,58 @@
+---
+track: ml
+module: trees
+order: 3
+title: "Gradient Boosting"
+minutes: 35
+prereqs: [ml/trees/02-random-forest]
+---
+
+## Boosting: ต้นไม้ตื้นๆ ที่ช่วยกันแก้ความผิดพลาดของต้นก่อนหน้า
+
+Random forest สร้างต้นไม้ลึกๆ **พร้อมกัน** แล้วเฉลี่ย ส่วน **gradient boosting** สร้างต้นไม้ตื้นๆ **ทีละต้น** โดยแต่ละต้นพยายามแก้ส่วนที่โมเดลรวมของต้นก่อนหน้ายังทำนายพลาด:
+
+1. เริ่มจากคำตอบง่ายๆ (เช่น สัดส่วนคลาสเฉลี่ย)
+2. คำนวณ "ความผิดพลาด" (gradient ของ loss) ของแต่ละแถว
+3. เทรนต้นไม้เล็กๆ ทำนายความผิดพลาดนั้น แล้วบวกเข้าโมเดลโดยย่อขนาดด้วย `learning_rate`
+4. ทำซ้ำ `n_estimators` รอบ
+
+```python
+from sklearn.ensemble import GradientBoostingClassifier
+
+gb = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+gb.fit(X_train, y_train)
+```
+
+## ไฮเปอร์พารามิเตอร์ที่ต้องรู้
+
+- `n_estimators` — จำนวนรอบ (มากขึ้น = พอดีข้อมูลเทรนมากขึ้น)
+- `learning_rate` — ก้าวของแต่ละรอบ; ค่าเล็กต้องใช้รอบมากขึ้นแต่มักนิ่งกว่า (เป็น trade-off คู่กับ `n_estimators`)
+- `max_depth` — ความลึกของต้นไม้ย่อย (boosting ใช้ตื้น 1–5)
+
+ต่างจาก forest: ในบูสต์ **จำนวนรอบที่มากเกินไปทำให้ overfit ได้** ผลจากข้อมูลของเรา (learning_rate=0.1, depth 3):
+
+| จำนวนรอบ | test accuracy |
+|---|---|
+| 1 | 0.5901 |
+| 5 | 0.6437 |
+| 10 | 0.6493 |
+| 25 | 0.6535 |
+| 50 | 0.6451 |
+| 100 | 0.6394 |
+
+ผลบน test ขึ้นไปสูงสุดราว 25 รอบแล้วค่อยๆ ลง ขณะที่ train ยังเพิ่มขึ้น (100 รอบ: train 0.7172; 300 รอบ: train 0.8074 / test 0.6225)
+
+## `staged_predict` และ early stopping
+
+`gb.staged_predict(X)` คืนคำทำนายหลังแต่ละรอบ ทำให้เห็นเส้นโค้งแบบนี้ได้ในการ fit ครั้งเดียว — แต่ให้ดูบน **validation** ไม่ใช่ test
+ทางลัดคือ **early stopping** ในตัว: ตั้ง `n_iter_no_change=10` และ `validation_fraction=0.1` แล้วมันจะกันข้อมูลส่วนหนึ่งไว้ตรวจเอง และหยุดเมื่อผลไม่ดีขึ้น 10 รอบติด
+
+```python
+gb = GradientBoostingClassifier(n_estimators=500, validation_fraction=0.1, n_iter_no_change=10, random_state=42)
+gb.fit(X_train, y_train)
+gb.n_estimators_   # 25 ในข้อมูลนี้ (ไม่ใช่ 500)
+```
+
+## เมื่อเทียบกับ forest
+
+boosting มักแม่นกว่าเมื่อมีสัญญาณซับซ้อนหลายชั้นพอ แต่จูนยากกว่า ไวต่อ noise/รอบมากเกินไป ในข้อมูลของเรา (CV 5-fold) GB ค่าเริ่มต้นได้ accuracy ≈ 0.6492 และ AUC ≈ 0.6526 ซึ่งสูงกว่า forest (0.6432 / 0.6420) เพียงเล็กน้อย — ยังอยู่ในระดับ "ต่างกันไม่กี่ร้อยส่วน" ไม่ใช่ชัยชนะเด็ดขาด

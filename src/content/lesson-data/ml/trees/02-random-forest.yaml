@@ -1,0 +1,475 @@
+goals:
+  - "อธิบายได้ว่า random forest ใช้ bootstrap + สุ่ม feature + โหวตเพื่อลดความไม่นิ่งของต้นไม้เดี่ยว"
+  - "ปรับ n_estimators, min_samples_leaf, max_features และอ่าน OOB score"
+  - "เปรียบเทียบ forest กับต้นไม้เดี่ยวและ baseline ด้วย cross-validation อย่างตรงไปตรงมา"
+examples:
+  - id: "x1"
+    title: "forest ค่าเริ่มต้น vs ต้นไม้เดี่ยว"
+    lang: "python"
+    prompt: |
+      ดูว่า ensemble ช่วยลดการจำข้อมูลเทรนได้แค่ไหน
+    steps:
+      - text: |
+          forest 100 ต้น: train 0.9995 แต่ test 0.6197 (เทียบกับต้นไม้เดี่ยวที่ test 0.5493)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import RandomForestClassifier
+          rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train, y_train)
+          round(rf.score(X_train, y_train), 4), round(rf.score(X_test, y_test), 4)
+      - text: |
+          จำกัดใบให้ใหญ่ขึ้น min_samples_leaf=10: train ตกเหลือระดับเดียวกับ test มากขึ้น และ test เป็น 0.6451
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import RandomForestClassifier
+          rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+          round(rf.score(X_train, y_train), 4), round(rf.score(X_test, y_test), 4)
+    pitfall:
+      text: |
+        ตีความว่า 'forest ใหญ่ขึ้น (n_estimators มากขึ้น) จะ overfit มากขึ้น' — จำนวนต้นที่มากขึ้นทำให้ผลนิ่งขึ้นและแทบไม่ overfit เพิ่ม สิ่งที่ทำให้ overfit คือความลึก/ขนาดใบของแต่ละต้น (ควบคุมด้วย max_depth, min_samples_leaf)
+  - id: "x2"
+    title: "OOB score และ CV"
+    lang: "python"
+    prompt: |
+      ประมาณการความแม่นโดยไม่ใช้ test
+    steps:
+      - text: |
+          เปิด oob_score=True แล้วอ่าน oob_score_ (≈ 0.6534) — ประมาณการความแม่นจากแถวที่แต่ละต้นไม่เคยเห็น
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import RandomForestClassifier
+          rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, oob_score=True, random_state=42).fit(X_train, y_train)
+          round(rf.oob_score_, 4), round(rf.score(X_test, y_test), 4)
+      - text: |
+          เทียบกับ cross-validation 5-fold: forest (leaf 10) ได้ ≈ 0.6432 เทียบกับต้นไม้ไม่จำกัด ≈ 0.5696
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.tree import DecisionTreeClassifier
+
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42)
+          round(cross_val_score(rf, X, y, cv=skf).mean(), 4), round(cross_val_score(DecisionTreeClassifier(random_state=42), X, y, cv=skf).mean(), 4)
+    pitfall:
+      text: |
+        ใช้ oob_score_ เมื่อ n_estimators น้อยมาก (เช่น 5–10) — แต่ละแถวอาจอยู่ out-of-bag ในไม่กี่ต้น ทำให้ค่าประมาณไม่นิ่ง (และ sklearn อาจเตือน) ใช้ต้นไม้ให้มากพอ (ร้อยขึ้นไป)
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit forest 50 ต้น (random_state=42) แล้วเก็บ accuracy บนชุดทดสอบไว้ในตัวแปร rf_acc เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=___, random_state=42).fit(X_train, y_train)
+      rf_acc = rf.score(X_test, y_test)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=50, random_state=42).fit(X_train, y_train)
+      rf_acc = rf.score(X_test, y_test)
+    check: |
+      check_value(rf_acc, _sol["rf_acc"], name="rf_acc", tol=0.001)
+    hints:
+      - "n_estimators คือจำนวนต้นไม้"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      fit RandomForestClassifier(n_estimators=100, random_state=42) บน train แล้วเก็บ accuracy บน train และ test (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร rf_train_acc, rf_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf_train_acc = ___
+      rf_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train, y_train)
+      rf_train_acc = round(rf.score(X_train, y_train), 4)
+      rf_test_acc = round(rf.score(X_test, y_test), 4)
+    check: |
+      check_value(rf_train_acc, _sol["rf_train_acc"], name="rf_train_acc", tol=0.001)
+      check_value(rf_test_acc, _sol["rf_test_acc"], name="rf_test_acc", tol=0.001)
+    hints:
+      - "ใช้ .score บน train และ test"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      forest ที่ตั้ง n_estimators=50 มีต้นไม้ย่อยกี่ต้นใน rf.estimators_ เก็บไว้ในตัวแปร n_trees
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      n_trees = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=50, random_state=42).fit(X_train, y_train)
+      n_trees = len(rf.estimators_)
+    check: |
+      check_value(n_trees, _sol["n_trees"], name="n_trees")
+    hints:
+      - "`estimators_` เป็น list ของต้นไม้ย่อย"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      forest 100 ต้นที่ตั้ง min_samples_leaf=10 (random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร leaf10_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      leaf10_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+      leaf10_test_acc = round(rf.score(X_test, y_test), 4)
+    check: |
+      check_value(leaf10_test_acc, _sol["leaf10_test_acc"], name="leaf10_test_acc", tol=0.001)
+    hints:
+      - "ตั้ง min_samples_leaf=10"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      forest เดียวกัน (100 ต้น, min_samples_leaf=10, random_state=42) เปิด oob_score=True แล้วเก็บ OOB score (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร oob
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      oob = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, oob_score=True, random_state=42).fit(X_train, y_train)
+      oob = round(rf.oob_score_, 4)
+    check: |
+      check_value(oob, _sol["oob"], name="oob", tol=0.001)
+    hints:
+      - "oob_score=True แล้วอ่าน `rf.oob_score_`"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เปรียบเทียบ accuracy บนชุดทดสอบของ forest ที่มี n_estimators = 5, 20 และ 100 (random_state=42 ค่าอื่นเป็นค่าเริ่มต้น ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร acc_5, acc_20, acc_100
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      acc_5 = ___
+      acc_20 = ___
+      acc_100 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      def test_acc(n):
+          rf = RandomForestClassifier(n_estimators=n, random_state=42).fit(X_train, y_train)
+          return round(rf.score(X_test, y_test), 4)
+
+
+      acc_5 = test_acc(5)
+      acc_20 = test_acc(20)
+      acc_100 = test_acc(100)
+    check: |
+      check_value(acc_5, _sol["acc_5"], name="acc_5", tol=0.001)
+      check_value(acc_20, _sol["acc_20"], name="acc_20", tol=0.001)
+      check_value(acc_100, _sol["acc_100"], name="acc_100", tol=0.001)
+    hints:
+      - "เขียนฟังก์ชันรับ n แล้ว fit/score"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เทียบ max_features="sqrt" (ค่าเริ่มต้น) กับ max_features=None (ใช้ทุก feature ทุก split) ที่ n_estimators=100, random_state=42: accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร sqrt_acc, all_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      sqrt_acc = ___
+      all_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      sqrt_rf = RandomForestClassifier(n_estimators=100, max_features='sqrt', random_state=42).fit(X_train, y_train)
+      all_rf = RandomForestClassifier(n_estimators=100, max_features=None, random_state=42).fit(X_train, y_train)
+      sqrt_acc = round(sqrt_rf.score(X_test, y_test), 4)
+      all_acc = round(all_rf.score(X_test, y_test), 4)
+    check: |
+      check_value(sqrt_acc, _sol["sqrt_acc"], name="sqrt_acc", tol=0.001)
+      check_value(all_acc, _sol["all_acc"], name="all_acc", tol=0.001)
+    hints:
+      - "max_features=None คือใช้ทุก feature"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      CV 5-fold (skf ที่ให้ไว้) ของ accuracy เฉลี่ย: forest (100 ต้น, min_samples_leaf=10, random_state=42) และต้นไม้เดี่ยวไม่จำกัดความลึก (random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร rf_cv, tree_cv
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.tree import DecisionTreeClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf_cv = ___
+      tree_cv = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.tree import DecisionTreeClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf_cv = round(cross_val_score(RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42), X, y, cv=skf).mean(), 4)
+      tree_cv = round(cross_val_score(DecisionTreeClassifier(random_state=42), X, y, cv=skf).mean(), 4)
+    check: |
+      check_value(rf_cv, _sol["rf_cv"], name="rf_cv", tol=0.001)
+      check_value(tree_cv, _sol["tree_cv"], name="tree_cv", tol=0.001)
+    hints:
+      - "ส่ง estimator เข้า cross_val_score(cv=skf)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      forest (100 ต้น, min_samples_leaf=10, random_state=42): ชื่อ feature 3 อันดับแรกตาม feature_importances_ เรียงจากมากไปน้อย เก็บเป็น list ของ string ไว้ในตัวแปร top3
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      top3 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+      top3 = pd.Series(rf.feature_importances_, index=X.columns).nlargest(3).index.tolist()
+    check: |
+      check_value(top3, _sol["top3"], name="top3")
+    hints:
+      - "pd.Series(..., index=X.columns).nlargest(3)"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      forest (100 ต้น, min_samples_leaf=10, random_state=42): ความน่าจะเป็นที่ทำนายได้ (predict_proba) บนชุดทดสอบ — เก็บค่าเฉลี่ยของความน่าจะเป็นคลาส 1 ไว้ใน mean_proba และสัดส่วนแถวที่ proba >= 0.5 ไว้ใน share_pos (ปัด 4 ตำแหน่ง)
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      mean_proba = ___
+      share_pos = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+      proba = rf.predict_proba(X_test)[:, 1]
+      mean_proba = round(proba.mean(), 4)
+      share_pos = round((proba >= 0.5).mean(), 4)
+    check: |
+      check_value(mean_proba, _sol["mean_proba"], name="mean_proba", tol=0.001)
+      check_value(share_pos, _sol["share_pos"], name="share_pos", tol=0.001)
+    hints:
+      - "predict_proba(X_test)[:, 1]"
+quiz:
+  - id: "q1"
+    question: "Random forest ลด overfitting ของต้นไม้เดี่ยวได้อย่างไร"
+    choices:
+      - text: "จำกัดความลึกทุกต้นเป็น 1"
+        why: "ไม่ได้จำกัดโดยอัตโนมัติ"
+      - text: "เทรนต้นไม้หลายต้นบนข้อมูล/feature ที่สุ่มต่างกัน แล้วโหวตเฉลี่ย ทำให้ความผิดพลาดที่ไม่สม่ำเสมอหักล้างกัน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ตัด feature ที่ไม่สำคัญทิ้ง"
+        why: "ไม่ใช่กลไกหลัก"
+      - text: "scale ข้อมูลก่อน"
+        why: "ต้นไม้ไม่ต้อง scale"
+  - id: "q2"
+    question: "OOB score คืออะไร"
+    choices:
+      - text: "ความแม่นบนชุด test"
+        why: "ไม่ใช่ test"
+      - text: "ความแม่นบน train"
+        why: "ไม่ใช่ train"
+      - text: "ความแม่นที่ประมาณจากแถวที่แต่ละต้นไม่ได้ใช้เทรน (out-of-bag) โดยไม่ต้องแบ่ง validation"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "จำนวนต้นไม้ที่ผิด"
+        why: "ไม่ใช่"
+  - id: "q3"
+    question: "ในบทนี้ forest (leaf 10) กับต้นไม้ depth 3 ให้ CV accuracy ใกล้กัน (0.6432 กับ 0.6562) บอกอะไร"
+    choices:
+      - text: "forest ผิดปกติ ต้องแก้โค้ด"
+        why: "ไม่ใช่ข้อผิดพลาด"
+      - text: "ต้นไม้เดี่ยวดีกว่าเสมอ"
+        why: "สรุปเกินหลักฐาน"
+      - text: "CV ใช้ไม่ได้กับ forest"
+        why: "ใช้ได้"
+      - text: "ข้อมูลนี้มีสัญญาณอ่อน (แทบมีแค่ promo) โมเดลซับซ้อนกว่าไม่ได้ทำให้ดีขึ้นมาก"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "จะลด overfitting ของ forest ที่ train 0.9995 / test 0.6197 ควรปรับอะไร"
+    choices:
+      - text: "จำกัดต้นไม้ย่อย เช่น min_samples_leaf มากขึ้นหรือ max_depth"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพิ่ม max_depth เป็นไม่จำกัด"
+        why: "ค่าเริ่มต้นก็ไม่จำกัดอยู่แล้ว ทำให้จำมากขึ้น"
+      - text: "ลด n_estimators เหลือ 1"
+        why: "กลายเป็นต้นไม้เดี่ยว"
+      - text: "เอา random_state ออก"
+        why: "ไม่เกี่ยวกับ overfitting"
+summary:
+  - "Random forest = ต้นไม้หลายต้นจาก bootstrap + สุ่ม feature ต่อ split แล้วโหวตเฉลี่ย ช่วยลด variance"
+  - "ค่าเริ่มต้นยังจำข้อมูลเทรนได้ (train 0.9995 / test 0.6197) จำกัดขนาดต้นไม้ย่อยด้วย min_samples_leaf/max_depth"
+  - "OOB score = validation ฟรี; ในข้อมูลนี้ forest ไม่ชนะต้นไม้ตื้นหรือ logistic regression (ต่างกันราว 0.01) เพราะสัญญาณอ่อน"
+interview:
+  - id: "i1"
+    q: "Random forest ต่างจาก bagging ของ decision tree ธรรมดาอย่างไร"
+    a: |
+      Bagging สุ่มแถวแบบ bootstrap ให้แต่ละต้น แล้วเฉลี่ย Random forest เพิ่มการสุ่ม feature ที่แต่ละ split (max_features) เพื่อให้ต้นไม้ไม่สัมพันธ์กันมากนัก ทำให้เฉลี่ยแล้วลด variance ได้มากกว่า
+  - id: "i2"
+    q: "เมื่อไรที่ random forest ไม่ช่วย"
+    a: |
+      เมื่อสัญญาณในข้อมูลอ่อนหรือ noise สูง ต้นไม้ทุกต้นเรียนรู้ได้ไม่ต่างกันมาก ensemble จึงได้ผลใกล้กับโมเดลง่ายๆ (เช่นในข้อมูล repeat ของเรา) หรือเมื่อ feature engineering สำคัญกว่าตัวโมเดล
+flashcards:
+  - id: "c1"
+    front: "Bootstrap คืออะไรใน random forest"
+    back: "สุ่มแถวแบบใส่คืนจากข้อมูล train ให้แต่ละต้น (~63% ของแถวไม่ซ้ำ ที่เหลือเป็น out-of-bag)"
+  - id: "c2"
+    front: "ไฮเปอร์พารามิเตอร์ที่คุมการ overfit ของ forest"
+    back: "min_samples_leaf, max_depth ของต้นไม้ย่อย (n_estimators ช่วยความนิ่ง ไม่ใช่ตัวคุม overfit)"

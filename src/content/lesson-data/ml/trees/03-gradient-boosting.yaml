@@ -1,0 +1,486 @@
+goals:
+  - "อธิบายกลไกของ gradient boosting (ต้นไม้ตื้นทีละต้น แก้ความผิดพลาดต่อเนื่อง)"
+  - "ปรับ n_estimators / learning_rate / max_depth และดูเส้นโค้งด้วย staged_predict บน validation"
+  - "ใช้ early stopping ในตัวเพื่อเลือกจำนวนรอบ"
+examples:
+  - id: "x1"
+    title: "GB ค่าเริ่มต้นและจำนวนรอบ"
+    lang: "python"
+    prompt: |
+      ดูว่าผลเปลี่ยนตามจำนวนรอบอย่างไร
+    steps:
+      - text: |
+          fit GB 100 รอบ (lr 0.1, depth 3): train 0.7172 test 0.6394
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import GradientBoostingClassifier
+          gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+          round(gb.score(X_train, y_train), 4), round(gb.score(X_test, y_test), 4)
+      - text: |
+          ใช้ staged_predict ดูความแม่นบน test หลังรอบที่ 1, 5, 10, 25, 50, 100 (0.5901 → 0.6535 ที่ 25 → 0.6394 ที่ 100)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import GradientBoostingClassifier
+          gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+          stages = list(gb.staged_predict(X_test))
+          [round(float((stages[i - 1] == y_test).mean()), 4) for i in (1, 5, 10, 25, 50, 100)]
+    pitfall:
+      text: |
+        ใช้ staged_predict บน X_test เพื่อเลือกจำนวนรอบที่ดีที่สุด แล้วรายงานผลบน X_test เดียวกัน — test ถูกใช้ตัดสินใจไปแล้ว ให้แยก validation จาก train (หรือใช้ early stopping ในตัว) แล้วแตะ test ครั้งเดียวตอนท้าย
+  - id: "x2"
+    title: "early stopping ในตัว"
+    lang: "python"
+    prompt: |
+      ให้ GB หยุดเองเมื่อ validation ไม่ดีขึ้น
+    steps:
+      - text: |
+          ตั้ง n_estimators=500 แต่เปิด n_iter_no_change=10 — มันหยุดที่ 25 รอบ (n_estimators_) แทนที่จะครบ 500
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import GradientBoostingClassifier
+          gb = GradientBoostingClassifier(n_estimators=500, validation_fraction=0.1, n_iter_no_change=10, random_state=42).fit(X_train, y_train)
+          gb.n_estimators_
+      - text: |
+          ผล: train 0.6656 / test 0.6423 — ช่องว่างเล็ก และไม่ต้องเดาจำนวนรอบเอง
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.ensemble import GradientBoostingClassifier
+          gb = GradientBoostingClassifier(n_estimators=500, validation_fraction=0.1, n_iter_no_change=10, random_state=42).fit(X_train, y_train)
+          round(gb.score(X_train, y_train), 4), round(gb.score(X_test, y_test), 4)
+    pitfall:
+      text: |
+        ตั้ง n_estimators สูงมาก (เช่น 2000) โดยไม่มี early stopping และ learning_rate สูงด้วย — ใช้เวลาเทรนนานและ overfit ตั้ง n_iter_no_change เพื่อให้หยุดเอง
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit GB ด้วย learning_rate=0.05 (random_state=42) แล้วเก็บ accuracy บนชุดทดสอบไว้ในตัวแปร lr_acc เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(learning_rate=___, random_state=42).fit(X_train, y_train)
+      lr_acc = gb.score(X_test, y_test)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(learning_rate=0.05, random_state=42).fit(X_train, y_train)
+      lr_acc = gb.score(X_test, y_test)
+    check: |
+      check_value(lr_acc, _sol["lr_acc"], name="lr_acc", tol=0.001)
+    hints:
+      - "learning_rate=0.05"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      fit GradientBoostingClassifier(random_state=42) (ค่าเริ่มต้นอื่นๆ) แล้วเก็บ accuracy บน train และ test (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร gb_train_acc, gb_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb_train_acc = ___
+      gb_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+      gb_train_acc = round(gb.score(X_train, y_train), 4)
+      gb_test_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(gb_train_acc, _sol["gb_train_acc"], name="gb_train_acc", tol=0.001)
+      check_value(gb_test_acc, _sol["gb_test_acc"], name="gb_test_acc", tol=0.001)
+    hints:
+      - "ใช้ .score บน train และ test"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      GB ที่ตั้ง n_estimators=30 (random_state=42) มีกี่รอบ/ต้นไม้ย่อย (ดูจาก n_estimators_) เก็บไว้ในตัวแปร n_stages
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      n_stages = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(n_estimators=30, random_state=42).fit(X_train, y_train)
+      n_stages = gb.n_estimators_
+    check: |
+      check_value(n_stages, _sol["n_stages"], name="n_stages")
+    hints:
+      - "อ่าน `gb.n_estimators_`"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      GB ที่ learning_rate=0.05 (random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร lr05_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      lr05_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(learning_rate=0.05, random_state=42).fit(X_train, y_train)
+      lr05_test_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(lr05_test_acc, _sol["lr05_test_acc"], name="lr05_test_acc", tol=0.001)
+    hints:
+      - "ตั้ง learning_rate=0.05"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      GB ที่ใช้ต้นไม้ตอ (max_depth=1, random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร stump_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      stump_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(max_depth=1, random_state=42).fit(X_train, y_train)
+      stump_test_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(stump_test_acc, _sol["stump_test_acc"], name="stump_test_acc", tol=0.001)
+    hints:
+      - "max_depth=1"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit GB ค่าเริ่มต้น (random_state=42) แล้วใช้ staged_predict บน X_test เก็บ accuracy หลังรอบที่ 1, 10 และ 50 (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร acc_1, acc_10, acc_50
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      acc_1 = ___
+      acc_10 = ___
+      acc_50 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+      stages = list(gb.staged_predict(X_test))
+      acc_1 = round(float((stages[0] == y_test).mean()), 4)
+      acc_10 = round(float((stages[9] == y_test).mean()), 4)
+      acc_50 = round(float((stages[49] == y_test).mean()), 4)
+    check: |
+      check_value(acc_1, _sol["acc_1"], name="acc_1", tol=0.001)
+      check_value(acc_10, _sol["acc_10"], name="acc_10", tol=0.001)
+      check_value(acc_50, _sol["acc_50"], name="acc_50", tol=0.001)
+    hints:
+      - "staged_predict คืนคำทำนายทีละรอบ; รอบที่ k อยู่ที่ index k-1"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ชุด validation (X_tr/X_val/y_tr/y_val ที่แบ่งจาก train ไว้ให้แล้ว) เทรน GB 100 รอบ (random_state=42) แล้วหาจำนวนรอบที่ให้ accuracy บน X_val สูงสุด (ถ้าเสมอเอาน้อยสุด) เก็บไว้ใน best_stage และ accuracy ของมัน (ปัด 4 ตำแหน่ง) ไว้ใน best_val_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      import numpy as np
+      from sklearn.model_selection import train_test_split
+
+      X_tr, X_val, y_tr, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42, stratify=y_train)
+      best_stage = ___
+      best_val_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      import numpy as np
+      from sklearn.model_selection import train_test_split
+
+      X_tr, X_val, y_tr, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42, stratify=y_train)
+      gb = GradientBoostingClassifier(n_estimators=100, random_state=42).fit(X_tr, y_tr)
+      val_accs = [float((p == y_val).mean()) for p in gb.staged_predict(X_val)]
+      best_stage = int(np.argmax(val_accs)) + 1
+      best_val_acc = round(max(val_accs), 4)
+    check: |
+      check_value(best_stage, _sol["best_stage"], name="best_stage")
+      check_value(best_val_acc, _sol["best_val_acc"], name="best_val_acc", tol=0.001)
+    hints:
+      - "np.argmax ให้ index ของค่าสูงสุดตัวแรก (เสมอ = น้อยสุด) แล้ว +1"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      GB ที่เปิด early stopping (n_estimators=500, validation_fraction=0.1, n_iter_no_change=10, random_state=42): หยุดที่กี่รอบ เก็บไว้ใน stopped_at และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) ไว้ใน es_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      stopped_at = ___
+      es_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      gb = GradientBoostingClassifier(n_estimators=500, validation_fraction=0.1, n_iter_no_change=10, random_state=42).fit(X_train, y_train)
+      stopped_at = gb.n_estimators_
+      es_test_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(stopped_at, _sol["stopped_at"], name="stopped_at")
+      check_value(es_test_acc, _sol["es_test_acc"], name="es_test_acc", tol=0.001)
+    hints:
+      - "ดู n_estimators_ หลัง fit"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      CV 5-fold (skf ที่ให้ไว้) ของ ROC-AUC เฉลี่ย เทียบ GB ค่าเริ่มต้น (random_state=42) กับ random forest (100 ต้น, min_samples_leaf=10, random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร gb_cv_auc, rf_cv_auc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gb_cv_auc = ___
+      rf_cv_auc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gb_cv_auc = round(cross_val_score(GradientBoostingClassifier(random_state=42), X, y, cv=skf, scoring='roc_auc').mean(), 4)
+      rf_cv_auc = round(cross_val_score(RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42), X, y, cv=skf, scoring='roc_auc').mean(), 4)
+    check: |
+      check_value(gb_cv_auc, _sol["gb_cv_auc"], name="gb_cv_auc", tol=0.001)
+      check_value(rf_cv_auc, _sol["rf_cv_auc"], name="rf_cv_auc", tol=0.001)
+    hints:
+      - "scoring='roc_auc'"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      GB 100 รอบ (random_state=42) เทียบ learning_rate สูง (0.5) กับต่ำ (0.01): accuracy บน train และ test ของแต่ละแบบ (ปัด 4 ตำแหน่ง) เก็บไว้ใน fast_train, fast_test, slow_train, slow_test
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      fast_train = ___
+      fast_test = ___
+      slow_train = ___
+      slow_test = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.ensemble import GradientBoostingClassifier
+      fast = GradientBoostingClassifier(learning_rate=0.5, random_state=42).fit(X_train, y_train)
+      slow = GradientBoostingClassifier(learning_rate=0.01, random_state=42).fit(X_train, y_train)
+      fast_train = round(fast.score(X_train, y_train), 4)
+      fast_test = round(fast.score(X_test, y_test), 4)
+      slow_train = round(slow.score(X_train, y_train), 4)
+      slow_test = round(slow.score(X_test, y_test), 4)
+    check: |
+      check_value(fast_train, _sol["fast_train"], name="fast_train", tol=0.001)
+      check_value(fast_test, _sol["fast_test"], name="fast_test", tol=0.001)
+      check_value(slow_train, _sol["slow_train"], name="slow_train", tol=0.001)
+      check_value(slow_test, _sol["slow_test"], name="slow_test", tol=0.001)
+    hints:
+      - "fit สองโมเดลที่ต่างกันแค่ learning_rate"
+quiz:
+  - id: "q1"
+    question: "gradient boosting ต่างจาก random forest ตรงไหนเป็นหลัก"
+    choices:
+      - text: "boosting ไม่ใช้ต้นไม้"
+        why: "ใช้ต้นไม้ย่อย"
+      - text: "boosting สร้างต้นไม้ตื้นทีละต้นโดยแต่ละต้นแก้ความผิดพลาดของต้นก่อนหน้า ส่วน forest สร้างต้นไม้ลึกแบบขนานแล้วเฉลี่ย"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "forest ใช้ learning_rate"
+        why: "learning_rate เป็นของ boosting"
+      - text: "ทั้งสองเหมือนกัน"
+        why: "กลไกต่างกัน"
+  - id: "q2"
+    question: "learning_rate ใน gradient boosting ทำอะไร"
+    choices:
+      - text: "กำหนดความลึกต้นไม้"
+        why: "นั่นคือ max_depth"
+      - text: "กำหนดสัดส่วน validation"
+        why: "นั่นคือ validation_fraction"
+      - text: "ย่อขนาดการเพิ่มของแต่ละรอบ ค่าเล็กต้องใช้รอบมากขึ้นแต่มักนิ่งกว่า"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "กำหนดจำนวน feature"
+        why: "ไม่เกี่ยว"
+  - id: "q3"
+    question: "ในบทนี้ test accuracy ของ GB สูงสุดราว 25 รอบ (0.6535) แล้วลดที่ 100 รอบ (0.6394) ขณะ train เพิ่ม บ่งบอกว่าอะไร"
+    choices:
+      - text: "โมเดลเรียนรู้เพิ่มขึ้นจึงดีขึ้นเรื่อยๆ"
+        why: "test ลดลง ไม่ใช่ดีขึ้น"
+      - text: "ข้อมูล test สุ่มผิด"
+        why: "ไม่มีหลักฐาน"
+      - text: "ควรเพิ่มรอบอีก"
+        why: "จะ overfit หนักขึ้น"
+      - text: "รอบมากเกินไปทำให้ overfit — ควรหยุดก่อนด้วย early stopping"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ทำไมการเลือกจำนวนรอบจาก staged_predict บน X_test แล้วรายงานผล X_test จึงไม่ควร"
+    choices:
+      - text: "เพราะ test ถูกใช้ตัดสินใจแล้ว ผลที่รายงานจึงดีเกินจริง (leakage เชิงการเลือกโมเดล)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ staged_predict ผิด"
+        why: "ใช้ได้ แต่ควรกับ validation"
+      - text: "เพราะ test เล็กเกิน"
+        why: "ไม่ใช่เหตุผล"
+      - text: "ไม่มีปัญหาอะไร"
+        why: "มีปัญหา"
+summary:
+  - "Gradient boosting เพิ่มต้นไม้ตื้นทีละต้นเพื่อแก้ความผิดพลาดของโมเดลรวม; learning_rate ย่อแต่ละก้าว"
+  - "รอบมากเกินไป overfit ได้ (ข้อมูลนี้ test สูงสุดที่ ~25 รอบ 0.6535 แล้วลดเหลือ 0.6394 ที่ 100 รอบ) เลือกรอบด้วย validation/early stopping ไม่ใช่ test"
+  - "GB ค่าเริ่มต้นได้ CV AUC 0.6526 เทียบ forest 0.6420 — ต่างกันเล็กน้อยเท่านั้น"
+interview:
+  - id: "i1"
+    q: "อธิบาย gradient boosting ให้คนที่รู้จักแต่ decision tree"
+    a: |
+      เริ่มจากคำตอบง่ายๆ แล้วสร้างต้นไม้เล็กๆ ทีละต้นเพื่อทำนาย "ส่วนที่ยังพลาด" (gradient ของ loss) ของโมเดลปัจจุบัน แล้วบวกเข้าไปโดยคูณ learning_rate ทำซ้ำหลายรอบ ผลรวมของต้นไม้ตื้นๆ เหล่านี้จึงสร้างขอบเขตการตัดสินใจที่ซับซ้อนได้
+  - id: "i2"
+    q: "จะเลือก n_estimators และ learning_rate อย่างไรไม่ให้ overfit"
+    a: |
+      ทั้งสองแลกกัน (ก้าวเล็ก = ต้องรอบมาก) ตั้ง learning_rate ค่อนข้างเล็กแล้วใช้ early stopping (n_iter_no_change + validation_fraction) หรือ validation set แยกเพื่อหยุดตอน validation หยุดดีขึ้น และยืนยันด้วย cross-validation แล้วแตะ test ครั้งเดียว
+flashcards:
+  - id: "c1"
+    front: "ไฮเปอร์พารามิเตอร์ 3 ตัวหลักของ gradient boosting"
+    back: "n_estimators (จำนวนรอบ), learning_rate (ก้าวต่อรอบ), max_depth (ความลึกต้นไม้ย่อย)"
+  - id: "c2"
+    front: "early stopping ใน GradientBoosting ตั้งอย่างไร"
+    back: "ตั้ง n_iter_no_change และ validation_fraction (อ่านผลที่ n_estimators_)"

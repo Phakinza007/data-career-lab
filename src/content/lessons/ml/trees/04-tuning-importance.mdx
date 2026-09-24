@@ -1,0 +1,52 @@
+---
+track: ml
+module: trees
+order: 4
+title: "จูน hyperparameter และ feature importance"
+minutes: 35
+prereqs: [ml/trees/03-gradient-boosting]
+---
+
+## Hyperparameter คือค่าที่เรา "ตั้ง" ไม่ใช่ที่โมเดล "เรียน"
+
+`max_depth`, `min_samples_leaf`, `n_estimators`, `learning_rate` ไม่ได้ถูกเรียนรู้จากข้อมูล เราต้องเลือกเอง — วิธีมาตรฐานคือลองหลายชุดแล้ววัดด้วย cross-validation
+
+## GridSearchCV
+
+```python
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
+
+skf = StratifiedKFold(5, shuffle=True, random_state=42)
+param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+
+gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc')
+gs.fit(X_train, y_train)          # 12 ชุด × 5 fold = 60 ครั้ง
+gs.best_params_, gs.best_score_   # ชุดที่ดีที่สุด และคะแนน CV เฉลี่ย
+```
+
+- ค่า grid ใช้ **train เท่านั้น** — `cv` แบ่ง train ออกเป็น fold เอง
+- หลังหาชุดที่ดีที่สุดเสร็จ `refit=True` (ค่าเริ่มต้น) จะเทรนใหม่บน train ทั้งหมด ใช้ `gs.predict` / `gs.score(X_test, y_test)` ได้เลย
+- `gs.cv_results_` (แปลงเป็น DataFrame) ดูคะแนนทุกชุดได้ — สำคัญมากเพราะชุดที่ต่างกันเล็กน้อยมักเสมอกัน
+- ข้อมูลของเรา: ชุดที่ดีที่สุดคือ `max_depth=4, min_samples_leaf=60` (CV AUC 0.6387 test accuracy 0.655) แต่ชุดอันดับ 2–4 ต่างกันแค่ 0.005 — อย่าตื่นเต้นกับ "อันดับ 1"
+
+จำนวนการเทรนโตเป็น **ผลคูณ** ของทุกแกน (grid 5×5×5 คือ 125 ชุด × 5 fold) เมื่อเวลาแพงให้ลดขอบเขต หรือใช้ `RandomizedSearchCV` (สุ่มแค่ n ชุด)
+
+## Feature importance: อย่าเชื่อตัวแรกที่เจอ
+
+**Impurity importance** (`feature_importances_`) คือผลรวมของการลด impurity ที่ feature นั้นสร้าง — คำนวณจากข้อมูลเทรนและ **เอนเอียงไปหา feature ที่มีค่าละเอียดมาก** (ตัวเลขต่อเนื่อง, ค่าหลากหลาย) ทดลองใส่คอลัมน์สุ่มล้วน `noise` เข้าไปในข้อมูล: forest ให้ noise อยู่ **อันดับ 2** ด้วยความสำคัญ 0.1761!
+
+**Permutation importance**: สลับค่าของ feature หนึ่งในชุดทดสอบแบบสุ่มแล้วดูว่าคะแนน (เช่น AUC) ตกลงเท่าไร — ถ้าตกมาก แปลว่าโมเดลพึ่ง feature นั้นจริง
+```python
+from sklearn.inspection import permutation_importance
+pi = permutation_importance(rf, X_test, y_test, n_repeats=5, random_state=42, scoring='roc_auc')
+pi.importances_mean
+```
+ในการทดลองเดียวกัน noise ได้ permutation importance เพียง ≈ 0.002 ขณะที่ `channel_promo` ≈ 0.046
+
+ข้อควรจำ: importance บอก "โมเดลพึ่ง feature ไหน" ไม่ได้บอก "สาเหตุ" และ feature ที่สัมพันธ์กันมากจะแบ่งความสำคัญกัน
+
+## เลือกโมเดลสุดท้ายอย่างซื่อตรง
+
+ผลจากข้อมูลนี้ (grid บน train, CV AUC): tree ≈ 0.639, random forest ≈ 0.655, gradient boosting ≈ 0.646 — ต่างกันเพียง ~0.01 ทั้งหมด
+การเลือกที่สมเหตุสมผลคือ **โมเดลที่เรียบง่ายและอธิบายได้พอกัน** ไม่ใช่ตัวที่ตัวเลขสูงกว่าเพราะโชค; รายงานช่วงความไม่แน่นอน (std ระหว่าง fold) และแตะชุด test ครั้งเดียวตอนท้าย

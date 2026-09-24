@@ -1,0 +1,621 @@
+goals:
+  - "จูน hyperparameter ด้วย GridSearchCV บน train และอ่านผลจาก cv_results_"
+  - "เข้าใจว่า impurity importance เอนเอียง และตรวจซ้ำด้วย permutation importance"
+  - "เลือกโมเดลสุดท้ายอย่างซื่อตรงเมื่อผลต่างกันเพียงเล็กน้อย"
+examples:
+  - id: "x1"
+    title: "GridSearchCV บนต้นไม้"
+    lang: "python"
+    prompt: |
+      ค้นหา max_depth และ min_samples_leaf ด้วย CV
+    steps:
+      - text: |
+          grid 4×3 = 12 ชุด แต่ละชุด CV 5 fold: ได้ max_depth=4, min_samples_leaf=60 และ CV AUC ≈ 0.6387
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.inspection import permutation_importance
+
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+          param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+          gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+          gs.best_params_, round(gs.best_score_, 4), len(gs.cv_results_['params'])
+      - text: |
+          ดูตารางคะแนนของ 4 อันดับแรก — ชุดที่ต่างกันเล็กน้อยมีคะแนนแทบเท่ากัน
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.inspection import permutation_importance
+
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+          param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+          gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+          res = pd.DataFrame(gs.cv_results_)[['params', 'mean_test_score', 'rank_test_score']]
+          print(res.sort_values('rank_test_score').head(4).to_string())
+    pitfall:
+      text: |
+        ตั้ง grid ใหญ่เกินไป เช่น 5 ค่า × 5 ค่า × 5 ค่า กับ 5 fold = 625 ครั้งของการ fit บน forest — ช้ามากและไม่คุ้ม เริ่มจาก grid หยาบ ดูว่าคะแนนเปลี่ยนแค่ไหน แล้วค่อยแคบลง (หรือใช้ RandomizedSearchCV)
+  - id: "x2"
+    title: "impurity vs permutation importance"
+    lang: "python"
+    prompt: |
+      ทดลองใส่ feature สุ่มล้วนเข้าไปแล้วดูว่า importance วิธีไหนถูกหลอก
+    steps:
+      - text: |
+          เพิ่มคอลัมน์ noise แล้ว fit forest — impurity importance ให้ noise อันดับ 2 (ความสำคัญ 0.1761)
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.inspection import permutation_importance
+
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          import numpy as np
+
+          rng = np.random.RandomState(0)
+          Xn_train = X_train.assign(noise=rng.rand(len(X_train)))
+          Xn_test = X_test.assign(noise=rng.rand(len(X_test)))
+          rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(Xn_train, y_train)
+          imp = pd.Series(rf.feature_importances_, index=Xn_train.columns)
+          imp.rank(ascending=False)['noise'], round(imp['noise'], 4)
+      - text: |
+          permutation importance (AUC บน test): noise ≈ 0.002 ขณะที่ channel_promo ≈ 0.046
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.inspection import permutation_importance
+
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          import numpy as np
+
+          rng = np.random.RandomState(0)
+          Xn_train = X_train.assign(noise=rng.rand(len(X_train)))
+          Xn_test = X_test.assign(noise=rng.rand(len(X_test)))
+          rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(Xn_train, y_train)
+          pi = permutation_importance(rf, Xn_test, y_test, n_repeats=5, random_state=42, scoring='roc_auc')
+          perm = pd.Series(pi.importances_mean, index=Xn_train.columns)
+          round(perm['noise'], 4), round(perm['channel_promo'], 4)
+    pitfall:
+      text: |
+        อ่านผล feature_importances_ ของ forest ตรงๆ แล้วสรุปว่า feature ที่สำคัญสุดคือ 'ตัวขับเคลื่อน' — impurity importance เอนเอียงไปหา feature ต่อเนื่อง/หลายค่า (ดังที่ noise ได้อันดับ 2) ให้ตรวจซ้ำด้วย permutation importance บนข้อมูล test
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      ตั้ง GridSearchCV ของต้นไม้ (max_depth ∈ [2, 3], min_samples_leaf ∈ [10, 30]) แล้วนับจำนวนชุดที่ลองใน n_candidates เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), {'max_depth': [2, 3], 'min_samples_leaf': [10, 30]}, cv=skf, scoring='roc_auc').___(X_train, y_train)
+      n_candidates = len(gs.cv_results_['params'])
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), {'max_depth': [2, 3], 'min_samples_leaf': [10, 30]}, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      n_candidates = len(gs.cv_results_['params'])
+    check: |
+      check_value(n_candidates, _sol["n_candidates"], name="n_candidates")
+    hints:
+      - "เรียก .fit(X_train, y_train)"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      grid ที่ให้ไว้ (param_grid) มีกี่ชุดพารามิเตอร์ และถ้า CV 5 fold ต้อง fit ทั้งหมดกี่ครั้ง เก็บไว้ในตัวแปร n_candidates, n_fits
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      n_candidates = ___
+      n_fits = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      n_candidates = len(gs.cv_results_['params'])
+      n_fits = n_candidates * skf.get_n_splits()
+    check: |
+      check_value(n_candidates, _sol["n_candidates"], name="n_candidates")
+      check_value(n_fits, _sol["n_fits"], name="n_fits")
+    hints:
+      - "จำนวนชุด = ผลคูณของจำนวนค่าในแต่ละแกน; fit = ชุด × จำนวน fold"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ชุดพารามิเตอร์ที่ดีที่สุด (scoring="roc_auc") มี max_depth และ min_samples_leaf เท่าไร เก็บไว้ในตัวแปร best_depth, best_leaf
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      best_depth = ___
+      best_leaf = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      best_depth = gs.best_params_['max_depth']
+      best_leaf = gs.best_params_['min_samples_leaf']
+    check: |
+      check_value(best_depth, _sol["best_depth"], name="best_depth")
+      check_value(best_leaf, _sol["best_leaf"], name="best_leaf")
+    hints:
+      - "อ่านจาก gs.best_params_"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คะแนน CV (ROC-AUC เฉลี่ย) ของชุดที่ดีที่สุด ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร best_cv_auc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      best_cv_auc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      best_cv_auc = round(gs.best_score_, 4)
+    check: |
+      check_value(best_cv_auc, _sol["best_cv_auc"], name="best_cv_auc", tol=0.001)
+    hints:
+      - "gs.best_score_"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      โมเดลที่ refit แล้ว (gs) วัด ROC-AUC บนชุดทดสอบ (gs.score ใช้ scoring เดียวกัน) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_auc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      test_auc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      test_auc = round(gs.score(X_test, y_test), 4)
+    check: |
+      check_value(test_auc, _sol["test_auc"], name="test_auc", tol=0.001)
+    hints:
+      - "gs.score(X_test, y_test)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      จากผลของ gs.cv_results_ ชุดพารามิเตอร์ที่ได้คะแนนเฉลี่ยต่ำสุดมี max_depth และ min_samples_leaf เท่าไร เก็บไว้ในตัวแปร worst_depth, worst_leaf
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      worst_depth = ___
+      worst_leaf = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      res = pd.DataFrame(gs.cv_results_)
+      worst = res.loc[res['mean_test_score'].idxmin(), 'params']
+      worst_depth = worst['max_depth']
+      worst_leaf = worst['min_samples_leaf']
+    check: |
+      check_value(worst_depth, _sol["worst_depth"], name="worst_depth")
+      check_value(worst_leaf, _sol["worst_leaf"], name="worst_leaf")
+    hints:
+      - "แปลง cv_results_ เป็น DataFrame แล้วหา idxmin ของ mean_test_score"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      GridSearchCV บน RandomForestClassifier(n_estimators=50, random_state=42) ด้วย grid max_depth ∈ [3, 5] × min_samples_leaf ∈ [10, 30] (cv=skf, scoring="roc_auc") เก็บ max_depth ที่ดีที่สุดไว้ใน rf_best_depth, min_samples_leaf ไว้ใน rf_best_leaf และคะแนน CV (ปัด 4 ตำแหน่ง) ไว้ใน rf_best_auc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf_best_depth = ___
+      rf_best_leaf = ___
+      rf_best_auc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf_grid = {'max_depth': [3, 5], 'min_samples_leaf': [10, 30]}
+      gs = GridSearchCV(RandomForestClassifier(n_estimators=50, random_state=42), rf_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      rf_best_depth = gs.best_params_['max_depth']
+      rf_best_leaf = gs.best_params_['min_samples_leaf']
+      rf_best_auc = round(gs.best_score_, 4)
+    check: |
+      check_value(rf_best_depth, _sol["rf_best_depth"], name="rf_best_depth")
+      check_value(rf_best_leaf, _sol["rf_best_leaf"], name="rf_best_leaf")
+      check_value(rf_best_auc, _sol["rf_best_auc"], name="rf_best_auc", tol=0.001)
+    hints:
+      - "ทำเหมือนกับต้นไม้ แต่เปลี่ยนโมเดลเป็น RandomForestClassifier"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ความ "มองโลกในแง่ดี" ของการจูน: คะแนน CV ที่ดีที่สุดลบด้วย AUC บนชุดทดสอบของ gs (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร optimism
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      optimism = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+
+      param_grid = {'max_depth': [2, 3, 4, 5], 'min_samples_leaf': [10, 30, 60]}
+      gs = GridSearchCV(DecisionTreeClassifier(random_state=42), param_grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      optimism = round(gs.best_score_ - gs.score(X_test, y_test), 4)
+    check: |
+      check_value(optimism, _sol["optimism"], name="optimism", tol=0.001)
+    hints:
+      - "best_score_ − gs.score(X_test, y_test)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      fit forest (n_estimators=100, min_samples_leaf=10, random_state=42) บน train แล้วหา permutation importance บนชุดทดสอบ (n_repeats=5, random_state=42, scoring="roc_auc") — feature ที่สำคัญสุดคืออะไร (string) เก็บไว้ใน top_perm_feature และค่า (ปัด 3 ตำแหน่ง) ไว้ใน top_perm_value
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      top_perm_feature = ___
+      top_perm_value = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+      pi = permutation_importance(rf, X_test, y_test, n_repeats=5, random_state=42, scoring='roc_auc')
+      perm = pd.Series(pi.importances_mean, index=X.columns)
+      top_perm_feature = perm.idxmax()
+      top_perm_value = round(perm.max(), 3)
+    check: |
+      check_value(top_perm_feature, _sol["top_perm_feature"], name="top_perm_feature")
+      check_value(top_perm_value, _sol["top_perm_value"], name="top_perm_value", tol=0.001)
+    hints:
+      - "permutation_importance(...).importances_mean แล้วทำเป็น Series"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ตั้งค่า Xn_train/Xn_test ที่มีคอลัมน์ noise สุ่มล้วนไว้ให้แล้ว fit forest (n_estimators=100, random_state=42) บน Xn_train: อันดับของ noise ตาม impurity importance (1 = สำคัญสุด) เก็บไว้ใน noise_rank และ permutation importance ของ noise (AUC, n_repeats=5, random_state=42, ปัด 3 ตำแหน่ง) ไว้ใน noise_perm
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      import numpy as np
+
+      rng = np.random.RandomState(0)
+      Xn_train = X_train.assign(noise=rng.rand(len(X_train)))
+      Xn_test = X_test.assign(noise=rng.rand(len(X_test)))
+      noise_rank = ___
+      noise_perm = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier
+      from sklearn.inspection import permutation_importance
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      import numpy as np
+
+      rng = np.random.RandomState(0)
+      Xn_train = X_train.assign(noise=rng.rand(len(X_train)))
+      Xn_test = X_test.assign(noise=rng.rand(len(X_test)))
+      rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(Xn_train, y_train)
+      noise_rank = pd.Series(rf.feature_importances_, index=Xn_train.columns).rank(ascending=False)['noise']
+      pi = permutation_importance(rf, Xn_test, y_test, n_repeats=5, random_state=42, scoring='roc_auc')
+      noise_perm = round(pd.Series(pi.importances_mean, index=Xn_train.columns)['noise'], 3)
+    check: |
+      check_value(noise_rank, _sol["noise_rank"], name="noise_rank")
+      check_value(noise_perm, _sol["noise_perm"], name="noise_perm", tol=0.001)
+    hints:
+      - "rank(ascending=False) ของ Series impurity importance; permutation ใช้ Xn_test"
+quiz:
+  - id: "q1"
+    question: "hyperparameter ต่างจาก parameter ของโมเดลอย่างไร"
+    choices:
+      - text: "เหมือนกัน"
+        why: "ต่างกัน"
+      - text: "hyperparameter เราตั้งเองก่อนเทรน (เช่น max_depth) ส่วน parameter โมเดลเรียนรู้จากข้อมูล"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "hyperparameter เรียนรู้จาก test"
+        why: "ห้ามใช้ test เลือก"
+      - text: "parameter ตั้งเองเสมอ"
+        why: "กลับกัน"
+  - id: "q2"
+    question: "ทำไม GridSearchCV จึงควรเรียกบนข้อมูล train เท่านั้น"
+    choices:
+      - text: "เพราะ GridSearchCV ไม่รับข้อมูลทั้งหมด"
+        why: "รับได้"
+      - text: "เพื่อให้เร็วขึ้นเท่านั้น"
+        why: "เหตุผลหลักคือความซื่อตรงของการประเมิน"
+      - text: "เพื่อให้ชุด test ไม่ถูกใช้ตัดสินใจเลือกโมเดล จะได้เป็นตัวประเมินที่ไม่เอนเอียงตอนท้าย"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ไม่จำเป็น ใช้ทั้งชุดก็ได้"
+        why: "จะรั่วไปยัง test"
+  - id: "q3"
+    question: "ในการทดลองใส่คอลัมน์สุ่ม noise: forest จัดอันดับ noise ที่ 2 ด้วย impurity importance แต่ permutation importance ให้ ≈ 0.002 สรุปได้ว่า"
+    choices:
+      - text: "noise เป็นสัญญาณจริงที่สำคัญ"
+        why: "permutation บอกว่าแทบไม่มีผล"
+      - text: "permutation importance ผิดเสมอ"
+        why: "ในกรณีนี้ให้ภาพที่สมเหตุผลกว่า"
+      - text: "forest เสีย"
+        why: "ไม่ได้เสีย"
+      - text: "impurity importance อาจถูกหลอกโดย feature ที่มีค่าละเอียด/ต่อเนื่อง ควรตรวจด้วย permutation importance บน test"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ผล grid ของต้นไม้: อันดับ 1 (CV AUC 0.6387) กับอันดับ 2–4 ต่างกันแค่ ~0.005 ควรทำอย่างไร"
+    choices:
+      - text: "มองว่าเสมอกันในทางปฏิบัติ และเลือกชุดที่เรียบง่ายกว่าหรืออธิบายง่ายกว่า"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ต้องเลือกอันดับ 1 เสมอ"
+        why: "ความต่างเล็กเกินกว่าจะไว้ใจ"
+      - text: "เชื่อว่าอันดับ 4 ดีที่สุด"
+        why: "ไม่มีเหตุผล"
+      - text: "เพิ่ม grid แล้วหวังว่าจะเห็นความต่าง"
+        why: "อาจได้แค่โชค"
+summary:
+  - "GridSearchCV ลองทุกชุดใน grid ด้วย CV บน train (จำนวน fit = ชุด × fold) แล้ว refit ชุดที่ดีที่สุด — แตะ test ครั้งเดียวตอนท้าย"
+  - "impurity importance เอนเอียง: คอลัมน์สุ่ม noise ได้อันดับ 2 (0.1761) แต่ permutation importance ≈ 0.002 (promo ≈ 0.046)"
+  - "tree/forest/GB ต่างกันราว 0.01 AUC ในข้อมูลนี้ เลือกตัวที่เรียบง่าย อธิบายได้ และรายงานความไม่แน่นอน"
+interview:
+  - id: "i1"
+    q: "อธิบายขั้นตอนจูนโมเดลอย่างถูกต้องโดยไม่ให้ test รั่ว"
+    a: |
+      แบ่ง train/test ก่อน จากนั้นใช้ cross-validation บนเฉพาะ train เพื่อเปรียบเทียบชุด hyperparameter (GridSearchCV/RandomizedSearchCV) เลือกชุดที่ดีที่สุด refit บน train ทั้งหมด แล้วประเมินบน test เพียงครั้งเดียวเพื่อรายงานผล ถ้าต้องการผลที่ไม่เอนเอียงมากขึ้นใช้ nested CV
+  - id: "i2"
+    q: "feature importance ของ random forest เชื่อถือได้แค่ไหน"
+    a: |
+      impurity importance คำนวณจากข้อมูลเทรนและเอนเอียงไปหา feature ต่อเนื่อง/มีหลายค่า (ทดลองใส่คอลัมน์สุ่มก็ยังได้อันดับสูง) permutation importance บน validation/test เชื่อถือกว่าเพราะวัดผลกระทบต่อคะแนนจริง แต่ก็ไม่ใช่สาเหตุ และ feature ที่สัมพันธ์กันจะแบ่งความสำคัญกัน
+flashcards:
+  - id: "c1"
+    front: "GridSearchCV ทำอะไรบ้างตามลำดับ"
+    back: "ลองทุกชุดใน grid ด้วย CV, เลือกชุดคะแนนเฉลี่ยสูงสุด, refit บนข้อมูลทั้งหมดที่ส่งเข้าไป (refit=True), ให้ best_params_/best_score_/predict"
+  - id: "c2"
+    front: "permutation importance คืออะไร"
+    back: "สลับค่าของ feature หนึ่งในชุดประเมินแบบสุ่มแล้ววัดว่าคะแนนตกเท่าไร — ตกมาก = โมเดลพึ่ง feature นั้น"

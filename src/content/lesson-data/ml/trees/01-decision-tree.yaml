@@ -1,0 +1,471 @@
+goals:
+  - "อธิบายได้ว่า decision tree เลือกคำถามด้วย Gini impurity อย่างไร"
+  - "อ่านกฎของต้นไม้ด้วย export_text และดูจำนวนใบ/ความลึก"
+  - "เห็นว่าต้นไม้ไม่จำกัดความลึกจำข้อมูลเทรน และควบคุมด้วย max_depth / min_samples_leaf"
+examples:
+  - id: "x1"
+    title: "อ่านกฎจากต้นไม้"
+    lang: "python"
+    prompt: |
+      fit ต้นไม้เล็กๆ แล้วดูว่ามันตั้งคำถามอะไร
+    steps:
+      - text: |
+          fit ต้นไม้ max_depth=2 แล้วพิมพ์กฎด้วย export_text — บรรทัดแรกคือคำถามที่ดีที่สุด (channel_promo <= 0.5)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          tree = DecisionTreeClassifier(max_depth=2, random_state=42).fit(X_train, y_train)
+          from sklearn.tree import export_text
+          print(export_text(tree, feature_names=list(X.columns)))
+      - text: |
+          accuracy ของต้นไม้บน train และ test (0.6585 และ 0.6493) และจำนวนใบ (4)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          tree = DecisionTreeClassifier(max_depth=2, random_state=42).fit(X_train, y_train)
+          round(tree.score(X_train, y_train), 4), round(tree.score(X_test, y_test), 4), tree.get_n_leaves()
+    pitfall:
+      text: |
+        ตีความ feature_importances_ ของต้นไม้ที่ overfit ว่าเป็น 'สิ่งที่ขับเคลื่อนพฤติกรรมลูกค้า' — ต้นไม้ลึกๆ กระจายความสำคัญไปยังสัญญาณรบกวนด้วย ให้ดูควบคู่กับผลบน validation เสมอ
+  - id: "x2"
+    title: "ความลึกกับ overfitting"
+    lang: "python"
+    prompt: |
+      เทียบ train/test accuracy ตามความลึกของต้นไม้
+    steps:
+      - text: |
+          วนหลายค่าของ max_depth: train สูงขึ้นเรื่อยๆ แต่ test ลดลง (ลึก 8: 0.7078 / 0.6056)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          for d in [1, 3, 5, 8]:
+              t = DecisionTreeClassifier(max_depth=d, random_state=42).fit(X_train, y_train)
+              print(d, t.get_n_leaves(), round(t.score(X_train, y_train), 4), round(t.score(X_test, y_test), 4))
+      - text: |
+          ไม่จำกัดความลึก: ได้ 664 ใบ ลึก 28 train 0.9995 แต่ test 0.5493
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          full = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+          full.get_n_leaves(), full.get_depth(), round(full.score(X_train, y_train), 4), round(full.score(X_test, y_test), 4)
+    pitfall:
+      text: |
+        เลือก max_depth จากค่าที่ให้ test accuracy สูงสุดแล้วรายงานตัวเลขนั้นเป็นผลสุดท้าย — เท่ากับใช้ test ตัดสินใจ (test รั่วเข้าไปในการเลือกโมเดล) ใช้ cross-validation บน train เลือกค่า แล้วแตะ test ครั้งเดียวตอนท้าย
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit ต้นไม้ max_depth=3 และ min_samples_leaf=30 แล้วเก็บจำนวนใบไว้ในตัวแปร n_leaves เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, ___=30, random_state=42).fit(X_train, y_train)
+      n_leaves = tree.get_n_leaves()
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, min_samples_leaf=30, random_state=42).fit(X_train, y_train)
+      n_leaves = tree.get_n_leaves()
+    check: |
+      check_value(n_leaves, _sol["n_leaves"], name="n_leaves")
+    hints:
+      - "พารามิเตอร์ที่กำหนดจำนวนแถวขั้นต่ำต่อใบ ชื่อ min_samples_leaf"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      fit DecisionTreeClassifier(max_depth=3, random_state=42) บน train แล้วเก็บ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร depth3_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      depth3_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      depth3_test_acc = round(tree.score(X_test, y_test), 4)
+    check: |
+      check_value(depth3_test_acc, _sol["depth3_test_acc"], name="depth3_test_acc", tol=0.001)
+    hints:
+      - "fit แล้ว .score(X_test, y_test)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นไม้ที่ไม่จำกัดความลึก (random_state=42) มีกี่ใบและลึกกี่ชั้น เก็บไว้ในตัวแปร full_leaves, full_depth
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full_leaves = ___
+      full_depth = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      full_leaves = full.get_n_leaves()
+      full_depth = full.get_depth()
+    check: |
+      check_value(full_leaves, _sol["full_leaves"], name="full_leaves")
+      check_value(full_depth, _sol["full_depth"], name="full_depth")
+    hints:
+      - "`get_n_leaves()` และ `get_depth()`"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy บน train ของต้นไม้ที่ไม่จำกัดความลึก ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร full_train_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full_train_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      full_train_acc = round(full.score(X_train, y_train), 4)
+    check: |
+      check_value(full_train_acc, _sol["full_train_acc"], name="full_train_acc", tol=0.001)
+    hints:
+      - "ใช้ .score กับ X_train, y_train"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นไม้ max_depth=2 (random_state=42) ใช้ feature ไหนเป็นคำถามแรก (ที่โหนดราก) เก็บชื่อคอลัมน์ (string) ไว้ในตัวแปร root_feature
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      root_feature = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=2, random_state=42).fit(X_train, y_train)
+      root_feature = X.columns[tree.tree_.feature[0]]
+    check: |
+      check_value(root_feature, _sol["root_feature"], name="root_feature")
+    hints:
+      - "`tree.tree_.feature[0]` คือ index ของ feature ที่โหนดราก แล้วใช้ X.columns[...]"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ StratifiedKFold 5-fold (skf ที่ให้ไว้) วัด accuracy เฉลี่ยของต้นไม้ที่ max_depth = 1..8 (random_state=42) เก็บ depth ที่ CV accuracy สูงสุดไว้ใน best_cv_depth (ถ้าเสมอให้เลือกค่าน้อยกว่า) และ accuracy ของมัน (ปัด 4 ตำแหน่ง) ไว้ใน best_cv_acc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      best_cv_depth = ___
+      best_cv_acc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      scores = {d: cross_val_score(DecisionTreeClassifier(max_depth=d, random_state=42), X, y, cv=skf).mean() for d in range(1, 9)}
+      best_cv_depth = min(d for d, s in scores.items() if s == max(scores.values()))
+      best_cv_acc = round(scores[best_cv_depth], 4)
+    check: |
+      check_value(best_cv_depth, _sol["best_cv_depth"], name="best_cv_depth")
+      check_value(best_cv_acc, _sol["best_cv_acc"], name="best_cv_acc", tol=0.001)
+    hints:
+      - "สร้าง dict depth → คะแนนเฉลี่ย แล้วหาค่าสูงสุด (ใช้ min ของ depth ที่ได้คะแนนสูงสุดเพื่อตัดเสมอ)"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit ต้นไม้ที่ไม่จำกัดความลึกแต่ตั้ง min_samples_leaf=20 (random_state=42) เก็บจำนวนใบไว้ใน leaves_20 และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) ไว้ใน test_acc_20
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      leaves_20 = ___
+      test_acc_20 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(min_samples_leaf=20, random_state=42).fit(X_train, y_train)
+      leaves_20 = tree.get_n_leaves()
+      test_acc_20 = round(tree.score(X_test, y_test), 4)
+    check: |
+      check_value(leaves_20, _sol["leaves_20"], name="leaves_20")
+      check_value(test_acc_20, _sol["test_acc_20"], name="test_acc_20", tol=0.001)
+    hints:
+      - "ตั้ง min_samples_leaf=20"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ช่องว่าง overfitting (train acc − test acc) ของต้นไม้ max_depth=3 และของต้นไม้ไม่จำกัดความลึก ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร gap_depth3, gap_full
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      gap_depth3 = ___
+      gap_full = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      shallow = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      full = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      gap_depth3 = round(shallow.score(X_train, y_train) - shallow.score(X_test, y_test), 4)
+      gap_full = round(full.score(X_train, y_train) - full.score(X_test, y_test), 4)
+    check: |
+      check_value(gap_depth3, _sol["gap_depth3"], name="gap_depth3", tol=0.001)
+      check_value(gap_full, _sol["gap_full"], name="gap_full", tol=0.001)
+    hints:
+      - "train_score − test_score ของแต่ละโมเดล"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ต้นไม้ max_depth=3 (random_state=42): feature ที่มี feature_importances_ สูงสุดคืออะไร (string) เก็บไว้ใน top_feature และค่าความสำคัญของมัน (ปัด 3 ตำแหน่ง) ไว้ใน top_importance
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      top_feature = ___
+      top_importance = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      imp = pd.Series(tree.feature_importances_, index=X.columns)
+      top_feature = imp.idxmax()
+      top_importance = round(imp.max(), 3)
+    check: |
+      check_value(top_feature, _sol["top_feature"], name="top_feature")
+      check_value(top_importance, _sol["top_importance"], name="top_importance", tol=0.001)
+    hints:
+      - "ทำ pd.Series(tree.feature_importances_, index=X.columns) แล้วใช้ idxmax และ max"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ต้นไม้ max_depth=3 (random_state=42): แถวในชุดทดสอบตกไปอยู่ในกี่ใบ (leaves_used) และใบที่ใหญ่ที่สุดมีสัดส่วนกี่ส่วนของชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ใน biggest_leaf_share
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      leaves_used = ___
+      biggest_leaf_share = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      leaf_ids = pd.Series(tree.apply(X_test))
+      leaves_used = leaf_ids.nunique()
+      biggest_leaf_share = round(leaf_ids.value_counts(normalize=True).max(), 4)
+    check: |
+      check_value(leaves_used, _sol["leaves_used"], name="leaves_used")
+      check_value(biggest_leaf_share, _sol["biggest_leaf_share"], name="biggest_leaf_share", tol=0.001)
+    hints:
+      - "`tree.apply(X_test)` บอกว่าแต่ละแถวตกใบไหน แล้วใช้ nunique / value_counts(normalize=True)"
+quiz:
+  - id: "q1"
+    question: "Gini impurity ที่ 0 ของโหนดหนึ่งหมายความว่าอย่างไร"
+    choices:
+      - text: "โหนดนั้นมีแถวเดียว"
+        why: "อาจมีหลายแถวแต่เป็นคลาสเดียวกัน"
+      - text: "ทุกแถวในโหนดนั้นเป็นคลาสเดียวกัน (บริสุทธิ์)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "โมเดลทำนายผิดทั้งหมด"
+        why: "ไม่เกี่ยวกับความถูกผิด"
+      - text: "คลาสปนกันครึ่งๆ"
+        why: "นั่นคือค่าสูงสุด (0.5 สำหรับ 2 คลาส)"
+  - id: "q2"
+    question: "ต้นไม้ที่ไม่จำกัดความลึกได้ train accuracy 0.9995 แต่ test 0.5493 ในบทนี้ บอกอะไร"
+    choices:
+      - text: "โมเดลดีมากเพราะ train สูง"
+        why: "train สูงอย่างเดียวไม่บอกอะไร"
+      - text: "ข้อมูล test มีปัญหา"
+        why: "ไม่มีหลักฐานเช่นนั้น"
+      - text: "overfitting — จำข้อมูลเทรน และแย่กว่าการเดาคลาสส่วนใหญ่ (0.5901) บน test"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ต้องเพิ่มความลึกอีก"
+        why: "ทำให้จำมากขึ้น"
+  - id: "q3"
+    question: "ทำไมต้นไม้เดี่ยวจึงไม่ต้อง scale ข้อมูล"
+    choices:
+      - text: "เพราะ tree ไม่ใช้ตัวเลข"
+        why: "ใช้ตัวเลข แต่เปรียบเทียบเป็นเกณฑ์"
+      - text: "เพราะ sklearn scale ให้เอง"
+        why: "ไม่ได้ scale ให้"
+      - text: "ต้อง scale เหมือนโมเดลอื่น"
+        why: "ไม่จำเป็น"
+      - text: "คำถามแต่ละข้อเปรียบเทียบ feature เดียวกับค่าเกณฑ์ ไม่ขึ้นกับหน่วยหรือช่วงของ feature อื่น"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ต้นไม้ depth 1 กับ depth 2 ในข้อมูลนี้ให้ accuracy เท่ากันพอดี ควรเลือกอย่างไร"
+    choices:
+      - text: "เลือกต้นไม้ที่เล็กกว่า (depth 1) เพราะเรียบง่ายกว่าและผลเท่ากัน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เลือก depth 2 เพราะซับซ้อนกว่า"
+        why: "ความซับซ้อนที่ไม่ช่วยให้ดีขึ้นไม่มีประโยชน์"
+      - text: "สุ่มเลือก"
+        why: "ไม่จำเป็น มีเกณฑ์ที่ดีกว่า"
+      - text: "เลือกลึกสุดที่ตั้งได้"
+        why: "เสี่ยง overfit"
+summary:
+  - "ต้นไม้ถามคำถามใช่/ไม่ใช่ต่อกัน เลือกคำถามที่ลด Gini impurity ของลูกมากที่สุด อ่านเป็นกฎได้และไม่ต้อง scale"
+  - "ไม่จำกัดความลึก → 664 ใบ train 0.9995 แต่ test 0.5493 (แย่กว่า baseline 0.5901) คือ overfitting"
+  - "คุมด้วย max_depth/min_samples_leaf เลือกด้วย CV และเมื่อเสมอให้เลือกต้นไม้ที่เล็กกว่า"
+interview:
+  - id: "i1"
+    q: "Decision tree เลือกจุดแยก (split) อย่างไร"
+    a: |
+      ลองทุกคำถามที่เป็นไปได้ (ทุก feature ทุกค่าตัด) แล้วเลือกคำถามที่ทำให้ impurity (เช่น Gini) ของโหนดลูกที่ถ่วงน้ำหนักตามจำนวนแถวลดลงมากที่สุด จากนั้นทำซ้ำในแต่ละกิ่ง (greedy, ทีละขั้น) จนถึงเงื่อนไขหยุด เช่น max_depth, min_samples_leaf หรือโหนดบริสุทธิ์
+  - id: "i2"
+    q: "ทำไม decision tree ถึง overfit ง่ายและแก้อย่างไร"
+    a: |
+      ถ้าปล่อยให้โตเต็มที่ มันจะแบ่งจนทุกใบบริสุทธิ์ คือจำข้อมูลเทรนรวมทั้ง noise แก้โดยจำกัดขนาด (max_depth, min_samples_leaf, max_leaf_nodes), pruning หรือใช้ ensemble อย่าง random forest / boosting และเลือกไฮเปอร์พารามิเตอร์ด้วย cross-validation
+flashcards:
+  - id: "c1"
+    front: "Gini impurity"
+    back: "ความปนของคลาสในโหนด: 1 − Σp² ; 0 = บริสุทธิ์, 0.5 = ปนสุด (2 คลาส) tree เลือก split ที่ลดค่านี้มากสุด"
+  - id: "c2"
+    front: "ไฮเปอร์พารามิเตอร์หลักที่คุมขนาดต้นไม้"
+    back: "max_depth, min_samples_leaf (และ max_leaf_nodes, min_samples_split)"

@@ -1,0 +1,50 @@
+---
+track: ml
+module: trees
+order: 2
+title: "Random Forest"
+minutes: 30
+prereqs: [ml/trees/01-decision-tree]
+---
+
+## ปัญหา: ต้นไม้เดี่ยว "ไม่นิ่ง"
+
+ต้นไม้ตัวเดียวที่โตเต็มที่ overfit ง่าย และเปลี่ยนโครงสร้างมากเมื่อข้อมูลเปลี่ยนนิดเดียว (variance สูง)
+ไอเดียของ **ensemble**: สร้างต้นไม้หลายต้นที่ "ต่างกัน" แล้วให้ **โหวต** — ความผิดพลาดที่ไม่สม่ำเสมอของแต่ละต้นจะหักล้างกัน
+
+## Random forest = bagging + สุ่ม feature
+
+1. **Bootstrap**: แต่ละต้นเทรนบนตัวอย่างที่สุ่มแบบใส่คืนจากข้อมูล train (ราว 63% ของแถวไม่ซ้ำ)
+2. **สุ่ม feature ต่อทุกจุดแยก**: ที่แต่ละ split พิจารณาเพียงบางส่วนของ feature (`max_features='sqrt'` เป็นค่าเริ่มต้นของ classifier) ทำให้ต้นไม้ไม่ซ้ำกัน
+3. ทำนายโดย **โหวตข้างมาก** (`predict_proba` = ค่าเฉลี่ยของสัดส่วนในแต่ละต้น)
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, oob_score=True, random_state=42)
+rf.fit(X_train, y_train)
+rf.score(X_test, y_test), rf.oob_score_
+```
+
+## ค่าเริ่มต้นยังคง overfit ได้
+
+ต้นไม้แต่ละต้นในค่าเริ่มต้นไม่ถูกจำกัดความลึก ดังนั้น forest 100 ต้นในข้อมูลของเรา train = 0.9995 แต่ test = 0.6197 — ดีกว่าต้นไม้เดี่ยว (0.5493) มาก แต่ยังไม่ดีเท่าการจำกัดขนาด
+เมื่อใส่ `min_samples_leaf=10` ได้ test ≈ 0.6451
+
+## OOB score: validation ฟรี
+
+แต่ละต้นไม่ได้เห็นแถวราว 37% (out-of-bag) — นำแถวเหล่านั้นมาทดสอบต้นนั้นแล้วเฉลี่ยรวม จะได้ประมาณการความแม่นโดยไม่ต้องแบ่ง validation (`oob_score=True` → `rf.oob_score_`)
+ในข้อมูลนี้ OOB ≈ 0.6534 ใกล้กับ test 0.6451
+
+## เปรียบเทียบตอนท้าย (5-fold CV)
+
+| โมเดล | accuracy | AUC |
+|---|---|---|
+| เดาคลาสส่วนใหญ่ | 0.5903 | 0.5000 |
+| logistic regression | 0.6442 | 0.6364 |
+| ต้นไม้เดี่ยว depth 3 | 0.6562 | 0.6444 |
+| ต้นไม้ไม่จำกัด | 0.5696 | 0.5581 |
+| random forest (leaf 10) | 0.6432 | 0.6420 |
+
+ข้อสังเกตที่ตรงไปตรงมา: ข้อมูลนี้มีสัญญาณอ่อน (แทบมีแค่ promo) forest **ไม่ได้ชนะ** ต้นไม้ตื้นๆ หรือ logistic regression — ทุกตัวอยู่ในช่วง 0.01 กัน
+Ensemble ช่วยเรื่อง *ความนิ่ง* ไม่ได้สร้างสัญญาณที่ไม่มีอยู่ในข้อมูล

@@ -1,0 +1,60 @@
+---
+track: ml
+module: dl
+order: 1
+title: "Neuron และ MLP"
+minutes: 30
+prereqs: [ml/trees/04-tuning-importance]
+---
+
+## Neuron หนึ่งตัวทำอะไร
+
+Neural network ประกอบด้วยหน่วยเล็กๆ ที่ทำสามอย่าง:
+
+1. **รวมแบบถ่วงน้ำหนัก**: z = w₁x₁ + w₂x₂ + … + b (เหมือน logistic/linear regression)
+2. **ส่งผ่านฟังก์ชัน activation**: a = f(z) เพื่อให้เกิดความไม่เป็นเส้นตรง
+3. **ส่ง a ไปเป็น input ของหน่วยถัดไป**
+
+```python
+import numpy as np
+
+x = np.array([1.0, 2.0, 1.0])
+w = np.array([0.5, -0.25, 0.8])
+b = 0.1
+
+z = w @ x + b                      # 0.9
+relu = max(0.0, z)                 # 0.9  (ReLU: ค่าลบกลายเป็น 0)
+sigmoid = 1 / (1 + np.exp(-z))     # ≈ 0.7109  (บีบให้อยู่ระหว่าง 0–1)
+```
+
+ถ้าไม่มี activation ที่ไม่เป็นเส้นตรง การซ้อนหลายชั้นก็เท่ากับโมเดลเชิงเส้นชั้นเดียว (คูณเมทริกซ์ต่อกันได้เมทริกซ์เดียว)
+
+## หลาย neuron = layer; หลาย layer = MLP
+
+หนึ่ง **layer** คือ neuron หลายตัวที่รับ input ชุดเดียวกัน ในรูปเมทริกซ์: `Z = W @ x + b` เมื่อ W มี 1 แถวต่อ neuron
+**MLP** (multi-layer perceptron) ซ้อน layer: input → hidden layer (ReLU) → … → output (sigmoid สำหรับ 2 คลาส)
+
+```python
+from sklearn.neural_network import MLPClassifier
+
+mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42)
+mlp.fit(Z_train, y_train)
+[c.shape for c in mlp.coefs_]   # [(21, 16), (16, 1)]
+```
+
+ข้อมูลของเรามี 21 feature, hidden 16 หน่วย, output 1 หน่วย ⇒ จำนวนพารามิเตอร์ = (21×16 + 16) + (16×1 + 1) = **369** ตัว
+(เทียบกับ logistic regression ที่มีเพียง 22) — พารามิเตอร์เยอะขึ้นมาก แต่ข้อมูลเทรนมีแค่ 2,129 แถวที่ signal อ่อน
+
+## ทำไมต้อง scale ก่อนเข้า neural network
+
+Feature ที่ช่วงกว้างมาก (เช่น `days_since_first_order` 3–728) เทียบกับ dummy 0/1 ทำให้การอัปเดตน้ำหนักถูกครอบงำโดย feature ตัวใหญ่ การ scale ด้วย `StandardScaler` (fit บน train เท่านั้น) ทำให้ optimizer ทำงานได้ราบรื่น
+
+ผลจริงในข้อมูลนี้ (hidden 16, max_iter=200):
+
+| | iteration ที่ใช้ | train acc | test acc |
+|---|---|---|---|
+| ไม่ scale | 57 (หยุดเพราะ loss ไม่ลดพอ) | 0.6318 | 0.6141 |
+| scale | 200 (ยังไม่หยุด) | 0.7027 | 0.5986 |
+
+การ scale ทำให้เทรนได้ลึกขึ้นมาก (train 0.6318 → 0.7027) แต่ **test ไม่ได้ดีขึ้น** — ซ้ำยังต่ำกว่า logistic regression (AUC 0.5746 เทียบ 0.625) เพราะสัญญาณมีน้อย โมเดลใหญ่จึงจำ noise
+neural network ไม่ใช่ยาวิเศษ โดยเฉพาะกับข้อมูลตารางขนาดเล็ก

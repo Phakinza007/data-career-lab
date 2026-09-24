@@ -1,0 +1,649 @@
+goals:
+  - "ลด overfitting ของ MLP ด้วย alpha, early_stopping และขนาดโมเดล"
+  - "รายงานผลของโมเดลสุ่มอย่างซื่อตรง (หลาย seed, ค่าเฉลี่ย ± std)"
+  - "ตัดสินใจได้ว่าเมื่อไรควรและไม่ควรใช้ deep learning"
+examples:
+  - id: "x1"
+    title: "ลด overfitting ด้วย alpha และ early stopping"
+    lang: "python"
+    prompt: |
+      เทียบ MLP (16,) แบบเดิม กับ alpha สูงและ early stopping
+    steps:
+      - text: |
+          alpha = 1.0: train ลดเหลือ 0.6914 และ test เพิ่มเป็น 0.6169 (จาก 0.5986)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), alpha=1.0, max_iter=200, random_state=42).fit(Z_train, y_train)
+          round(mlp.score(Z_train, y_train), 4), round(mlp.score(Z_test, y_test), 4)
+      - text: |
+          early_stopping=True: หยุดที่รอบ 27 (แทนที่จะครบ 200) และ best_validation_score_ ≈ 0.6056
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train, y_train)
+          mlp.n_iter_, round(mlp.best_validation_score_, 4), round(mlp.score(Z_test, y_test), 4)
+    pitfall:
+      text: |
+        ตั้ง early_stopping=True แล้วประเมินโมเดลด้วยตัว validation ที่มันกันไว้เองเป็นผลสุดท้าย — ค่านั้นถูกใช้ตัดสินใจหยุด จึงดีเกินจริงเล็กน้อย ยังต้องวัดบนชุด test ที่แยกไว้ตั้งแต่ต้น
+  - id: "x2"
+    title: "ความแกว่งข้าม seed"
+    lang: "python"
+    prompt: |
+      รันหลาย seed แล้วรายงานค่าเฉลี่ยและ std
+    steps:
+      - text: |
+          MLP (16,) 5 seed (0–4) ไม่ใช้ early stopping: test 0.5873–0.6296 (ค่าเฉลี่ยราว 0.61)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          accs = [MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=s).fit(Z_train, y_train).score(Z_test, y_test) for s in range(5)]
+          [round(a, 4) for a in accs], round(float(np.mean(accs)), 4), round(float(np.std(accs)), 4)
+      - text: |
+          เทียบกับ logistic regression ซึ่งไม่ขึ้นกับ seed: accuracy 0.6437 บน test เดียวกัน
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          from sklearn.ensemble import GradientBoostingClassifier
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+          from sklearn.pipeline import make_pipeline
+          round(LogisticRegression(max_iter=2000).fit(X_train, y_train).score(X_test, y_test), 4)
+    pitfall:
+      text: |
+        รัน MLP หนึ่งครั้ง ได้ผลดีกว่าโมเดลอื่นเล็กน้อย แล้วประกาศว่า 'neural network ชนะ' — ความต่างระดับ 0.01–0.04 อยู่ในช่วงที่เปลี่ยน seed แล้วกลับกันได้ ทดสอบหลาย seed หรือ CV ก่อนสรุป
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit MLP (16,) ที่เปิด early stopping (max_iter=200, random_state=42) แล้วเก็บจำนวน iteration ที่ใช้จริงไว้ใน stopped_at เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=___, max_iter=200, random_state=42).fit(Z_train, y_train)
+      stopped_at = mlp.n_iter_
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train, y_train)
+      stopped_at = mlp.n_iter_
+    check: |
+      check_value(stopped_at, _sol["stopped_at"], name="stopped_at")
+    hints:
+      - "early_stopping=True"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MLP (16,) ที่ alpha=1.0 (max_iter=200, random_state=42): accuracy บน train และ test (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร alpha1_train, alpha1_test
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      alpha1_train = ___
+      alpha1_test = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), alpha=1.0, max_iter=200, random_state=42).fit(Z_train, y_train)
+      alpha1_train = round(mlp.score(Z_train, y_train), 4)
+      alpha1_test = round(mlp.score(Z_test, y_test), 4)
+    check: |
+      check_value(alpha1_train, _sol["alpha1_train"], name="alpha1_train", tol=0.001)
+      check_value(alpha1_test, _sol["alpha1_test"], name="alpha1_test", tol=0.001)
+    hints:
+      - "ตั้ง alpha=1.0"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MLP (16,) ที่เปิด early_stopping=True (max_iter=200, random_state=42): เก็บจำนวน iteration ที่ใช้ไว้ใน es_iters และ best_validation_score_ (ปัด 4 ตำแหน่ง) ไว้ใน es_best_val
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      es_iters = ___
+      es_best_val = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train, y_train)
+      es_iters = mlp.n_iter_
+      es_best_val = round(mlp.best_validation_score_, 4)
+    check: |
+      check_value(es_iters, _sol["es_iters"], name="es_iters")
+      check_value(es_best_val, _sol["es_best_val"], name="es_best_val", tol=0.001)
+    hints:
+      - "n_iter_ และ best_validation_score_"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy บนชุดทดสอบของ MLP ตัวเดียวกับข้อ e2 (early stopping) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร es_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      es_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train, y_train)
+      es_test_acc = round(mlp.score(Z_test, y_test), 4)
+    check: |
+      check_value(es_test_acc, _sol["es_test_acc"], name="es_test_acc", tol=0.001)
+    hints:
+      - ".score(Z_test, y_test)"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MLP (16,) มีพารามิเตอร์กี่ตัวต่อแถวข้อมูลเทรน (จำนวนพารามิเตอร์ ÷ len(Z_train)) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร params_per_row
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      params_per_row = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      n_params = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+      params_per_row = round(n_params / len(Z_train), 4)
+    check: |
+      check_value(params_per_row, _sol["params_per_row"], name="params_per_row", tol=0.001)
+    hints:
+      - "นับพารามิเตอร์จาก coefs_ และ intercepts_"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      accuracy บนชุดทดสอบของ MLP (16,) (max_iter=200, random_state=42) เมื่อ alpha = 0.0001, 1.0 และ 3.0 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร acc_a0001, acc_a1, acc_a3
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      acc_a0001 = ___
+      acc_a1 = ___
+      acc_a3 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      def test_acc(alpha):
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=200, random_state=42).fit(Z_train, y_train)
+          return round(mlp.score(Z_test, y_test), 4)
+
+
+      acc_a0001 = test_acc(0.0001)
+      acc_a1 = test_acc(1.0)
+      acc_a3 = test_acc(3.0)
+    check: |
+      check_value(acc_a0001, _sol["acc_a0001"], name="acc_a0001", tol=0.001)
+      check_value(acc_a1, _sol["acc_a1"], name="acc_a1", tol=0.001)
+      check_value(acc_a3, _sol["acc_a3"], name="acc_a3", tol=0.001)
+    hints:
+      - "เขียนฟังก์ชันรับ alpha"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เทรน MLP (16,) (max_iter=200) ด้วย random_state = 0, 1, 2, 3, 4 (ไม่ใช้ early stopping) แล้วเก็บ accuracy บนชุดทดสอบของแต่ละ seed: ค่าเฉลี่ย (seed_mean) และ std (seed_std, np.std) ปัด 4 ตำแหน่ง
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      seed_mean = ___
+      seed_std = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      accs = [MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=s).fit(Z_train, y_train).score(Z_test, y_test) for s in range(5)]
+      seed_mean = round(float(np.mean(accs)), 4)
+      seed_std = round(float(np.std(accs)), 4)
+    check: |
+      check_value(seed_mean, _sol["seed_mean"], name="seed_mean", tol=0.001)
+      check_value(seed_std, _sol["seed_std"], name="seed_std", tol=0.001)
+    hints:
+      - "list comprehension ข้าม seed แล้ว np.mean / np.std"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ทำเหมือนข้อ e6 แต่เปิด early_stopping=True: ค่าเฉลี่ยและ std ของ accuracy บนชุดทดสอบข้าม 5 seed (0–4) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร es_seed_mean, es_seed_std
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      es_seed_mean = ___
+      es_seed_std = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      accs = [MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=s).fit(Z_train, y_train).score(Z_test, y_test) for s in range(5)]
+      es_seed_mean = round(float(np.mean(accs)), 4)
+      es_seed_std = round(float(np.std(accs)), 4)
+    check: |
+      check_value(es_seed_mean, _sol["es_seed_mean"], name="es_seed_mean", tol=0.001)
+      check_value(es_seed_std, _sol["es_seed_std"], name="es_seed_std", tol=0.001)
+    hints:
+      - "เหมือน e6 เพิ่ม early_stopping=True"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      CV 5-fold (StratifiedKFold shuffle=True, random_state=42) บน X, y ทั้งชุด: accuracy เฉลี่ยของ pipeline StandardScaler + MLPClassifier(hidden (8,), early_stopping=True, max_iter=200, random_state=42) และของ StandardScaler + LogisticRegression(max_iter=2000) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร mlp_cv, logreg_cv
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      from sklearn.ensemble import GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+      mlp_cv = ___
+      logreg_cv = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      from sklearn.ensemble import GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      mlp_pipe = make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(8,), early_stopping=True, max_iter=200, random_state=42))
+      lr_pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000))
+      mlp_cv = round(cross_val_score(mlp_pipe, X, y, cv=skf).mean(), 4)
+      logreg_cv = round(cross_val_score(lr_pipe, X, y, cv=skf).mean(), 4)
+    check: |
+      check_value(mlp_cv, _sol["mlp_cv"], name="mlp_cv", tol=0.001)
+      check_value(logreg_cv, _sol["logreg_cv"], name="logreg_cv", tol=0.001)
+    hints:
+      - "ใช้ make_pipeline เพื่อให้ scaler fit ใหม่ในแต่ละ fold"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทียบ ROC-AUC บนชุดทดสอบของ MLP (16,) ที่ early_stopping=True (max_iter=200, random_state=42, บน Z_train/Z_test) กับ GradientBoostingClassifier(random_state=42) (บน X_train/X_test) ปัด 4 ตำแหน่ง เก็บไว้ใน mlp_auc, gb_auc และชื่อตัวที่ AUC สูงกว่า ("gb" หรือ "mlp") ไว้ใน winner
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      from sklearn.ensemble import GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+      mlp_auc = ___
+      gb_auc = ___
+      winner = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      from sklearn.ensemble import GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import make_pipeline
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=200, random_state=42).fit(Z_train, y_train)
+      gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+      mlp_auc = round(roc_auc_score(y_test, mlp.predict_proba(Z_test)[:, 1]), 4)
+      gb_auc = round(roc_auc_score(y_test, gb.predict_proba(X_test)[:, 1]), 4)
+      winner = 'gb' if gb_auc > mlp_auc else 'mlp'
+    check: |
+      check_value(mlp_auc, _sol["mlp_auc"], name="mlp_auc", tol=0.001)
+      check_value(gb_auc, _sol["gb_auc"], name="gb_auc", tol=0.001)
+      check_value(winner, _sol["winner"], name="winner")
+    hints:
+      - "predict_proba(...)[:, 1] ของแต่ละโมเดลบนข้อมูลที่เหมาะกับมัน"
+quiz:
+  - id: "q1"
+    question: "วิธีใดช่วยลด overfitting ของ MLP ใน scikit-learn"
+    choices:
+      - text: "เพิ่ม max_iter ให้มากที่สุด"
+        why: "ทำให้จำมากขึ้น"
+      - text: "เพิ่ม alpha (L2), เปิด early_stopping หรือใช้ hidden layer เล็กลง"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพิ่มจำนวน hidden layer เรื่อยๆ"
+        why: "ทำให้จำมากขึ้น"
+      - text: "เอา scaling ออก"
+        why: "ไม่ช่วย"
+  - id: "q2"
+    question: "ทำไมผลของ MLP จึงเปลี่ยนเมื่อเปลี่ยน random_state"
+    choices:
+      - text: "เพราะข้อมูลเปลี่ยน"
+        why: "ข้อมูลเหมือนเดิม"
+      - text: "เป็นบั๊กของ sklearn"
+        why: "ไม่ใช่บั๊ก"
+      - text: "น้ำหนักเริ่มต้นและลำดับ mini-batch เป็นค่าสุ่ม การเทรนจึงไปจบที่ต่างกัน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "MLP ไม่มีความสุ่ม"
+        why: "มีความสุ่ม"
+  - id: "q3"
+    question: "ข้อมูลใดที่ deep learning มักเหมาะที่สุด"
+    choices:
+      - text: "ตารางลูกค้าขนาด 3,000 แถว"
+        why: "มักไม่ได้ประโยชน์จาก DL"
+      - text: "ข้อมูลที่ต้องการอธิบายกฎเป็นข้อๆ"
+        why: "อธิบายยากกว่า"
+      - text: "ไม่มีข้อมูลเลย"
+        why: "ต้องมีข้อมูล"
+      - text: "รูปภาพ ข้อความ เสียง หรือข้อมูลขนาดใหญ่มาก โดยเฉพาะใช้ pretrained model"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ในบทนี้ MLP 5 seed ให้ test 0.5873–0.6296 บอกอะไรเรื่องการเปรียบเทียบโมเดล"
+    choices:
+      - text: "ความต่างเล็กๆ ระหว่างโมเดลอาจเป็นแค่ความแกว่งจาก seed ต้องทดสอบหลาย seed หรือ CV ก่อนสรุปว่าตัวไหนดีกว่า"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เลือก seed ที่ให้ผลสูงสุดไปรายงาน"
+        why: "นั่นคือการเลือกผลที่ดีเกินจริง"
+      - text: "MLP ใช้ไม่ได้"
+        why: "ใช้ได้แต่ต้องประเมินอย่างระวัง"
+      - text: "ไม่ต้องสนใจ"
+        why: "ต้องสนใจ"
+summary:
+  - "MLP overfit ง่าย: alpha สูง (1.0: test 0.6169), early_stopping (หยุดที่รอบ 27, test 0.6282) หรือโมเดลเล็กลงช่วยลดช่องว่าง train−test"
+  - "ผลขึ้นกับ seed (test 0.5873–0.6296 ใน 5 seed) จึงต้องรายงานค่าเฉลี่ย ± std หรือใช้ CV"
+  - "ข้อมูลตารางขนาดเล็ก–กลางมักเหมาะกับ logistic regression / gradient boosting มากกว่า DL; DL เด่นกับรูปภาพ ข้อความ เสียง และข้อมูลขนาดใหญ่"
+interview:
+  - id: "i1"
+    q: "จะทำอย่างไรถ้า neural network overfit ข้อมูลตาราง"
+    a: |
+      ลดความจุของโมเดล (hidden layer เล็กลง), regularization (L2/alpha, dropout ใน framework อื่น), early stopping ด้วย validation set, เพิ่มข้อมูลหรือ augmentation ถ้าทำได้ และเทียบกับ baseline ง่ายๆ เช่น logistic regression/gradient boosting เสมอ เพราะบนข้อมูลตารางขนาดเล็กโมเดลง่ายมักดีเท่ากันหรือกว่า
+  - id: "i2"
+    q: "เมื่อไรที่คุณจะเลือกใช้ deep learning แทน gradient boosting"
+    a: |
+      เมื่อข้อมูลเป็นรูปภาพ ข้อความ เสียง หรือลำดับ (ที่ต้องเรียนรู้ representation เอง) เมื่อมีข้อมูลมหาศาล หรือมี pretrained model ให้ทำ transfer learning สำหรับข้อมูลตารางทั่วไป gradient boosting มักเป็นตัวเลือกแรกเพราะเร็ว แม่น และอธิบายง่ายกว่า
+flashcards:
+  - id: "c1"
+    front: "early stopping ใน MLPClassifier ทำงานอย่างไร"
+    back: "กัน validation_fraction (10%) ของ train ไว้ตรวจ แล้วหยุดเมื่อคะแนน validation ไม่ดีขึ้นเกิน n_iter_no_change รอบ"
+  - id: "c2"
+    front: "ทำไมต้องรันหลาย seed กับโมเดล neural network"
+    back: "น้ำหนักเริ่มต้นสุ่ม ผลแกว่งข้าม seed จึงต้องรายงานค่าเฉลี่ย ± std"

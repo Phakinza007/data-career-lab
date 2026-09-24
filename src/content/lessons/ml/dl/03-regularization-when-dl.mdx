@@ -1,0 +1,46 @@
+---
+track: ml
+module: dl
+order: 3
+title: "Overfitting ของ neural network และเมื่อไรควรใช้ DL"
+minutes: 35
+prereqs: [ml/dl/02-gradient-descent]
+---
+
+## Neural network overfit ง่ายมาก
+
+MLP มีพารามิเตอร์เป็นร้อยเป็นพัน — ให้เวลาเทรนนานพอก็ "จำ" ข้อมูลเทรนได้ ในข้อมูลของเรา MLP (16,) 200 รอบได้ train 0.7027 แต่ test 0.5986 (baseline 0.5901, logistic regression 0.6437)
+เครื่องมือควบคุมที่มีใน scikit-learn:
+
+| วิธี | ตัวเลือก | ผลในข้อมูลนี้ (hidden 16, scale แล้ว) |
+|---|---|---|
+| L2 regularization | `alpha` (ค่าเริ่มต้น 0.0001) | alpha 1.0: train 0.6914 / test 0.6169 · alpha 3.0: 0.6670 / 0.6408 |
+| หยุดก่อนจำ | `early_stopping=True` (กัน 10% เป็น validation) | หยุดที่รอบ 27, train 0.6538 / test 0.6282 |
+| โมเดลเล็กลง | `hidden_layer_sizes` | (4,) test 0.6324 · (8,) 0.6310 · (16,) 0.5986 · (16, 8) 0.5775 |
+
+ทุกวิธีคือการลดความสามารถในการจำ — ช่องว่าง train−test แคบลง (และ test ดีขึ้นเล็กน้อย)
+(PyTorch/Keras มีตัวเลือกเพิ่ม เช่น **dropout** สุ่มปิด neuron ระหว่างเทรน)
+
+```python
+from sklearn.neural_network import MLPClassifier
+
+mlp = MLPClassifier(hidden_layer_sizes=(16,), alpha=1.0, early_stopping=True, random_state=42)
+mlp.fit(Z_train, y_train)
+mlp.n_iter_, mlp.best_validation_score_
+```
+
+## ผลลัพธ์ขึ้นกับ seed
+
+น้ำหนักเริ่มต้นสุ่ม ดังนั้น `random_state` ต่างกันให้ผลต่างกัน ทดสอบ 5 seed (0–4) บน test:
+
+- ไม่ใช้ early stopping: 0.5972, 0.5873, 0.6141, 0.6127, 0.6296 (แกว่งประมาณ 0.04)
+- ใช้ early stopping: 0.6479, 0.6423, 0.5944, 0.6352, 0.6155
+
+ตัวเลขเดียวจาก seed เดียวจึงไม่น่าเชื่อถือ — รายงาน **ค่าเฉลี่ยและ std** ข้ามหลาย seed หรือใช้ cross-validation
+
+## เมื่อไรควรใช้ Deep Learning
+
+**ควรใช้** เมื่อข้อมูลเป็นรูปภาพ ข้อความ เสียง (ข้อมูลที่ไม่มีโครงสร้างตาราง) หรือมีข้อมูลจำนวนมหาศาล และใช้ **pretrained model / transfer learning** ตัวใหญ่ ผ่านเฟรมเวิร์กอย่าง PyTorch หรือ TensorFlow (รวมทั้ง GPU)
+
+**ไม่จำเป็น** สำหรับข้อมูลตารางขนาดเล็ก–กลาง: gradient boosting หรือ logistic regression มักเทรนเร็วกว่า อธิบายได้ง่ายกว่า และแม่นเท่ากันหรือดีกว่า — ข้อมูลลูกค้าของเรา (2,839 แถว) เป็นตัวอย่างชัดเจน
+กฎง่ายๆ: เริ่มด้วย baseline → logistic regression → gradient boosting แล้วค่อยพิจารณา DL เมื่อมีเหตุผลเฉพาะ

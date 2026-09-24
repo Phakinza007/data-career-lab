@@ -1,0 +1,566 @@
+goals:
+  - "คำนวณ neuron และ layer ด้วยมือ (weighted sum + activation) ด้วย numpy"
+  - "เทรน MLPClassifier, นับพารามิเตอร์ และอธิบายว่าทำไมต้อง scale"
+  - "เข้าใจว่าโมเดลใหญ่ไม่ได้ดีกว่าเสมอเมื่อข้อมูลน้อยและสัญญาณอ่อน"
+examples:
+  - id: "x1"
+    title: "neuron ด้วยมือ (numpy)"
+    lang: "python"
+    prompt: |
+      คำนวณ weighted sum และ activation เอง
+    steps:
+      - text: |
+          z = w·x + b แล้วส่งผ่าน ReLU และ sigmoid: z = 0.9, ReLU = 0.9, sigmoid ≈ 0.7109
+        code: |
+          import numpy as np
+
+          x = np.array([1.0, 2.0, 1.0])
+          w = np.array([0.5, -0.25, 0.8])
+          b = 0.1
+          z = w @ x + b
+          relu = max(0.0, z)
+          sigmoid = 1 / (1 + np.exp(-z))
+          round(float(z), 4), round(float(relu), 4), round(float(sigmoid), 4)
+      - text: |
+          layer 2 neuron: Z = W @ x + b_vec แล้ว ReLU — neuron แรก active (0.9) ส่วนที่สองถูกตัดเป็น 0
+        code: |
+          import numpy as np
+
+          x = np.array([1.0, 2.0, 1.0])
+          w = np.array([0.5, -0.25, 0.8])
+          b = 0.1
+          W = np.array([[0.5, -0.25, 0.8], [-1.0, 0.5, 0.2]])
+          b_vec = np.array([0.1, -0.3])
+          z_vec = W @ x + b_vec
+          np.maximum(z_vec, 0).round(4)
+    pitfall:
+      text: |
+        ซ้อนหลาย layer โดยไม่ใช้ activation ที่ไม่เป็นเส้นตรง — W2 @ (W1 @ x) = (W2 @ W1) @ x เทียบเท่าโมเดลเชิงเส้นชั้นเดียว ความลึกไม่ได้ให้อะไรเพิ่ม
+  - id: "x2"
+    title: "MLPClassifier และการนับพารามิเตอร์"
+    lang: "python"
+    prompt: |
+      เทรน MLP เล็กๆ บนข้อมูล scale แล้ว
+    steps:
+      - text: |
+          fit MLP hidden (16,) แล้วดูรูปร่างของน้ำหนัก: [(21, 16), (16, 1)] รวม 369 พารามิเตอร์
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+          [c.shape for c in mlp.coefs_], sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+      - text: |
+          train 0.7027 แต่ test แค่ 0.5986 — พารามิเตอร์ 369 ตัวบนข้อมูล 2,129 แถวที่สัญญาณอ่อนพร้อมจำ noise
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          import numpy as np
+          from sklearn.preprocessing import StandardScaler
+          from sklearn.neural_network import MLPClassifier
+
+          scaler = StandardScaler().fit(X_train)
+          Z_train = scaler.transform(X_train)
+          Z_test = scaler.transform(X_test)
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+          round(mlp.score(Z_train, y_train), 4), round(mlp.score(Z_test, y_test), 4)
+    pitfall:
+      text: |
+        ส่ง X_train ที่ไม่ scale เข้า MLPClassifier แล้วสรุปว่าโมเดลใช้ได้ — ไม่ error แต่ optimizer ถูกครอบงำโดย feature ช่วงกว้างและอาจหยุดเร็วเกินไป (ในข้อมูลนี้หยุดที่ 57 รอบ train 0.6318) scale ด้วย StandardScaler ที่ fit บน train เสมอ
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit MLP ที่มี hidden layer เดียว 8 หน่วย (max_iter=200, random_state=42) บน Z_train แล้วเก็บจำนวนพารามิเตอร์ทั้งหมดไว้ในตัวแปร n_params เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(___,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      n_params = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(8,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      n_params = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+    check: |
+      check_value(n_params, _sol["n_params"], name="n_params")
+    hints:
+      - "(21×8 + 8) + (8×1 + 1) = 185 — ใส่ 8 ใน hidden_layer_sizes"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำนวณ weighted sum ของ neuron ที่ให้ไว้ (z = w · x + b) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร z
+    starter: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      z = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      z = round(float(w @ x + b), 4)
+    check: |
+      check_value(z, _sol["z"], name="z", tol=0.001)
+    hints:
+      - "ใช้ w @ x + b"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ส่ง z ผ่าน ReLU และ sigmoid (1 / (1 + e^−z)) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร relu_out, sigmoid_out
+    starter: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      relu_out = ___
+      sigmoid_out = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      z = w @ x + b
+      relu_out = round(float(max(0.0, z)), 4)
+      sigmoid_out = round(float(1 / (1 + np.exp(-z))), 4)
+    check: |
+      check_value(relu_out, _sol["relu_out"], name="relu_out", tol=0.001)
+      check_value(sigmoid_out, _sol["sigmoid_out"], name="sigmoid_out", tol=0.001)
+    hints:
+      - "ReLU = max(0, z); sigmoid ใช้ np.exp"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      layer ที่มี 2 neuron (W, b_vec ที่ให้ไว้): คำนวณ Z = W @ x + b_vec แล้วผ่าน ReLU เก็บผลรวมของเอาต์พุตทั้งสอง (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร layer_sum
+    starter: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      W = np.array([[0.5, -0.25, 0.8], [-1.0, 0.5, 0.2]])
+      b_vec = np.array([0.1, -0.3])
+      layer_sum = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([1.0, 2.0, 1.0])
+      w = np.array([0.5, -0.25, 0.8])
+      b = 0.1
+      W = np.array([[0.5, -0.25, 0.8], [-1.0, 0.5, 0.2]])
+      b_vec = np.array([0.1, -0.3])
+      z_vec = W @ x + b_vec
+      layer_sum = round(float(np.maximum(z_vec, 0).sum()), 4)
+    check: |
+      check_value(layer_sum, _sol["layer_sum"], name="layer_sum", tol=0.001)
+    hints:
+      - "np.maximum(z_vec, 0) คือ ReLU"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      fit MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42) บน Z_train แล้วนับจำนวนพารามิเตอร์ทั้งหมด (น้ำหนัก + bias) เก็บไว้ในตัวแปร n_params
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      n_params = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      n_params = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+    check: |
+      check_value(n_params, _sol["n_params"], name="n_params")
+    hints:
+      - "coefs_ คือน้ำหนัก, intercepts_ คือ bias; รวมด้วย .size"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MLP เดิม (hidden (16,), max_iter=200, random_state=42): accuracy บน train และ test (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร train_acc, test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      train_acc = ___
+      test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      train_acc = round(mlp.score(Z_train, y_train), 4)
+      test_acc = round(mlp.score(Z_test, y_test), 4)
+    check: |
+      check_value(train_acc, _sol["train_acc"], name="train_acc", tol=0.001)
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - ".score บน Z_train และ Z_test"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เปรียบเทียบ hidden (4,) กับ (16, 8) (max_iter=200, random_state=42): จำนวนพารามิเตอร์ของแต่ละแบบ เก็บไว้ใน params_4, params_16_8 และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) ไว้ใน acc_4, acc_16_8
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      params_4 = ___
+      params_16_8 = ___
+      acc_4 = ___
+      acc_16_8 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      def build(sizes):
+          mlp = MLPClassifier(hidden_layer_sizes=sizes, max_iter=200, random_state=42).fit(Z_train, y_train)
+          n = sum(c.size for c in mlp.coefs_) + sum(v.size for v in mlp.intercepts_)
+          return n, round(mlp.score(Z_test, y_test), 4)
+
+
+      params_4, acc_4 = build((4,))
+      params_16_8, acc_16_8 = build((16, 8))
+    check: |
+      check_value(params_4, _sol["params_4"], name="params_4")
+      check_value(params_16_8, _sol["params_16_8"], name="params_16_8")
+      check_value(acc_4, _sol["acc_4"], name="acc_4", tol=0.001)
+      check_value(acc_16_8, _sol["acc_16_8"], name="acc_16_8", tol=0.001)
+    hints:
+      - "เขียนฟังก์ชันรับ hidden_layer_sizes"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เทียบการ scale: fit MLP (16,) (max_iter=200, random_state=42) บน X_train ดิบ และบน Z_train — เก็บจำนวน iteration ที่ใช้ (n_iter_) ไว้ใน iters_raw, iters_scaled และ train accuracy (ปัด 4 ตำแหน่ง) ไว้ใน train_raw, train_scaled
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      iters_raw = ___
+      iters_scaled = ___
+      train_raw = ___
+      train_scaled = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      raw = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(X_train, y_train)
+      sc = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      iters_raw = raw.n_iter_
+      iters_scaled = sc.n_iter_
+      train_raw = round(raw.score(X_train, y_train), 4)
+      train_scaled = round(sc.score(Z_train, y_train), 4)
+    check: |
+      check_value(iters_raw, _sol["iters_raw"], name="iters_raw")
+      check_value(iters_scaled, _sol["iters_scaled"], name="iters_scaled")
+      check_value(train_raw, _sol["train_raw"], name="train_raw", tol=0.001)
+      check_value(train_scaled, _sol["train_scaled"], name="train_scaled", tol=0.001)
+    hints:
+      - "n_iter_ บอกจำนวนรอบที่ใช้จริง"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      fit MLP (4,) (max_iter=200, random_state=42) บน Z_train แล้วคำนวณ forward pass ด้วยมือสำหรับแถวแรกของชุดทดสอบ: hidden = ReLU(z @ coefs_[0] + intercepts_[0]), out = sigmoid(hidden @ coefs_[1] + intercepts_[1]) เก็บความน่าจะเป็นที่คำนวณเอง (ปัด 4 ตำแหน่ง) ไว้ใน manual_proba และค่าจาก predict_proba ของ sklearn ไว้ใน sklearn_proba
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      manual_proba = ___
+      sklearn_proba = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(4,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      row = Z_test[0]
+      hidden = np.maximum(row @ mlp.coefs_[0] + mlp.intercepts_[0], 0)
+      out = hidden @ mlp.coefs_[1] + mlp.intercepts_[1]
+      manual_proba = round(float(1 / (1 + np.exp(-out[0]))), 4)
+      sklearn_proba = round(float(mlp.predict_proba(Z_test[:1])[0, 1]), 4)
+    check: |
+      check_value(manual_proba, _sol["manual_proba"], name="manual_proba", tol=0.001)
+      check_value(sklearn_proba, _sol["sklearn_proba"], name="sklearn_proba", tol=0.001)
+    hints:
+      - "ทั้งสองต้องได้ค่าเท่ากัน: ReLU ที่ hidden แล้ว sigmoid ที่ output"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทียบ ROC-AUC บนชุดทดสอบของ MLP (8,) (max_iter=200, random_state=42) กับ LogisticRegression(max_iter=2000) บนข้อมูลที่ scale แล้วเหมือนกัน ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร mlp_auc, logreg_auc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp_auc = ___
+      logreg_auc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      mlp = MLPClassifier(hidden_layer_sizes=(8,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      logreg = LogisticRegression(max_iter=2000).fit(Z_train, y_train)
+      mlp_auc = round(roc_auc_score(y_test, mlp.predict_proba(Z_test)[:, 1]), 4)
+      logreg_auc = round(roc_auc_score(y_test, logreg.predict_proba(Z_test)[:, 1]), 4)
+    check: |
+      check_value(mlp_auc, _sol["mlp_auc"], name="mlp_auc", tol=0.001)
+      check_value(logreg_auc, _sol["logreg_auc"], name="logreg_auc", tol=0.001)
+    hints:
+      - "predict_proba(...)[:, 1] ของทั้งสองโมเดล"
+quiz:
+  - id: "q1"
+    question: "ทำไม neural network ต้องมี activation ที่ไม่เป็นเส้นตรง"
+    choices:
+      - text: "เพื่อให้เทรนเร็วขึ้น"
+        why: "ไม่ใช่เหตุผลหลัก"
+      - text: "ถ้าไม่มี การซ้อนหลาย layer เท่ากับโมเดลเชิงเส้นชั้นเดียว ความลึกไม่ให้ความสามารถเพิ่ม"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพื่อลดจำนวนพารามิเตอร์"
+        why: "ไม่เกี่ยว"
+      - text: "เพื่อไม่ต้อง scale ข้อมูล"
+        why: "ยังต้อง scale"
+  - id: "q2"
+    question: "MLP ที่มี 21 input, hidden 16 หน่วย และ output 1 หน่วยมีพารามิเตอร์กี่ตัว (รวม bias)"
+    choices:
+      - text: "336"
+        why: "ลืมนับ bias"
+      - text: "22"
+        why: "นั่นคือ logistic regression"
+      - text: "369"
+        correct: true
+        why: "(21×16+16) + (16×1+1) = 369"
+      - text: "16"
+        why: "นั่นคือจำนวน hidden"
+  - id: "q3"
+    question: "ทำไมต้อง scale ข้อมูลก่อนเข้า MLP"
+    choices:
+      - text: "เพราะ MLP รับเฉพาะค่า 0–1"
+        why: "ไม่จำเป็นต้อง 0–1 แต่ควรมีสเกลใกล้กัน"
+      - text: "เพื่อเพิ่มจำนวนแถว"
+        why: "ไม่เกี่ยว"
+      - text: "ไม่จำเป็น เหมือนต้นไม้"
+        why: "ต่างจากต้นไม้"
+      - text: "feature ช่วงกว้างครอบงำการอัปเดตน้ำหนัก scale ให้ optimizer ทำงานราบรื่น (fit scaler บน train เท่านั้น)"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ในบทนี้ MLP (16,) ที่ scale แล้ว train 0.7027 แต่ test 0.5986 และ AUC ต่ำกว่า logistic regression บอกอะไร"
+    choices:
+      - text: "โมเดลใหญ่จำ noise ในข้อมูลที่สัญญาณอ่อน ความซับซ้อนไม่การันตีผลที่ดีกว่า"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "MLP ดีกว่าเสมอ"
+        why: "ผลจริงตรงกันข้าม"
+      - text: "ต้องมีข้อมูลผิดพลาด"
+        why: "ไม่มีหลักฐาน"
+      - text: "เพราะไม่ได้ใช้ ReLU"
+        why: "ใช้ ReLU เป็นค่าเริ่มต้น"
+summary:
+  - "neuron = weighted sum + bias แล้วผ่าน activation; layer = neuron หลายตัว; MLP = layer ซ้อนกัน"
+  - "พารามิเตอร์ของ MLP (21→16→1) = 369 ตัว; ต้อง scale input และ activation ไม่เป็นเส้นตรงจึงจะได้ประโยชน์จากความลึก"
+  - "ในข้อมูลของเรา MLP train 0.7027 / test 0.5986 (AUC 0.5746) ไม่ชนะ logistic regression — โมเดลใหญ่ต้องการข้อมูลและสัญญาณมากกว่า"
+interview:
+  - id: "i1"
+    q: "อธิบาย MLP สั้นๆ ว่าคำนวณอย่างไร"
+    a: |
+      input คูณน้ำหนักของ layer แรกบวก bias แล้วผ่าน activation (เช่น ReLU) ได้ค่า hidden จากนั้นทำซ้ำกับ layer ถัดไปจนถึง output ซึ่ง sigmoid/softmax แปลงเป็นความน่าจะเป็น ทั้งหมดเป็นการคูณเมทริกซ์และฟังก์ชันไม่เชิงเส้นซ้อนกัน พารามิเตอร์ (น้ำหนักและ bias) ถูกเรียนรู้ด้วย gradient descent
+  - id: "i2"
+    q: "ทำไม neural network ถึงต้อง scale feature"
+    a: |
+      การอัปเดตน้ำหนักด้วย gradient ขึ้นกับขนาดของ input feature ที่ช่วงกว้างจะทำให้ loss surface บิดเบี้ยว ทำให้ optimizer ต้องใช้ learning rate เล็กหรือติดขัด การ standardize (fit บน train เท่านั้น) ทำให้ทุก feature อยู่ในสเกลใกล้กันและการเทรนเสถียรขึ้น
+flashcards:
+  - id: "c1"
+    front: "activation function มีไว้ทำไม"
+    back: "ใส่ความไม่เป็นเส้นตรงให้โมเดล ไม่งั้นหลาย layer เท่ากับโมเดลเชิงเส้นชั้นเดียว"
+  - id: "c2"
+    front: "สูตรจำนวนพารามิเตอร์ของ layer หนึ่ง"
+    back: "n_in × n_out + n_out (น้ำหนัก + bias)"

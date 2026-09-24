@@ -1,0 +1,529 @@
+goals:
+  - "คำนวณ loss gradient และอัปเดตพารามิเตอร์ด้วย gradient descent เอง"
+  - "อธิบายผลของ learning rate (ช้า / ลงตัว / diverge)"
+  - "รู้จัก ReLU / tanh / sigmoid และอ่าน loss_curve_ ของ MLP"
+examples:
+  - id: "x1"
+    title: "gradient descent หนึ่งก้าว"
+    lang: "python"
+    prompt: |
+      คำนวณ loss gradient และอัปเดตพารามิเตอร์ด้วยมือ
+    steps:
+      - text: |
+          loss ที่ w = b = 0 คือ 33.0 และ gradient คือ (−28, −10)
+        code: |
+          import numpy as np
+
+          x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+          y = 2 * x + 1
+          w, b = 0.0, 0.0
+          pred = w * x + b
+          loss = np.mean((pred - y) ** 2)
+          grad_w = 2 * np.mean((pred - y) * x)
+          grad_b = 2 * np.mean(pred - y)
+          loss, grad_w, grad_b
+      - text: |
+          อัปเดตด้วย lr = 0.05: w = 1.4, b = 0.5 และ loss ลดลง
+        code: |
+          import numpy as np
+
+          x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+          y = 2 * x + 1
+          w, b, lr = 0.0, 0.0, 0.05
+          pred = w * x + b
+          w_new = w - lr * 2 * np.mean((pred - y) * x)
+          b_new = b - lr * 2 * np.mean(pred - y)
+          w_new, b_new, float(np.mean((w_new * x + b_new - y) ** 2))
+    pitfall:
+      text: |
+        อัปเดตในทิศเดียวกับ gradient (w += lr * grad) — นั่นคือการ 'เพิ่ม' loss ให้ลบก้าวด้วย gradient เสมอ: w -= lr * grad
+  - id: "x2"
+    title: "learning rate ที่ต่างกัน"
+    lang: "python"
+    prompt: |
+      รัน gradient descent 100 ก้าวด้วย learning rate ต่างกัน
+    steps:
+      - text: |
+          lr 0.05 และ 0.1 เข้าใกล้ค่าจริง (w=2, b=1)
+        code: |
+          import numpy as np
+
+          x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+          y = 2 * x + 1
+
+
+          def gradient_descent(lr, steps=100):
+              w, b = 0.0, 0.0
+              for _ in range(steps):
+                  pred = w * x + b
+                  grad_w = 2 * np.mean((pred - y) * x)
+                  grad_b = 2 * np.mean(pred - y)
+                  w -= lr * grad_w
+                  b -= lr * grad_b
+              return w, b
+          [tuple(round(float(v), 4) for v in gradient_descent(lr)) for lr in (0.01, 0.05, 0.1)]
+      - text: |
+          lr 0.25 ใหญ่เกิน — ค่าระเบิดไปเป็นตัวเลขมหาศาล (diverge)
+        code: |
+          import numpy as np
+
+          x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+          y = 2 * x + 1
+
+
+          def gradient_descent(lr, steps=100):
+              w, b = 0.0, 0.0
+              for _ in range(steps):
+                  pred = w * x + b
+                  grad_w = 2 * np.mean((pred - y) * x)
+                  grad_b = 2 * np.mean(pred - y)
+                  w -= lr * grad_w
+                  b -= lr * grad_b
+              return w, b
+          w, b = gradient_descent(0.25)
+          abs(w) > 1e6
+    pitfall:
+      text: |
+        ดู loss ตอนเทรนแล้วเห็นเป็นตัวเลขใหญ่ขึ้นเรื่อยๆ หรือ nan แล้วเพิ่มจำนวนรอบ — นั่นคืออาการ learning rate สูงเกินไป ให้ลด lr ไม่ใช่เพิ่มรอบ
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      เติมสูตรอัปเดต: หนึ่งก้าวของ gradient descent ที่ lr = 0.05 จาก w = 0 (b = 0) เก็บ w ใหม่ไว้ใน w_new เติม `___` ให้ครบ
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b, lr = 0.0, 0.0, 0.05
+      pred = w * x + b
+      grad_w = 2 * np.mean((pred - y) * x)
+      w_new = w ___ lr * grad_w
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b, lr = 0.0, 0.0, 0.05
+      pred = w * x + b
+      grad_w = 2 * np.mean((pred - y) * x)
+      w_new = w - lr * grad_w
+    check: |
+      check_value(w_new, _sol["w_new"], name="w_new", tol=0.001)
+    hints:
+      - "ขยับสวนทิศ gradient จึงใช้เครื่องหมายลบ"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำนวณ MSE loss ของโมเดลเริ่มต้น w = 0, b = 0 (ŷ = w·x + b เทียบกับ y ที่ให้ไว้) เก็บไว้ในตัวแปร initial_loss
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      initial_loss = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 0.0, 0.0
+      initial_loss = float(np.mean((w * x + b - y) ** 2))
+    check: |
+      check_value(initial_loss, _sol["initial_loss"], name="initial_loss", tol=0.001)
+    hints:
+      - "np.mean((pred - y) ** 2)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      gradient ของ MSE ที่ w = 0, b = 0: grad_w = 2·mean((ŷ − y)·x) และ grad_b = 2·mean(ŷ − y) เก็บไว้ในตัวแปร grad_w, grad_b
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      grad_w = ___
+      grad_b = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b = 0.0, 0.0
+      pred = w * x + b
+      grad_w = float(2 * np.mean((pred - y) * x))
+      grad_b = float(2 * np.mean(pred - y))
+    check: |
+      check_value(grad_w, _sol["grad_w"], name="grad_w", tol=0.001)
+      check_value(grad_b, _sol["grad_b"], name="grad_b", tol=0.001)
+    hints:
+      - "ใช้สูตรที่เขียนไว้ในโจทย์"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      อัปเดตหนึ่งก้าวด้วย lr = 0.05 จาก w = b = 0 เก็บ w ใหม่ไว้ใน w1 และ b ใหม่ไว้ใน b1
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w1 = ___
+      b1 = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+      w, b, lr = 0.0, 0.0, 0.05
+      pred = w * x + b
+      w1 = float(w - lr * 2 * np.mean((pred - y) * x))
+      b1 = float(b - lr * 2 * np.mean(pred - y))
+    check: |
+      check_value(w1, _sol["w1"], name="w1", tol=0.001)
+      check_value(b1, _sol["b1"], name="b1", tol=0.001)
+    hints:
+      - "w − lr × gradient"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ใช้ gradient_descent ที่ให้ไว้กับ lr = 0.1 (100 ก้าว) เก็บ w และ b ที่ได้ (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร w_final, b_final
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      w_final = ___
+      b_final = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      w, b = gradient_descent(0.1)
+      w_final = round(float(w), 4)
+      b_final = round(float(b), 4)
+    check: |
+      check_value(w_final, _sol["w_final"], name="w_final", tol=0.001)
+      check_value(b_final, _sol["b_final"], name="b_final", tol=0.001)
+    hints:
+      - "เรียก gradient_descent(0.1) แล้วปัดค่า"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MSE สุดท้าย (หลัง 100 ก้าว) เมื่อใช้ lr = 0.01 และ lr = 0.05 กับ gradient_descent ที่ให้ไว้ ปัด 6 ตำแหน่ง เก็บไว้ในตัวแปร loss_001, loss_005
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      loss_001 = ___
+      loss_005 = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      def final_loss(lr):
+          w, b = gradient_descent(lr)
+          return round(float(np.mean((w * x + b - y) ** 2)), 6)
+
+
+      loss_001 = final_loss(0.01)
+      loss_005 = final_loss(0.05)
+    check: |
+      check_value(loss_001, _sol["loss_001"], name="loss_001")
+      check_value(loss_005, _sol["loss_005"], name="loss_005")
+    hints:
+      - "เขียนฟังก์ชันที่เรียก gradient_descent แล้วคำนวณ MSE"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ที่ lr = 0.25 gradient descent (100 ก้าว) diverge หรือไม่ — เก็บ True/False (พิจารณาว่า |w| มากกว่า 1e6) ไว้ในตัวแปร diverged และ lr = 0.1 ไว้ใน diverged_01
+    starter: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      diverged = ___
+      diverged_01 = ___
+    solution: |
+      import numpy as np
+
+      x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+      y = 2 * x + 1
+
+
+      def gradient_descent(lr, steps=100):
+          w, b = 0.0, 0.0
+          for _ in range(steps):
+              pred = w * x + b
+              grad_w = 2 * np.mean((pred - y) * x)
+              grad_b = 2 * np.mean(pred - y)
+              w -= lr * grad_w
+              b -= lr * grad_b
+          return w, b
+      w25, _ = gradient_descent(0.25)
+      w10, _ = gradient_descent(0.1)
+      diverged = bool(abs(w25) > 1e6)
+      diverged_01 = bool(abs(w10) > 1e6)
+    check: |
+      check_value(diverged, _sol["diverged"], name="diverged")
+      check_value(diverged_01, _sol["diverged_01"], name="diverged_01")
+    hints:
+      - "เปรียบเทียบ abs(w) กับ 1e6 และแปลงเป็น bool"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าของ activation ที่ z = 2.0: sigmoid, tanh และ ReLU ที่ z = −2.0 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร sigmoid_2, tanh_2, relu_neg2
+    starter: |
+      import numpy as np
+      sigmoid_2 = ___
+      tanh_2 = ___
+      relu_neg2 = ___
+    solution: |
+      import numpy as np
+      sigmoid_2 = round(float(1 / (1 + np.exp(-2.0))), 4)
+      tanh_2 = round(float(np.tanh(2.0)), 4)
+      relu_neg2 = float(max(0.0, -2.0))
+    check: |
+      check_value(sigmoid_2, _sol["sigmoid_2"], name="sigmoid_2", tol=0.001)
+      check_value(tanh_2, _sol["tanh_2"], name="tanh_2", tol=0.001)
+      check_value(relu_neg2, _sol["relu_neg2"], name="relu_neg2", tol=0.001)
+    hints:
+      - "np.exp, np.tanh และ max(0, z)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      fit MLP (16,) (max_iter=200, random_state=42) บน Z_train: loss_curve_ มีกี่ค่า (n_epochs), loss แรกและสุดท้าย (ปัด 4 ตำแหน่ง) เก็บไว้ใน first_loss, final_loss และจำนวนครั้งที่ loss เพิ่มขึ้นจากรอบก่อนหน้าไว้ใน n_increases
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      n_epochs = ___
+      first_loss = ___
+      final_loss = ___
+      n_increases = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, random_state=42).fit(Z_train, y_train)
+      curve = mlp.loss_curve_
+      n_epochs = len(curve)
+      first_loss = round(float(curve[0]), 4)
+      final_loss = round(float(curve[-1]), 4)
+      n_increases = sum(1 for a, b in zip(curve, curve[1:]) if b > a)
+    check: |
+      check_value(n_epochs, _sol["n_epochs"], name="n_epochs")
+      check_value(first_loss, _sol["first_loss"], name="first_loss", tol=0.001)
+      check_value(final_loss, _sol["final_loss"], name="final_loss", tol=0.001)
+      check_value(n_increases, _sol["n_increases"], name="n_increases")
+    hints:
+      - "zip(curve, curve[1:]) เปรียบเทียบคู่รอบติดกัน"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      fit MLP (16,) (max_iter=200, random_state=42) บน Z_train ด้วย learning_rate_init = 0.001, 0.01 และ 0.1 เก็บจำนวน iteration ที่ใช้จริง (n_iter_) ไว้ใน it_0001, it_001, it_01 ตามลำดับ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      it_0001 = ___
+      it_001 = ___
+      it_01 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      import numpy as np
+      from sklearn.preprocessing import StandardScaler
+      from sklearn.neural_network import MLPClassifier
+
+      scaler = StandardScaler().fit(X_train)
+      Z_train = scaler.transform(X_train)
+      Z_test = scaler.transform(X_test)
+      def iters(lr):
+          mlp = MLPClassifier(hidden_layer_sizes=(16,), max_iter=200, learning_rate_init=lr, random_state=42).fit(Z_train, y_train)
+          return mlp.n_iter_
+
+
+      it_0001 = iters(0.001)
+      it_001 = iters(0.01)
+      it_01 = iters(0.1)
+    check: |
+      check_value(it_0001, _sol["it_0001"], name="it_0001")
+      check_value(it_001, _sol["it_001"], name="it_001")
+      check_value(it_01, _sol["it_01"], name="it_01")
+    hints:
+      - "ส่ง learning_rate_init ให้ MLPClassifier"
+quiz:
+  - id: "q1"
+    question: "gradient descent ขยับพารามิเตอร์ไปทางไหน"
+    choices:
+      - text: "ตามทิศ gradient"
+        why: "นั่นทำให้ loss เพิ่ม"
+      - text: "สวนทิศ gradient (ทิศที่ loss ลดลงเร็วที่สุด) ด้วยก้าว learning_rate"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "สุ่มทิศ"
+        why: "ไม่ใช่"
+      - text: "ไปทาง loss สูงสุด"
+        why: "ตรงข้าม"
+  - id: "q2"
+    question: "ในตัวอย่างบทนี้ lr = 0.25 ทำให้ w พุ่งไป ≈ −2.8×10³⁷ เกิดอะไรขึ้น"
+    choices:
+      - text: "ข้อมูลผิดพลาด"
+        why: "ข้อมูลเหมือนกับ lr อื่น"
+      - text: "ต้องเพิ่มจำนวนก้าว"
+        why: "จะยิ่งแย่"
+      - text: "learning rate ใหญ่เกินไป ก้าวข้ามจุดต่ำสุดและห่างออกไปเรื่อยๆ (diverge)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เป็นเรื่องปกติของ gradient descent"
+        why: "ไม่ปกติ"
+  - id: "q3"
+    question: "sigmoid เหมาะกับส่วนไหนของ MLP สำหรับ binary classification"
+    choices:
+      - text: "hidden layer เสมอ"
+        why: "ค่าเริ่มต้นของ hidden คือ ReLU"
+      - text: "input layer"
+        why: "ไม่ใช้กับ input"
+      - text: "ไม่ใช้เลย"
+        why: "ใช้ที่ output"
+      - text: "output layer เพราะบีบค่าให้อยู่ระหว่าง 0–1 ใช้เป็นความน่าจะเป็น"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "loss_curve_ ลดลงเรื่อยๆ ตลอด 200 รอบ หมายความว่าอย่างไร"
+    choices:
+      - text: "loss บนข้อมูลเทรนดีขึ้น แต่ยังไม่รู้ว่าดีบนข้อมูลใหม่ ต้องดู validation/test"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "โมเดลดีบนข้อมูลใหม่แน่นอน"
+        why: "ไม่การันตี"
+      - text: "ไม่ overfit"
+        why: "อาจ overfit"
+      - text: "ควรเทรนต่อ"
+        why: "ไม่จำเป็น"
+summary:
+  - "gradient descent: w ← w − lr × gradient ทำซ้ำเพื่อลด loss"
+  - "lr เล็กช้า, พอดีลงตัว, ใหญ่เกิน diverge (ตัวอย่าง lr 0.25 ระเบิดเป็น ~10³⁷)"
+  - "ReLU สำหรับ hidden, sigmoid สำหรับ output ของ binary; loss_curve_ ลดลงบน train ไม่ได้การันตีผลบนข้อมูลใหม่"
+interview:
+  - id: "i1"
+    q: "อธิบาย gradient descent และบทบาทของ learning rate"
+    a: |
+      ทำซ้ำ: คำนวณ gradient ของ loss ต่อพารามิเตอร์ แล้วขยับพารามิเตอร์สวนทิศ gradient ด้วยก้าว learning rate ถ้า lr เล็กเกินจะช้า ถ้าใหญ่เกินจะข้ามจุดต่ำสุดหรือ diverge จึงมักใช้ lr ที่ปรับด้วย optimizer (เช่น Adam) และตรวจ loss curve
+  - id: "i2"
+    q: "ถ้า loss ของโมเดลเพิ่มขึ้นหรือเป็น nan ระหว่างเทรน ควรตรวจอะไร"
+    a: |
+      สงสัย learning rate สูงเกินไปก่อน (ลดลง), ตรวจว่า scale input แล้ว, ค่าที่มีปัญหา (NaN/inf ในข้อมูล), และ gradient ระเบิด จากนั้นลองเทรนบนข้อมูลเล็กมากๆ ให้ loss ลดจนเกือบ 0 เพื่อตรวจว่าโค้ดถูก
+flashcards:
+  - id: "c1"
+    front: "สูตรอัปเดตของ gradient descent"
+    back: "w ← w − learning_rate × gradient"
+  - id: "c2"
+    front: "activation ที่ใช้ใน hidden layer ของ MLP โดยทั่วไป"
+    back: "ReLU (ส่วน output ของ binary ใช้ sigmoid)"

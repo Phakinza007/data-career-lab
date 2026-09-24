@@ -1,0 +1,515 @@
+title: "ชุดฝึกท้าย module: Tree และ boosting"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นไม้ที่ไม่จำกัดความลึก (DecisionTreeClassifier(random_state=42)) บน train มีกี่ใบ ลึกกี่ชั้น เก็บไว้ในตัวแปร n_leaves, depth
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      full = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      n_leaves = full.get_n_leaves()
+      depth = full.get_depth()
+    check: |
+      check_value(n_leaves, _sol["n_leaves"], name="n_leaves")
+      check_value(depth, _sol["depth"], name="depth")
+    hints:
+      - "get_n_leaves() และ get_depth()"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      baseline เดาคลาสส่วนใหญ่ (DummyClassifier(strategy="most_frequent")) accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร baseline_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      dummy = DummyClassifier(strategy='most_frequent').fit(X_train, y_train)
+      baseline_acc = round(dummy.score(X_test, y_test), 4)
+    check: |
+      check_value(baseline_acc, _sol["baseline_acc"], name="baseline_acc", tol=0.001)
+    hints:
+      - "DummyClassifier แล้ว .score"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      random forest 100 ต้น (random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร rf_test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train, y_train)
+      rf_test_acc = round(rf.score(X_test, y_test), 4)
+    check: |
+      check_value(rf_test_acc, _sol["rf_test_acc"], name="rf_test_acc", tol=0.001)
+    hints:
+      - "fit แล้ว .score บน test"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      GradientBoostingClassifier(random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร gb_test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+      gb_test_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(gb_test_acc, _sol["gb_test_acc"], name="gb_test_acc", tol=0.001)
+    hints:
+      - "fit แล้ว .score บน test"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นไม้ max_depth=2 (random_state=42) ใช้ feature ไหนถามเป็นข้อแรก (string) เก็บไว้ในตัวแปร root_feature
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      tree = DecisionTreeClassifier(max_depth=2, random_state=42).fit(X_train, y_train)
+      root_feature = X.columns[tree.tree_.feature[0]]
+    check: |
+      check_value(root_feature, _sol["root_feature"], name="root_feature")
+    hints:
+      - "tree.tree_.feature[0]"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      CV 5-fold (skf) วัด ROC-AUC เฉลี่ยของต้นไม้ที่ max_depth = 1..8 (random_state=42) เก็บ depth ที่ AUC สูงสุดไว้ใน best_depth (เสมอเอาน้อยสุด) และค่า AUC (ปัด 4 ตำแหน่ง) ไว้ใน best_auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      scores = {d: cross_val_score(DecisionTreeClassifier(max_depth=d, random_state=42), X, y, cv=skf, scoring='roc_auc').mean() for d in range(1, 9)}
+      best_depth = min(d for d, s in scores.items() if s == max(scores.values()))
+      best_auc = round(scores[best_depth], 4)
+    check: |
+      check_value(best_depth, _sol["best_depth"], name="best_depth")
+      check_value(best_auc, _sol["best_auc"], name="best_auc", tol=0.001)
+    hints:
+      - "สร้าง dict depth → AUC แล้วหาสูงสุด"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      forest (n_estimators=100, min_samples_leaf=20, oob_score=True, random_state=42): OOB score และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร oob, test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=20, oob_score=True, random_state=42).fit(X_train, y_train)
+      oob = round(rf.oob_score_, 4)
+      test_acc = round(rf.score(X_test, y_test), 4)
+    check: |
+      check_value(oob, _sol["oob"], name="oob", tol=0.001)
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "rf.oob_score_"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      GB ที่เปิด early stopping (n_estimators=500, validation_fraction=0.1, n_iter_no_change=5, random_state=42): หยุดที่กี่รอบ และ accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร stopped_at, es_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gb = GradientBoostingClassifier(n_estimators=500, validation_fraction=0.1, n_iter_no_change=5, random_state=42).fit(X_train, y_train)
+      stopped_at = gb.n_estimators_
+      es_acc = round(gb.score(X_test, y_test), 4)
+    check: |
+      check_value(stopped_at, _sol["stopped_at"], name="stopped_at")
+      check_value(es_acc, _sol["es_acc"], name="es_acc", tol=0.001)
+    hints:
+      - "อ่าน gb.n_estimators_"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ROC-AUC บนชุดทดสอบของ forest ที่มี 10 ต้น และ 200 ต้น (min_samples_leaf=10, random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร auc_10, auc_200
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      def auc(n):
+          rf = RandomForestClassifier(n_estimators=n, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+          return round(roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1]), 4)
+
+
+      auc_10 = auc(10)
+      auc_200 = auc(200)
+    check: |
+      check_value(auc_10, _sol["auc_10"], name="auc_10", tol=0.001)
+      check_value(auc_200, _sol["auc_200"], name="auc_200", tol=0.001)
+    hints:
+      - "roc_auc_score(y_test, predict_proba[:, 1])"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      GridSearchCV (cv=skf, scoring="roc_auc") บน GradientBoostingClassifier(random_state=42) ด้วย grid learning_rate ∈ [0.05, 0.1] × n_estimators ∈ [20, 50] เก็บค่า learning_rate และ n_estimators ที่ดีที่สุดไว้ใน gb_best_lr, gb_best_n
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      grid = {'learning_rate': [0.05, 0.1], 'n_estimators': [20, 50]}
+      gs = GridSearchCV(GradientBoostingClassifier(random_state=42), grid, cv=skf, scoring='roc_auc').fit(X_train, y_train)
+      gb_best_lr = gs.best_params_['learning_rate']
+      gb_best_n = gs.best_params_['n_estimators']
+    check: |
+      check_value(gb_best_lr, _sol["gb_best_lr"], name="gb_best_lr")
+      check_value(gb_best_n, _sol["gb_best_n"], name="gb_best_n")
+    hints:
+      - "gs.best_params_"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      CV 5-fold (skf บน X, y ทั้งชุด) ROC-AUC เฉลี่ยของ LogisticRegression(max_iter=2000) และ GradientBoostingClassifier(random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร logreg_auc, gb_auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      logreg_auc = round(cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=skf, scoring='roc_auc').mean(), 4)
+      gb_auc = round(cross_val_score(GradientBoostingClassifier(random_state=42), X, y, cv=skf, scoring='roc_auc').mean(), 4)
+    check: |
+      check_value(logreg_auc, _sol["logreg_auc"], name="logreg_auc", tol=0.001)
+      check_value(gb_auc, _sol["gb_auc"], name="gb_auc", tol=0.001)
+    hints:
+      - "cross_val_score(..., scoring=\"roc_auc\")"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      GB ค่าเริ่มต้น (random_state=42): permutation importance บนชุดทดสอบ (n_repeats=5, random_state=42, scoring="roc_auc") feature ไหนสำคัญสุด (string) เก็บไว้ใน top_feature และค่า (ปัด 3 ตำแหน่ง) ไว้ใน top_value
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      gb = GradientBoostingClassifier(random_state=42).fit(X_train, y_train)
+      pi = permutation_importance(gb, X_test, y_test, n_repeats=5, random_state=42, scoring='roc_auc')
+      perm = pd.Series(pi.importances_mean, index=X.columns)
+      top_feature = perm.idxmax()
+      top_value = round(perm.max(), 3)
+    check: |
+      check_value(top_feature, _sol["top_feature"], name="top_feature")
+      check_value(top_value, _sol["top_value"], name="top_value", tol=0.001)
+    hints:
+      - "ทำ Series ของ importances_mean แล้ว idxmax"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เฉลี่ย predict_proba (คลาส 1) ของต้นไม้ depth 3, forest (100 ต้น, min_samples_leaf=10) และ GB ค่าเริ่มต้น (ทุกตัว random_state=42) แล้ววัด ROC-AUC บนชุดทดสอบ เก็บไว้ใน blend_auc และ AUC ที่ดีที่สุดในสามโมเดลเดี่ยวไว้ใน best_single_auc (ปัด 4 ตำแหน่ง)
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      models = [DecisionTreeClassifier(max_depth=3, random_state=42), RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42), GradientBoostingClassifier(random_state=42)]
+      probas = [m.fit(X_train, y_train).predict_proba(X_test)[:, 1] for m in models]
+      blend_auc = round(roc_auc_score(y_test, sum(probas) / 3), 4)
+      best_single_auc = round(max(roc_auc_score(y_test, p) for p in probas), 4)
+    check: |
+      check_value(blend_auc, _sol["blend_auc"], name="blend_auc", tol=0.001)
+      check_value(best_single_auc, _sol["best_single_auc"], name="best_single_auc", tol=0.001)
+    hints:
+      - "fit ทั้งสามแล้วเฉลี่ยความน่าจะเป็น"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ผลของขนาดข้อมูลเทรน: fit forest (100 ต้น, min_samples_leaf=10, random_state=42) บน 500 แถวแรกของ train, 1,000 แถวแรก และทั้งหมด แล้ววัด accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร acc_500, acc_1000, acc_all
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      def acc(n):
+          rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42).fit(X_train.iloc[:n], y_train.iloc[:n])
+          return round(rf.score(X_test, y_test), 4)
+
+
+      acc_500 = acc(500)
+      acc_1000 = acc(1000)
+      acc_all = acc(len(X_train))
+    check: |
+      check_value(acc_500, _sol["acc_500"], name="acc_500", tol=0.001)
+      check_value(acc_1000, _sol["acc_1000"], name="acc_1000", tol=0.001)
+      check_value(acc_all, _sol["acc_all"], name="acc_all", tol=0.001)
+    hints:
+      - "ใช้ X_train.iloc[:n]"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ต้นไม้ max_depth=3 (random_state=42): จัดกลุ่มแถวของชุดทดสอบตามใบที่ตก (tree.apply) — ใบที่มีอัตราซื้อซ้ำจริงสูงสุด มีอัตราเท่าไร (ปัด 4 ตำแหน่ง) เก็บไว้ใน top_leaf_rate และมีกี่แถวในใบนั้นเก็บไว้ใน top_leaf_n
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.metrics import roc_auc_score
+      from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.dummy import DummyClassifier
+      from sklearn.inspection import permutation_importance
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      tree = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      by_leaf = y_test.groupby(tree.apply(X_test)).agg(['mean', 'size'])
+      top = by_leaf['mean'].idxmax()
+      top_leaf_rate = round(by_leaf.loc[top, 'mean'], 4)
+      top_leaf_n = int(by_leaf.loc[top, 'size'])
+    check: |
+      check_value(top_leaf_rate, _sol["top_leaf_rate"], name="top_leaf_rate", tol=0.001)
+      check_value(top_leaf_n, _sol["top_leaf_n"], name="top_leaf_n")
+    hints:
+      - "y_test.groupby(tree.apply(X_test)).agg([\"mean\", \"size\"])"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ต้นไม้ก็ทำ regression ได้: ทำนาย first_order_value (X เดิม, split 75/25 random_state=42 ไม่ stratify) ด้วย RandomForestRegressor(n_estimators=100, min_samples_leaf=5, random_state=42) และ LinearRegression — R² บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ใน rf_r2, lin_r2
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.ensemble import RandomForestRegressor
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      Xr_train, Xr_test, yr_train, yr_test = train_test_split(X, df['first_order_value'], test_size=0.25, random_state=42)
+      rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=5, random_state=42).fit(Xr_train, yr_train)
+      lin = LinearRegression().fit(Xr_train, yr_train)
+      rf_r2 = round(r2_score(yr_test, rf.predict(Xr_test)), 4)
+      lin_r2 = round(r2_score(yr_test, lin.predict(Xr_test)), 4)
+    check: |
+      check_value(rf_r2, _sol["rf_r2"], name="rf_r2", tol=0.001)
+      check_value(lin_r2, _sol["lin_r2"], name="lin_r2", tol=0.001)
+    hints:
+      - "RandomForestRegressor / LinearRegression แล้ว r2_score"
