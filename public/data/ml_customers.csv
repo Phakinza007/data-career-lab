@@ -1,0 +1,2840 @@
+customer_id,city,channel,signup_month,days_to_first_order,first_payment_method,first_status,first_discount_pct,first_n_items,first_has_electronics,first_order_value,days_since_first_order,repeated
+1,Phuket,ads,1,5,cod,completed,0,1,0,438,725,0
+2,Udon Thani,ads,1,5,credit_card,completed,0,1,0,1698,725,1
+3,Bangkok,organic,1,11,credit_card,completed,0,1,1,16419,719,1
+4,Chiang Mai,organic,1,14,credit_card,completed,0,1,0,1849,715,1
+5,Khon Kaen,organic,1,10,bank_transfer,completed,0,1,0,2229,719,1
+6,Bangkok,referral,1,12,cod,completed,0,1,0,1869,716,0
+7,Udon Thani,ads,1,12,credit_card,completed,10,1,0,1949,716,0
+8,Bangkok,ads,1,0,credit_card,completed,0,2,0,2245,728,0
+9,Chon Buri,ads,1,11,promptpay,completed,10,1,0,498,717,0
+10,Bangkok,organic,1,12,promptpay,completed,0,1,0,2639,715,0
+11,Hat Yai,ads,1,0,credit_card,completed,5,1,0,429,727,0
+12,Chiang Mai,ads,1,3,credit_card,completed,10,1,0,999,724,0
+13,Bangkok,organic,1,10,credit_card,completed,0,1,1,20069,717,1
+14,Chon Buri,referral,1,3,credit_card,returned,10,2,1,3598,723,0
+15,Hat Yai,ads,1,11,credit_card,completed,0,1,0,559,715,1
+16,Bangkok,organic,1,1,promptpay,completed,15,3,1,13532,725,1
+17,Chiang Mai,organic,1,13,promptpay,completed,20,4,0,7744,712,1
+20,Bangkok,organic,1,9,credit_card,completed,10,3,1,25125,715,1
+21,Bangkok,organic,1,0,credit_card,completed,0,2,0,4158,724,0
+22,Bangkok,ads,1,0,credit_card,completed,5,2,0,2268,724,1
+23,Bangkok,ads,1,4,credit_card,completed,0,2,0,4355,720,1
+24,Bangkok,organic,1,13,cod,completed,0,3,0,8226,711,1
+25,Khon Kaen,organic,1,11,credit_card,completed,0,4,1,34356,712,0
+26,Udon Thani,organic,1,0,credit_card,completed,0,2,0,987,723,1
+27,Nakhon Ratchasima,organic,1,2,promptpay,cancelled,5,3,1,11325,721,1
+28,Chiang Mai,organic,1,5,promptpay,completed,10,2,0,4558,718,1
+29,Bangkok,organic,1,13,promptpay,completed,0,1,0,219,709,1
+30,Phuket,organic,1,9,credit_card,completed,0,3,1,24907,713,0
+31,Bangkok,organic,1,4,cod,completed,0,2,1,7687,718,1
+32,Bangkok,organic,1,7,credit_card,completed,5,3,0,1507,714,1
+33,Bangkok,organic,1,5,cod,completed,0,1,0,889,716,0
+34,Khon Kaen,ads,1,3,promptpay,completed,0,1,1,7418,718,0
+35,Bangkok,organic,1,12,promptpay,completed,0,2,0,1518,709,1
+36,Chon Buri,ads,1,13,cod,returned,10,1,0,2639,708,1
+37,Nakhon Ratchasima,ads,1,0,credit_card,cancelled,0,2,1,3268,721,1
+38,Udon Thani,ads,1,6,cod,completed,0,3,0,3376,714,1
+40,Bangkok,organic,1,6,credit_card,completed,0,1,0,1758,713,0
+41,Bangkok,ads,1,8,cod,completed,0,1,0,219,711,0
+42,Udon Thani,referral,1,1,promptpay,completed,0,1,0,639,718,0
+43,Bangkok,ads,1,0,promptpay,completed,5,1,0,919,719,1
+44,Nakhon Ratchasima,ads,1,9,promptpay,completed,0,2,0,1298,710,1
+45,Chiang Mai,referral,1,10,promptpay,returned,10,1,0,859,709,0
+46,Bangkok,organic,1,12,cod,completed,5,2,0,4248,707,0
+47,Bangkok,organic,1,1,credit_card,completed,20,1,0,858,717,0
+49,Nakhon Ratchasima,ads,1,6,credit_card,completed,0,1,0,1079,712,1
+50,Khon Kaen,organic,1,6,credit_card,completed,0,2,1,3078,712,1
+52,Chon Buri,organic,1,3,credit_card,completed,0,2,0,1948,715,0
+53,Hat Yai,organic,1,14,promptpay,completed,0,2,0,1157,703,1
+55,Khon Kaen,organic,1,6,credit_card,cancelled,5,2,1,6398,711,0
+56,Khon Kaen,organic,1,12,promptpay,completed,0,1,0,449,705,0
+57,Bangkok,organic,1,9,cod,completed,5,1,1,3829,707,1
+58,Bangkok,organic,1,0,cod,completed,0,1,1,1219,715,1
+59,Chiang Mai,ads,1,9,credit_card,completed,5,1,0,1338,706,1
+61,Bangkok,ads,1,8,promptpay,cancelled,5,1,0,1059,707,1
+62,Bangkok,organic,1,4,promptpay,completed,5,2,1,2616,711,0
+63,Bangkok,organic,1,8,credit_card,completed,0,1,1,13689,707,0
+64,Bangkok,organic,1,0,promptpay,completed,10,1,0,779,715,0
+65,Bangkok,organic,1,5,credit_card,completed,0,2,1,10908,709,1
+67,Bangkok,organic,1,7,promptpay,completed,0,3,0,3265,707,0
+68,Hat Yai,organic,1,13,promptpay,completed,0,2,1,4188,701,0
+69,Hat Yai,referral,1,12,cod,completed,5,2,0,1118,701,0
+70,Bangkok,ads,1,11,credit_card,completed,10,3,1,14163,702,0
+71,Udon Thani,ads,1,14,promptpay,completed,15,1,1,949,698,1
+72,Chon Buri,ads,1,10,credit_card,returned,0,2,1,11578,702,0
+74,Nakhon Ratchasima,ads,1,3,credit_card,completed,0,1,0,769,709,0
+75,Bangkok,organic,1,4,promptpay,completed,0,4,1,25235,708,1
+76,Udon Thani,referral,1,10,promptpay,completed,0,3,0,3665,701,0
+78,Bangkok,ads,1,12,promptpay,completed,0,3,1,36026,698,0
+79,Bangkok,ads,1,8,credit_card,completed,0,1,0,219,702,0
+80,Chon Buri,ads,1,9,credit_card,completed,0,1,0,4509,700,0
+81,Chon Buri,organic,1,6,bank_transfer,completed,0,2,0,4278,703,1
+82,Chiang Mai,ads,1,1,cod,completed,0,1,1,3829,707,0
+83,Bangkok,organic,1,2,promptpay,completed,0,1,0,409,706,1
+85,Chiang Mai,organic,1,10,credit_card,cancelled,10,2,1,11068,698,1
+87,Chon Buri,organic,1,5,cod,completed,0,2,1,4457,702,0
+88,Chiang Mai,organic,1,11,promptpay,completed,0,2,0,4648,695,1
+89,Hat Yai,referral,1,11,promptpay,completed,10,1,0,658,695,1
+90,Bangkok,organic,1,14,credit_card,completed,10,1,0,639,691,0
+92,Khon Kaen,ads,1,12,credit_card,returned,0,1,0,659,693,1
+93,Chon Buri,organic,1,2,credit_card,cancelled,0,1,0,1718,703,1
+94,Bangkok,organic,1,9,promptpay,completed,10,1,0,1069,696,1
+95,Udon Thani,ads,1,12,bank_transfer,completed,0,1,0,818,693,1
+96,Chiang Mai,organic,1,14,promptpay,completed,0,1,0,919,691,1
+97,Khon Kaen,referral,1,5,promptpay,completed,0,4,0,14884,698,0
+98,Bangkok,organic,1,3,credit_card,completed,0,1,1,18417,700,0
+99,Udon Thani,referral,1,11,promptpay,completed,5,2,0,3767,691,1
+100,Bangkok,ads,1,5,credit_card,completed,0,2,0,9747,697,1
+101,Chon Buri,organic,1,4,promptpay,completed,20,1,1,7918,698,1
+102,Udon Thani,organic,1,9,promptpay,returned,0,1,0,998,693,1
+103,Chiang Mai,organic,1,9,credit_card,completed,0,3,1,4677,693,1
+104,Chiang Mai,organic,1,4,credit_card,completed,0,2,0,5076,697,0
+105,Nakhon Ratchasima,ads,1,7,credit_card,completed,15,1,0,3799,694,1
+106,Hat Yai,ads,1,9,promptpay,completed,0,1,0,2029,692,0
+107,Chon Buri,ads,1,13,promptpay,completed,0,1,0,259,688,0
+108,Chiang Mai,organic,1,10,credit_card,completed,0,3,0,8466,691,1
+109,Khon Kaen,organic,1,12,credit_card,returned,0,1,0,999,688,0
+110,Udon Thani,organic,1,8,cod,completed,0,1,0,1059,692,1
+111,Khon Kaen,organic,1,2,promptpay,completed,0,3,1,6526,698,0
+112,Bangkok,ads,1,8,promptpay,completed,0,1,0,569,692,0
+113,Chon Buri,organic,1,2,promptpay,completed,0,2,0,7146,698,1
+114,Chon Buri,organic,2,8,promptpay,completed,15,1,0,569,691,1
+115,Bangkok,organic,2,11,promptpay,completed,10,1,0,509,688,1
+116,Hat Yai,referral,2,14,credit_card,completed,0,2,0,8437,685,1
+117,Udon Thani,ads,2,5,credit_card,completed,0,2,0,2387,693,1
+118,Nakhon Ratchasima,ads,2,9,promptpay,completed,0,1,0,1449,689,1
+119,Hat Yai,organic,2,12,credit_card,returned,10,1,0,2799,685,0
+121,Bangkok,organic,2,6,credit_card,completed,0,1,0,2158,690,1
+122,Bangkok,organic,2,2,promptpay,completed,0,3,0,3855,694,1
+123,Bangkok,organic,2,3,credit_card,completed,0,1,1,4069,693,0
+124,Bangkok,referral,2,8,credit_card,completed,0,1,0,1049,688,1
+125,Nakhon Ratchasima,organic,2,8,bank_transfer,cancelled,5,1,0,4769,687,0
+126,Khon Kaen,organic,2,6,credit_card,completed,0,3,0,5056,689,0
+127,Hat Yai,organic,2,3,credit_card,completed,5,1,0,419,692,1
+128,Phuket,organic,2,1,promptpay,completed,0,1,0,319,694,1
+129,Nakhon Ratchasima,organic,2,10,promptpay,completed,5,1,0,209,684,1
+130,Bangkok,organic,2,10,cod,completed,0,1,0,999,684,1
+131,Hat Yai,organic,2,1,bank_transfer,completed,0,1,0,6618,693,0
+132,Bangkok,organic,2,0,promptpay,completed,0,1,0,669,694,1
+133,Chon Buri,organic,2,4,promptpay,cancelled,0,1,0,499,690,0
+134,Bangkok,organic,2,0,promptpay,completed,20,1,0,299,693,1
+135,Bangkok,organic,2,5,credit_card,completed,15,2,0,7166,688,0
+136,Chiang Mai,organic,2,14,credit_card,completed,0,1,1,6558,679,0
+138,Chiang Mai,organic,2,13,promptpay,completed,0,2,0,1447,680,0
+140,Chiang Mai,ads,2,10,credit_card,completed,0,1,0,379,682,0
+142,Chon Buri,referral,2,1,promptpay,completed,0,1,0,199,691,1
+144,Nakhon Ratchasima,ads,2,3,credit_card,completed,0,3,1,8716,688,0
+145,Khon Kaen,organic,2,1,promptpay,cancelled,5,1,1,579,690,1
+146,Bangkok,ads,2,5,cod,completed,5,2,0,857,686,1
+147,Nakhon Ratchasima,organic,2,6,credit_card,completed,0,3,1,11527,685,1
+148,Bangkok,organic,2,5,promptpay,completed,10,1,1,9779,686,0
+149,Chon Buri,organic,2,4,promptpay,completed,0,4,0,9985,687,1
+150,Khon Kaen,referral,2,9,credit_card,completed,5,2,0,548,681,0
+151,Nakhon Ratchasima,organic,2,5,credit_card,completed,0,3,0,4335,685,1
+152,Khon Kaen,organic,2,10,cod,cancelled,0,3,0,10335,680,0
+153,Chon Buri,ads,2,4,credit_card,completed,0,1,0,2109,686,0
+155,Bangkok,organic,2,9,promptpay,completed,0,3,1,14115,680,1
+157,Bangkok,referral,2,2,credit_card,completed,0,1,0,219,687,1
+158,Bangkok,organic,2,4,promptpay,completed,0,2,1,3487,684,1
+159,Nakhon Ratchasima,organic,2,7,credit_card,completed,0,2,0,3208,681,1
+160,Nakhon Ratchasima,ads,2,6,promptpay,completed,0,1,0,498,682,1
+161,Chon Buri,ads,2,4,credit_card,completed,0,2,1,5987,684,1
+162,Chon Buri,ads,2,9,bank_transfer,completed,10,1,0,1898,679,0
+163,Bangkok,ads,2,7,promptpay,completed,5,1,0,4738,681,1
+165,Phuket,organic,2,6,cod,completed,20,2,1,2628,681,1
+166,Phuket,organic,2,14,promptpay,returned,5,1,0,549,673,0
+167,Hat Yai,ads,2,3,bank_transfer,completed,0,1,0,1138,684,1
+168,Bangkok,organic,2,6,credit_card,completed,5,1,0,1139,680,0
+169,Bangkok,referral,2,9,promptpay,completed,0,1,0,859,677,0
+170,Bangkok,organic,2,0,promptpay,completed,0,3,1,15137,685,1
+171,Chon Buri,organic,2,7,credit_card,completed,15,2,0,3747,678,1
+173,Bangkok,organic,2,11,promptpay,completed,0,3,0,2297,674,0
+174,Khon Kaen,referral,2,4,promptpay,completed,0,2,1,1878,680,1
+175,Hat Yai,ads,2,3,credit_card,completed,0,1,0,849,681,1
+176,Khon Kaen,referral,2,7,bank_transfer,completed,0,2,1,6697,677,1
+177,Chiang Mai,organic,2,10,promptpay,completed,0,2,0,2098,674,0
+178,Chon Buri,organic,2,4,credit_card,cancelled,0,1,0,1309,680,1
+179,Bangkok,ads,2,4,cod,completed,0,1,0,119,679,1
+180,Bangkok,referral,2,3,credit_card,completed,20,1,0,3518,680,1
+181,Udon Thani,organic,2,9,promptpay,completed,0,2,0,2657,673,1
+182,Bangkok,ads,2,9,cod,completed,0,2,0,6037,672,0
+183,Bangkok,organic,2,7,cod,completed,0,2,0,1448,674,1
+184,Udon Thani,ads,2,10,promptpay,completed,0,2,1,10917,671,1
+185,Chiang Mai,organic,2,3,promptpay,completed,5,2,1,4928,678,0
+186,Nakhon Ratchasima,organic,2,0,promptpay,completed,0,1,0,509,680,1
+187,Udon Thani,organic,2,12,promptpay,completed,10,1,0,779,668,1
+188,Nakhon Ratchasima,organic,2,0,credit_card,completed,0,1,0,1698,679,1
+191,Khon Kaen,organic,2,8,promptpay,completed,5,3,1,55964,671,0
+192,Bangkok,organic,2,2,cod,completed,10,1,0,3679,677,1
+193,Chon Buri,ads,2,6,credit_card,completed,0,2,0,847,673,1
+194,Nakhon Ratchasima,ads,2,7,cod,completed,0,1,0,1079,672,0
+195,Bangkok,organic,2,2,promptpay,completed,0,2,0,2267,677,1
+196,Bangkok,organic,2,1,credit_card,completed,0,3,1,8547,678,1
+197,Chon Buri,organic,2,12,promptpay,completed,0,2,0,4117,666,0
+198,Hat Yai,organic,2,3,credit_card,completed,0,1,0,339,675,0
+199,Nakhon Ratchasima,organic,2,3,credit_card,completed,0,3,1,61355,675,0
+200,Bangkok,ads,2,7,credit_card,completed,0,1,1,9779,671,0
+202,Khon Kaen,organic,2,0,credit_card,completed,0,3,0,9094,677,0
+203,Bangkok,organic,2,9,promptpay,returned,0,1,1,949,668,0
+204,Bangkok,organic,2,13,credit_card,completed,10,3,0,4377,663,1
+205,Nakhon Ratchasima,organic,2,7,credit_card,completed,15,1,0,1278,669,1
+206,Udon Thani,referral,2,10,credit_card,returned,0,2,0,1847,665,1
+207,Chon Buri,referral,2,3,cod,completed,0,2,0,2787,672,1
+208,Bangkok,ads,2,6,promptpay,completed,0,1,1,11269,669,1
+209,Chon Buri,referral,2,11,promptpay,completed,0,3,1,15177,664,1
+212,Bangkok,organic,2,0,promptpay,completed,0,1,0,1558,673,1
+213,Phuket,organic,2,6,promptpay,completed,0,3,1,6426,667,1
+214,Bangkok,organic,2,13,credit_card,completed,0,1,0,11397,660,1
+217,Bangkok,ads,2,1,promptpay,completed,0,3,1,29467,671,0
+218,Khon Kaen,ads,2,8,promptpay,returned,0,3,1,6647,663,0
+219,Chiang Mai,ads,2,11,promptpay,completed,0,1,0,2909,660,0
+220,Chiang Mai,ads,2,3,credit_card,completed,0,1,1,20069,668,1
+222,Bangkok,organic,3,4,promptpay,cancelled,0,2,1,7268,666,1
+223,Chiang Mai,organic,3,11,credit_card,returned,5,1,1,32838,659,1
+224,Bangkok,ads,3,9,promptpay,completed,0,2,0,2328,660,0
+225,Hat Yai,organic,3,9,credit_card,completed,0,2,1,3217,660,1
+226,Bangkok,organic,3,10,promptpay,completed,20,1,0,1449,659,1
+227,Phuket,organic,3,9,promptpay,completed,15,3,1,2645,660,1
+229,Khon Kaen,referral,3,7,bank_transfer,completed,0,3,0,2876,662,0
+230,Chon Buri,organic,3,8,credit_card,completed,0,2,0,787,660,0
+231,Chiang Mai,ads,3,13,cod,completed,0,3,1,24025,655,0
+232,Bangkok,referral,3,0,cod,completed,0,1,0,598,668,1
+233,Phuket,organic,3,10,promptpay,completed,0,4,1,11886,658,1
+234,Nakhon Ratchasima,organic,3,9,promptpay,completed,0,2,0,6036,658,1
+235,Chiang Mai,organic,3,14,credit_card,completed,0,2,0,2647,653,1
+236,Bangkok,ads,3,9,promptpay,completed,15,1,1,6139,658,1
+237,Bangkok,referral,3,8,promptpay,cancelled,0,1,0,8697,659,0
+238,Phuket,organic,3,14,credit_card,completed,0,1,0,319,652,1
+240,Chon Buri,ads,3,13,credit_card,completed,0,3,0,3717,653,1
+241,Bangkok,ads,3,5,promptpay,completed,5,2,0,408,661,1
+242,Chon Buri,organic,3,1,credit_card,completed,0,1,1,12278,665,0
+243,Bangkok,organic,3,14,cod,completed,0,3,0,5506,651,1
+244,Nakhon Ratchasima,ads,3,9,promptpay,completed,5,1,0,779,656,0
+245,Udon Thani,organic,3,5,promptpay,cancelled,0,2,1,4497,660,1
+246,Bangkok,referral,3,6,credit_card,completed,0,2,1,19848,658,1
+247,Chiang Mai,referral,3,1,cod,completed,5,1,1,3709,663,1
+248,Bangkok,organic,3,8,credit_card,completed,0,1,0,229,656,1
+249,Bangkok,organic,3,11,credit_card,completed,0,4,1,2855,653,1
+250,Phuket,referral,3,12,credit_card,completed,5,4,1,16866,651,1
+251,Udon Thani,organic,3,6,cod,returned,0,1,0,2727,657,0
+252,Bangkok,organic,3,5,credit_card,completed,0,1,0,139,658,1
+253,Nakhon Ratchasima,referral,3,3,credit_card,completed,20,1,0,139,660,1
+254,Bangkok,organic,3,4,promptpay,completed,15,1,1,16419,659,0
+255,Bangkok,ads,3,14,credit_card,completed,20,1,0,898,648,0
+257,Bangkok,ads,3,8,promptpay,completed,0,1,1,3918,654,0
+258,Hat Yai,ads,3,9,credit_card,completed,5,1,0,1309,652,1
+259,Bangkok,organic,3,3,credit_card,completed,0,3,1,5756,658,0
+260,Hat Yai,referral,3,3,bank_transfer,completed,0,3,1,64884,657,1
+261,Bangkok,organic,3,12,cod,completed,0,3,1,9357,648,1
+264,Bangkok,organic,3,3,credit_card,completed,10,1,0,1069,656,1
+265,Phuket,organic,3,3,credit_card,completed,0,2,0,1914,656,1
+267,Khon Kaen,organic,3,4,promptpay,cancelled,0,4,0,9003,655,1
+268,Bangkok,organic,3,14,credit_card,completed,0,1,0,5558,644,1
+269,Hat Yai,organic,3,8,credit_card,completed,0,2,0,2277,650,0
+270,Nakhon Ratchasima,organic,3,10,credit_card,returned,0,1,1,16419,648,1
+271,Hat Yai,organic,3,4,promptpay,completed,0,1,1,1279,654,1
+272,Khon Kaen,ads,3,6,promptpay,cancelled,0,1,0,639,651,0
+273,Bangkok,organic,3,1,credit_card,completed,0,4,1,4056,656,1
+274,Chiang Mai,referral,3,5,cod,completed,0,2,1,28237,651,0
+275,Bangkok,ads,3,8,promptpay,completed,0,1,0,2158,648,0
+276,Khon Kaen,organic,3,8,cod,completed,0,1,0,1079,648,0
+277,Chiang Mai,organic,3,4,credit_card,cancelled,0,1,1,16419,652,1
+278,Chiang Mai,ads,3,2,promptpay,completed,5,2,1,14057,654,0
+279,Bangkok,organic,3,6,bank_transfer,completed,10,3,1,6937,650,1
+280,Bangkok,referral,3,5,cod,completed,0,2,0,3448,650,1
+281,Chon Buri,ads,3,1,promptpay,completed,0,1,0,3518,654,1
+282,Hat Yai,organic,3,12,credit_card,completed,5,2,1,13016,643,1
+283,Chiang Mai,ads,3,7,cod,completed,0,4,0,11163,647,0
+284,Bangkok,organic,3,1,credit_card,completed,0,2,0,2108,653,1
+287,Nakhon Ratchasima,organic,3,3,promptpay,completed,0,2,0,1528,651,1
+289,Chon Buri,organic,3,8,credit_card,completed,0,3,1,12467,646,1
+290,Hat Yai,organic,3,1,promptpay,completed,10,2,1,3898,653,1
+291,Bangkok,ads,3,13,promptpay,completed,0,3,0,15474,640,1
+293,Bangkok,organic,3,6,promptpay,completed,0,1,0,909,647,0
+294,Khon Kaen,organic,3,10,promptpay,completed,0,4,1,6385,643,1
+295,Bangkok,organic,3,14,promptpay,completed,15,1,0,559,639,1
+296,Bangkok,organic,3,10,cod,completed,0,2,1,42196,643,1
+298,Chon Buri,organic,3,4,promptpay,completed,20,1,0,319,648,1
+299,Bangkok,organic,3,3,cod,completed,10,1,0,849,649,0
+300,Bangkok,organic,3,1,credit_card,completed,0,4,1,7516,651,1
+301,Bangkok,organic,3,8,credit_card,completed,0,2,0,2568,644,0
+303,Nakhon Ratchasima,ads,3,7,cod,cancelled,0,1,0,1949,645,0
+304,Khon Kaen,ads,3,8,cod,completed,15,2,0,3105,643,0
+305,Nakhon Ratchasima,ads,3,6,promptpay,completed,0,1,1,7658,645,0
+306,Bangkok,organic,3,9,promptpay,completed,0,2,0,1918,642,1
+307,Bangkok,organic,3,10,cod,completed,20,1,0,249,641,1
+308,Nakhon Ratchasima,organic,3,9,promptpay,completed,10,1,0,1059,642,1
+309,Nakhon Ratchasima,organic,3,7,credit_card,cancelled,0,1,0,1249,643,1
+310,Hat Yai,organic,3,9,promptpay,completed,5,2,0,3798,641,1
+311,Chon Buri,organic,3,8,promptpay,completed,10,1,1,4838,642,0
+312,Khon Kaen,ads,3,5,credit_card,completed,10,2,0,368,645,1
+313,Chiang Mai,organic,3,0,promptpay,completed,0,1,0,4509,650,0
+314,Chon Buri,referral,3,11,credit_card,completed,15,1,0,889,638,1
+316,Bangkok,organic,3,3,promptpay,completed,5,1,0,1069,645,0
+317,Chiang Mai,ads,3,9,credit_card,returned,5,3,1,46916,639,1
+319,Bangkok,organic,3,8,credit_card,cancelled,0,1,0,559,639,1
+320,Chiang Mai,ads,3,13,credit_card,completed,0,2,1,20498,634,0
+321,Udon Thani,organic,3,3,credit_card,completed,0,1,0,559,644,0
+322,Chiang Mai,ads,3,0,credit_card,completed,10,3,0,2197,647,1
+323,Bangkok,organic,3,2,cod,completed,5,1,0,1898,645,0
+325,Chiang Mai,organic,3,11,promptpay,completed,0,2,1,12678,635,1
+327,Bangkok,organic,3,14,credit_card,completed,0,2,0,1847,632,0
+328,Khon Kaen,ads,3,3,promptpay,completed,20,2,0,1218,642,0
+329,Bangkok,ads,3,12,promptpay,completed,5,2,0,1847,633,0
+330,Chiang Mai,organic,3,6,credit_card,completed,0,1,0,3799,639,0
+331,Hat Yai,organic,3,8,bank_transfer,completed,0,3,1,25245,637,0
+332,Phuket,ads,3,4,credit_card,completed,0,1,0,339,641,1
+334,Bangkok,referral,3,2,promptpay,completed,15,2,0,3868,642,0
+335,Phuket,ads,3,3,cod,completed,0,1,1,36878,641,1
+336,Hat Yai,ads,3,5,bank_transfer,completed,20,2,0,6267,639,1
+337,Bangkok,ads,3,13,promptpay,completed,10,1,0,1759,631,1
+338,Bangkok,ads,3,14,promptpay,completed,0,1,0,1849,630,1
+339,Nakhon Ratchasima,organic,3,11,credit_card,completed,5,2,0,2618,633,0
+340,Nakhon Ratchasima,ads,3,0,credit_card,completed,0,1,0,139,644,1
+341,Khon Kaen,organic,3,11,credit_card,completed,0,2,0,1268,633,1
+342,Chiang Mai,ads,3,8,promptpay,completed,0,1,0,1049,636,0
+343,Phuket,referral,3,12,credit_card,cancelled,10,3,0,4096,631,1
+344,Chon Buri,organic,3,13,promptpay,completed,0,4,1,9565,630,1
+345,Khon Kaen,ads,3,8,cod,completed,5,2,0,5696,635,0
+347,Bangkok,organic,3,2,credit_card,completed,0,1,1,1279,640,1
+348,Chiang Mai,referral,3,3,promptpay,completed,0,1,0,218,639,0
+349,Udon Thani,ads,3,4,cod,completed,0,1,1,18439,638,1
+350,Bangkok,referral,3,6,cod,completed,10,3,0,4207,636,1
+351,Bangkok,organic,3,12,bank_transfer,completed,0,4,0,9034,630,1
+352,Bangkok,organic,3,12,bank_transfer,completed,0,1,0,3799,630,0
+353,Bangkok,referral,3,9,promptpay,completed,15,2,0,2938,633,0
+354,Udon Thani,organic,3,14,bank_transfer,completed,0,1,0,779,628,0
+356,Udon Thani,ads,3,11,credit_card,completed,0,3,0,2407,630,0
+357,Khon Kaen,ads,3,1,promptpay,completed,0,1,0,2158,640,1
+358,Nakhon Ratchasima,referral,3,6,credit_card,completed,10,2,0,2218,635,1
+359,Bangkok,organic,3,4,bank_transfer,completed,0,2,0,928,636,0
+360,Bangkok,organic,3,4,promptpay,completed,5,1,0,1977,636,1
+361,Bangkok,organic,3,3,promptpay,completed,0,1,0,1059,637,1
+362,Phuket,organic,4,8,promptpay,completed,5,1,0,3309,631,1
+363,Nakhon Ratchasima,referral,4,4,promptpay,completed,0,1,0,949,635,1
+364,Hat Yai,ads,4,13,credit_card,completed,10,1,0,139,626,0
+365,Bangkok,organic,4,9,credit_card,cancelled,0,2,1,11226,630,1
+366,Phuket,organic,4,6,bank_transfer,completed,0,3,1,7827,633,0
+367,Chon Buri,organic,4,7,promptpay,completed,0,2,0,2768,632,0
+368,Bangkok,organic,4,1,promptpay,completed,0,1,0,949,638,1
+369,Bangkok,referral,4,12,promptpay,completed,10,2,0,698,626,0
+371,Khon Kaen,ads,4,0,cod,cancelled,0,1,0,2229,638,0
+372,Bangkok,organic,4,4,promptpay,cancelled,10,2,0,1968,634,1
+373,Chon Buri,organic,4,5,bank_transfer,completed,15,1,0,1049,632,0
+374,Bangkok,ads,4,12,cod,completed,0,2,0,5538,625,1
+376,Khon Kaen,referral,4,12,bank_transfer,completed,0,2,0,4558,625,1
+377,Nakhon Ratchasima,ads,4,2,credit_card,cancelled,0,1,0,2158,633,1
+378,Chiang Mai,organic,4,7,promptpay,completed,5,1,1,3709,628,1
+380,Bangkok,organic,4,9,promptpay,completed,20,2,0,2117,626,0
+381,Udon Thani,organic,4,1,promptpay,completed,0,3,1,5144,634,1
+382,Hat Yai,ads,4,7,credit_card,completed,0,2,0,878,627,0
+383,Chiang Mai,ads,4,3,promptpay,completed,0,1,1,3959,630,1
+384,Nakhon Ratchasima,organic,4,10,credit_card,completed,10,1,0,399,623,0
+385,Khon Kaen,organic,4,14,credit_card,completed,5,3,0,1736,619,1
+386,Bangkok,organic,4,1,promptpay,completed,0,1,0,3679,631,1
+387,Udon Thani,organic,4,3,credit_card,completed,15,2,0,6907,629,1
+388,Bangkok,organic,4,13,promptpay,completed,20,1,0,409,619,1
+389,Khon Kaen,organic,4,13,promptpay,completed,0,1,1,659,619,1
+390,Phuket,ads,4,9,cod,completed,5,1,0,2229,622,1
+392,Bangkok,organic,4,11,credit_card,completed,15,1,0,1049,619,0
+394,Bangkok,organic,4,4,credit_card,completed,15,2,1,2817,626,1
+395,Chon Buri,organic,4,4,bank_transfer,completed,0,1,0,219,626,1
+396,Nakhon Ratchasima,ads,4,2,credit_card,completed,15,2,0,1518,628,1
+397,Phuket,ads,4,12,bank_transfer,completed,0,1,0,139,618,0
+398,Bangkok,ads,4,1,credit_card,cancelled,0,2,0,2788,628,1
+399,Nakhon Ratchasima,organic,4,3,credit_card,completed,0,1,0,1759,626,0
+400,Nakhon Ratchasima,organic,4,3,credit_card,completed,0,1,0,6087,626,1
+401,Bangkok,ads,4,13,cod,completed,0,3,1,6676,616,1
+402,Phuket,organic,4,3,bank_transfer,completed,0,1,0,199,626,0
+403,Khon Kaen,ads,4,11,promptpay,completed,0,2,1,1988,618,1
+404,Bangkok,ads,4,6,credit_card,completed,0,1,0,1309,623,1
+405,Phuket,ads,4,13,credit_card,completed,0,1,0,2899,616,1
+406,Nakhon Ratchasima,organic,4,10,cod,completed,0,1,0,1677,618,1
+407,Bangkok,ads,4,9,promptpay,completed,20,2,1,1418,619,1
+409,Bangkok,organic,4,9,credit_card,completed,5,3,1,16935,619,1
+411,Bangkok,organic,4,2,credit_card,completed,10,1,0,549,625,0
+412,Bangkok,ads,4,12,credit_card,completed,0,2,1,30108,615,0
+414,Hat Yai,organic,4,4,cod,completed,0,2,0,978,623,1
+415,Bangkok,organic,4,5,credit_card,completed,0,2,1,20328,621,0
+416,Bangkok,ads,4,6,promptpay,completed,15,4,0,7496,620,1
+417,Chon Buri,ads,4,9,cod,completed,0,1,0,2369,617,0
+418,Nakhon Ratchasima,referral,4,4,promptpay,completed,0,1,0,419,622,1
+419,Udon Thani,organic,4,11,credit_card,completed,0,2,0,2168,615,0
+420,Chiang Mai,organic,4,5,promptpay,returned,0,1,0,339,620,0
+421,Nakhon Ratchasima,organic,4,3,credit_card,completed,0,1,0,429,622,1
+423,Bangkok,referral,4,5,bank_transfer,completed,5,1,0,4509,619,0
+424,Bangkok,organic,4,0,bank_transfer,completed,0,2,0,1398,624,1
+425,Udon Thani,referral,4,12,credit_card,completed,0,2,1,5828,612,1
+426,Bangkok,ads,4,2,promptpay,completed,0,3,1,25135,622,1
+427,Nakhon Ratchasima,referral,4,2,promptpay,completed,0,1,0,499,621,0
+428,Bangkok,organic,4,4,promptpay,completed,5,2,1,15428,619,1
+429,Udon Thani,ads,4,14,cod,completed,0,2,0,2248,609,0
+430,Bangkok,ads,4,12,promptpay,cancelled,5,3,1,20607,611,1
+431,Bangkok,organic,4,2,credit_card,completed,0,1,0,2538,620,1
+432,Udon Thani,referral,4,4,promptpay,completed,0,1,0,1527,618,1
+433,Bangkok,referral,4,4,promptpay,completed,20,4,1,14773,618,1
+434,Nakhon Ratchasima,organic,4,3,cod,completed,5,2,0,7577,619,0
+435,Bangkok,ads,4,3,cod,completed,5,2,1,2668,619,1
+436,Phuket,organic,4,0,promptpay,completed,0,1,0,559,621,0
+437,Chiang Mai,ads,4,4,bank_transfer,completed,5,1,0,329,617,0
+438,Bangkok,organic,4,9,promptpay,completed,0,4,0,4913,612,1
+439,Bangkok,organic,4,12,credit_card,completed,0,1,1,3279,609,1
+440,Chon Buri,organic,4,13,promptpay,completed,5,3,1,20916,607,0
+441,Bangkok,ads,4,3,credit_card,completed,0,2,0,7536,617,1
+444,Bangkok,organic,4,11,credit_card,cancelled,10,1,0,2899,608,0
+445,Bangkok,ads,4,12,cod,completed,0,2,0,1718,607,1
+446,Udon Thani,organic,4,4,cod,completed,0,1,0,509,615,1
+447,Chiang Mai,organic,4,4,cod,completed,0,1,0,4218,615,1
+449,Bangkok,organic,4,1,bank_transfer,completed,0,4,0,6723,618,1
+450,Hat Yai,organic,4,0,bank_transfer,returned,5,1,0,2799,619,1
+452,Bangkok,organic,4,0,cod,completed,10,3,1,13726,618,0
+453,Bangkok,organic,4,3,credit_card,cancelled,0,1,0,3429,614,0
+454,Khon Kaen,organic,4,2,promptpay,completed,0,1,0,999,615,1
+455,Chon Buri,ads,4,0,bank_transfer,completed,0,3,0,1526,617,1
+456,Phuket,ads,4,4,credit_card,completed,20,1,0,399,612,1
+457,Chon Buri,organic,4,7,cod,completed,0,1,0,549,609,0
+458,Bangkok,ads,4,2,promptpay,completed,0,1,0,449,614,0
+459,Nakhon Ratchasima,organic,4,7,promptpay,completed,5,1,0,259,609,1
+460,Bangkok,organic,4,14,promptpay,completed,0,1,0,1069,602,1
+461,Bangkok,organic,4,8,promptpay,completed,10,1,0,2639,608,1
+462,Chiang Mai,ads,4,5,bank_transfer,completed,0,1,0,2118,611,0
+463,Chon Buri,organic,4,13,credit_card,completed,10,4,0,1356,602,0
+464,Bangkok,ads,4,10,bank_transfer,completed,20,2,1,2448,605,1
+465,Bangkok,ads,4,13,promptpay,completed,0,1,0,119,602,1
+467,Hat Yai,ads,4,14,credit_card,completed,0,1,0,1069,601,1
+468,Bangkok,ads,4,8,promptpay,returned,0,1,0,379,607,1
+469,Chon Buri,organic,4,6,cod,completed,5,2,1,3248,608,0
+470,Bangkok,ads,4,1,credit_card,completed,0,2,1,16648,613,1
+471,Chon Buri,organic,4,1,promptpay,completed,0,1,1,949,613,1
+472,Bangkok,ads,4,13,credit_card,completed,0,3,1,4075,601,1
+473,Bangkok,referral,4,5,bank_transfer,completed,0,1,0,2757,609,0
+475,Nakhon Ratchasima,organic,4,4,promptpay,completed,10,1,0,818,610,1
+476,Nakhon Ratchasima,referral,4,0,bank_transfer,completed,0,3,0,3216,613,1
+478,Phuket,organic,4,12,bank_transfer,completed,0,3,0,11716,601,1
+479,Chon Buri,organic,4,11,bank_transfer,completed,0,1,1,5658,602,1
+480,Bangkok,organic,4,0,credit_card,completed,0,3,1,2087,613,1
+481,Chiang Mai,organic,4,9,promptpay,completed,0,2,1,5208,603,0
+482,Udon Thani,ads,4,6,cod,completed,0,1,0,1018,606,1
+483,Chiang Mai,organic,4,10,cod,returned,0,1,0,429,602,1
+484,Nakhon Ratchasima,ads,4,12,cod,completed,0,1,1,13239,600,1
+485,Bangkok,organic,4,11,promptpay,completed,0,1,0,329,601,0
+486,Chon Buri,organic,4,10,cod,returned,0,2,0,6547,601,1
+487,Chiang Mai,organic,4,3,promptpay,completed,0,2,0,4227,608,1
+488,Bangkok,organic,4,5,promptpay,completed,0,3,1,2556,606,0
+490,Khon Kaen,organic,4,4,bank_transfer,completed,0,3,0,3077,606,0
+492,Chiang Mai,organic,5,6,bank_transfer,completed,15,2,1,1098,603,1
+494,Chon Buri,organic,5,13,bank_transfer,completed,0,3,0,7656,596,0
+495,Chiang Mai,organic,5,3,bank_transfer,completed,0,1,1,11487,606,0
+496,Bangkok,ads,5,5,promptpay,completed,0,1,0,1049,603,1
+497,Chon Buri,ads,5,2,bank_transfer,completed,0,1,0,859,606,1
+498,Udon Thani,organic,5,11,promptpay,completed,0,2,1,11738,597,0
+499,Udon Thani,organic,5,4,credit_card,completed,10,1,0,6618,604,0
+500,Khon Kaen,organic,5,3,promptpay,completed,5,2,1,4518,605,1
+502,Phuket,organic,5,14,cod,completed,0,1,0,2369,593,0
+503,Bangkok,referral,5,0,promptpay,completed,0,3,1,40786,607,1
+504,Chiang Mai,referral,5,5,credit_card,completed,0,2,1,29236,602,1
+505,Chon Buri,organic,5,4,credit_card,completed,10,4,1,11694,603,1
+506,Chiang Mai,referral,5,10,promptpay,completed,0,1,0,1309,597,1
+507,Bangkok,referral,5,0,bank_transfer,completed,0,3,0,1636,606,1
+509,Khon Kaen,ads,5,1,bank_transfer,completed,0,1,0,1269,605,1
+510,Hat Yai,ads,5,5,promptpay,completed,0,2,0,648,600,1
+511,Bangkok,ads,5,9,promptpay,completed,0,3,1,3926,596,0
+512,Bangkok,ads,5,5,credit_card,completed,0,1,0,758,600,1
+513,Udon Thani,organic,5,13,promptpay,completed,10,1,1,2358,592,0
+514,Bangkok,organic,5,13,promptpay,completed,0,2,1,4856,592,1
+517,Bangkok,organic,5,12,credit_card,completed,0,2,1,12677,592,1
+518,Bangkok,ads,5,13,promptpay,completed,0,3,1,14356,591,1
+519,Khon Kaen,ads,5,2,promptpay,completed,0,3,1,13107,601,1
+520,Bangkok,ads,5,3,credit_card,completed,5,2,1,28677,600,1
+522,Bangkok,ads,5,4,cod,completed,5,1,0,8218,599,0
+523,Nakhon Ratchasima,organic,5,1,bank_transfer,completed,10,4,1,31385,602,1
+524,Bangkok,organic,5,14,bank_transfer,completed,10,2,0,1877,589,0
+525,Bangkok,ads,5,0,cod,completed,0,1,0,1059,603,1
+526,Bangkok,ads,5,8,cod,completed,10,3,0,2957,595,1
+527,Hat Yai,referral,5,1,promptpay,completed,5,1,1,3279,601,1
+528,Chon Buri,ads,5,13,promptpay,completed,0,2,1,3228,589,0
+529,Nakhon Ratchasima,organic,5,4,promptpay,completed,0,1,0,1137,598,1
+530,Chiang Mai,ads,5,13,credit_card,completed,10,2,1,6178,588,1
+531,Hat Yai,referral,5,6,credit_card,completed,10,1,0,10287,595,1
+532,Chon Buri,organic,5,0,credit_card,cancelled,0,2,0,6007,601,1
+533,Phuket,referral,5,12,credit_card,cancelled,0,2,1,738,589,0
+534,Nakhon Ratchasima,organic,5,14,cod,completed,0,2,1,21248,587,1
+535,Chiang Mai,ads,5,3,promptpay,completed,0,1,1,3829,598,0
+537,Hat Yai,organic,5,7,promptpay,completed,0,2,1,1538,593,1
+538,Chon Buri,organic,5,12,credit_card,completed,0,4,1,13954,587,1
+539,Chon Buri,ads,5,12,credit_card,completed,0,1,0,779,587,0
+540,Udon Thani,organic,5,3,promptpay,completed,0,1,0,1718,596,0
+541,Udon Thani,organic,5,12,bank_transfer,completed,0,3,0,1745,585,0
+542,Bangkok,ads,5,14,cod,completed,5,3,0,3476,583,0
+544,Nakhon Ratchasima,referral,5,4,promptpay,completed,15,4,0,4125,592,1
+545,Phuket,organic,5,4,credit_card,returned,0,2,1,4647,592,1
+546,Phuket,organic,5,8,credit_card,completed,0,3,1,2496,588,1
+547,Bangkok,ads,5,6,promptpay,completed,10,2,0,648,590,1
+548,Phuket,ads,5,0,credit_card,completed,0,3,1,62335,596,0
+550,Chon Buri,organic,5,6,promptpay,completed,0,4,0,6215,590,0
+551,Bangkok,organic,5,4,promptpay,completed,0,1,1,4069,591,1
+552,Bangkok,organic,5,0,promptpay,completed,0,1,0,109,595,1
+553,Bangkok,ads,5,9,bank_transfer,completed,0,2,0,1938,586,0
+554,Bangkok,referral,5,10,credit_card,completed,20,3,1,16687,585,1
+555,Bangkok,organic,5,7,promptpay,completed,0,1,0,859,587,1
+556,Khon Kaen,ads,5,7,credit_card,returned,15,1,0,2138,587,0
+557,Chiang Mai,ads,5,3,credit_card,completed,0,3,0,13516,591,1
+558,Nakhon Ratchasima,referral,5,4,credit_card,completed,0,1,0,329,590,1
+559,Nakhon Ratchasima,ads,5,5,promptpay,completed,5,1,1,27378,588,1
+560,Chiang Mai,organic,5,10,cod,completed,0,2,0,2788,583,1
+561,Chon Buri,ads,5,14,cod,completed,15,4,1,12004,578,1
+562,Bangkok,ads,5,6,cod,cancelled,10,1,0,909,586,1
+563,Bangkok,ads,5,4,credit_card,completed,0,1,0,3309,588,1
+564,Khon Kaen,organic,5,7,credit_card,completed,5,1,1,16419,585,1
+565,Khon Kaen,organic,5,1,credit_card,completed,0,1,0,1998,591,1
+566,Nakhon Ratchasima,ads,5,7,credit_card,completed,5,3,1,3513,585,1
+567,Chon Buri,organic,5,2,credit_card,completed,0,1,1,13689,590,1
+568,Bangkok,organic,5,2,promptpay,completed,5,3,1,15537,589,1
+569,Chiang Mai,ads,5,5,bank_transfer,completed,0,1,0,2909,586,1
+570,Nakhon Ratchasima,ads,5,0,promptpay,completed,10,2,1,3658,591,1
+571,Bangkok,referral,5,5,promptpay,completed,0,1,0,429,584,1
+572,Udon Thani,organic,5,7,promptpay,cancelled,0,2,1,10908,582,0
+573,Chon Buri,organic,5,6,credit_card,completed,20,2,0,8568,583,0
+574,Bangkok,organic,5,14,credit_card,completed,5,3,0,8975,575,0
+575,Chon Buri,organic,5,10,promptpay,completed,15,3,1,6587,579,0
+576,Nakhon Ratchasima,organic,5,10,credit_card,completed,15,1,0,429,578,0
+577,Phuket,ads,5,13,credit_card,completed,5,1,0,6087,574,1
+578,Bangkok,organic,5,1,credit_card,completed,0,2,1,36117,586,1
+580,Bangkok,ads,5,0,credit_card,completed,15,2,1,27537,587,1
+582,Hat Yai,organic,5,8,promptpay,completed,0,2,0,2116,578,1
+583,Chon Buri,ads,5,10,promptpay,completed,5,2,1,1836,576,0
+584,Bangkok,organic,5,0,cod,completed,5,4,1,18145,586,1
+585,Nakhon Ratchasima,referral,5,13,promptpay,completed,0,2,0,2217,573,0
+586,Bangkok,organic,5,11,promptpay,completed,0,1,0,339,575,1
+587,Udon Thani,organic,5,12,promptpay,completed,0,2,1,34336,573,1
+588,Bangkok,ads,5,8,promptpay,completed,0,3,1,14887,577,1
+589,Hat Yai,ads,5,5,promptpay,completed,0,3,0,3606,580,1
+591,Chon Buri,ads,5,6,bank_transfer,completed,0,1,0,229,579,1
+592,Chon Buri,ads,5,14,credit_card,cancelled,0,1,0,199,570,0
+593,Chon Buri,ads,5,1,cod,completed,0,1,0,5798,583,0
+594,Chon Buri,referral,5,13,promptpay,completed,0,2,0,2607,571,1
+595,Phuket,organic,5,4,credit_card,completed,5,1,0,719,580,1
+596,Bangkok,organic,5,5,bank_transfer,completed,0,4,0,6326,579,0
+597,Phuket,ads,5,2,promptpay,completed,0,3,0,5527,582,1
+598,Hat Yai,organic,5,13,promptpay,completed,0,1,0,1049,570,0
+599,Chon Buri,ads,5,13,promptpay,completed,15,1,1,18439,570,1
+600,Bangkok,organic,5,10,cod,completed,0,3,0,1787,573,1
+601,Bangkok,referral,5,0,cod,completed,0,4,1,6485,583,0
+603,Bangkok,referral,5,11,credit_card,completed,0,2,0,2666,571,1
+604,Udon Thani,organic,5,4,promptpay,completed,10,4,1,21636,578,1
+605,Khon Kaen,organic,5,10,credit_card,completed,0,1,0,2258,572,1
+606,Khon Kaen,ads,5,14,cod,completed,0,2,1,4468,568,1
+607,Bangkok,organic,5,1,promptpay,completed,0,2,1,12777,581,0
+608,Nakhon Ratchasima,organic,5,9,promptpay,completed,0,4,0,4005,572,0
+610,Udon Thani,organic,5,14,credit_card,cancelled,10,4,1,14705,567,1
+612,Chiang Mai,organic,5,1,promptpay,completed,0,1,1,2438,580,1
+613,Chiang Mai,ads,5,6,credit_card,completed,0,2,0,3167,574,1
+614,Nakhon Ratchasima,ads,5,2,promptpay,completed,5,3,1,16816,578,1
+615,Bangkok,organic,5,11,cod,completed,0,2,1,5356,569,1
+616,Khon Kaen,ads,5,2,promptpay,completed,0,3,0,2177,578,0
+617,Bangkok,organic,5,8,credit_card,completed,0,2,1,16928,571,1
+618,Chon Buri,organic,5,4,promptpay,completed,0,4,1,7455,575,1
+619,Hat Yai,organic,5,7,promptpay,completed,0,1,1,11269,572,0
+620,Bangkok,ads,5,1,credit_card,completed,0,3,0,17134,578,1
+621,Phuket,organic,5,10,promptpay,cancelled,10,1,0,399,569,1
+622,Udon Thani,ads,5,6,cod,completed,10,1,1,3279,573,0
+623,Chiang Mai,ads,5,13,credit_card,completed,5,4,1,7545,566,1
+624,Bangkok,organic,5,10,promptpay,completed,0,1,0,3218,569,0
+625,Chon Buri,ads,5,5,credit_card,completed,0,1,0,259,574,0
+626,Bangkok,organic,6,0,cod,completed,0,1,1,949,578,1
+627,Bangkok,ads,6,6,promptpay,completed,0,1,0,1079,571,1
+628,Bangkok,organic,6,4,cod,completed,15,1,1,5658,573,0
+629,Bangkok,organic,6,13,promptpay,completed,0,1,0,219,564,0
+630,Chon Buri,ads,6,14,promptpay,completed,0,1,0,2258,562,1
+632,Bangkok,referral,6,0,promptpay,completed,0,1,0,2997,576,1
+633,Chiang Mai,ads,6,2,credit_card,completed,0,3,0,3617,574,0
+634,Bangkok,organic,6,12,credit_card,completed,0,2,0,2588,564,1
+637,Udon Thani,organic,6,10,credit_card,completed,0,1,1,1219,565,1
+639,Chon Buri,ads,6,14,promptpay,cancelled,0,1,0,3147,560,1
+640,Hat Yai,referral,6,8,credit_card,completed,0,1,1,6139,566,1
+641,Bangkok,organic,6,0,credit_card,completed,10,1,0,659,574,0
+642,Phuket,ads,6,12,promptpay,cancelled,10,1,1,12278,561,1
+644,Bangkok,organic,6,5,promptpay,completed,10,1,1,11269,568,0
+645,Udon Thani,referral,6,11,promptpay,completed,10,2,1,13438,562,1
+646,Hat Yai,ads,6,13,credit_card,completed,20,2,0,628,560,1
+648,Hat Yai,organic,6,11,bank_transfer,completed,0,1,1,6139,562,0
+649,Bangkok,ads,6,7,credit_card,completed,0,1,0,1018,565,1
+650,Bangkok,organic,6,14,promptpay,completed,5,1,0,3429,558,0
+651,Udon Thani,organic,6,9,credit_card,completed,0,1,0,4109,563,0
+652,Bangkok,ads,6,1,promptpay,completed,5,4,1,4566,571,1
+653,Khon Kaen,organic,6,7,credit_card,completed,0,2,1,1858,565,1
+654,Khon Kaen,organic,6,3,cod,completed,0,2,1,21348,568,0
+656,Chiang Mai,organic,6,3,promptpay,completed,10,1,0,449,568,0
+657,Bangkok,ads,6,6,promptpay,completed,0,4,1,6746,564,1
+658,Nakhon Ratchasima,organic,6,14,credit_card,completed,10,3,0,2477,555,0
+659,Phuket,organic,6,13,credit_card,completed,0,2,0,5718,556,0
+660,Bangkok,referral,6,0,promptpay,completed,5,3,1,7856,569,1
+661,Chon Buri,organic,6,4,bank_transfer,completed,10,3,1,6866,565,0
+662,Chon Buri,ads,6,1,promptpay,completed,0,1,0,958,568,1
+663,Phuket,organic,6,3,cod,completed,0,1,0,509,566,0
+664,Khon Kaen,organic,6,7,promptpay,completed,15,2,0,5708,562,1
+665,Bangkok,ads,6,10,promptpay,completed,5,1,1,4069,559,0
+666,Bangkok,ads,6,11,promptpay,completed,0,3,1,15996,558,0
+668,Nakhon Ratchasima,ads,6,8,bank_transfer,completed,15,2,0,4056,561,0
+669,Udon Thani,organic,6,6,promptpay,completed,5,1,0,449,563,1
+670,Udon Thani,ads,6,12,promptpay,completed,0,1,0,3309,556,0
+671,Bangkok,ads,6,3,promptpay,cancelled,0,3,0,5307,565,0
+672,Chiang Mai,organic,6,9,promptpay,completed,0,1,1,10659,559,1
+674,Udon Thani,ads,6,8,promptpay,completed,0,1,0,5278,560,1
+675,Hat Yai,ads,6,2,credit_card,completed,0,2,0,2127,565,1
+676,Udon Thani,ads,6,3,promptpay,completed,0,1,0,1998,564,0
+677,Bangkok,ads,6,12,promptpay,completed,0,2,0,5108,555,1
+678,Khon Kaen,referral,6,1,credit_card,completed,0,1,0,4109,565,1
+679,Bangkok,organic,6,12,promptpay,completed,0,1,0,769,554,0
+680,Chiang Mai,ads,6,5,credit_card,completed,0,1,0,1759,561,1
+681,Bangkok,organic,6,8,credit_card,completed,15,1,1,599,558,0
+682,Chon Buri,organic,6,11,credit_card,completed,0,2,0,2528,554,0
+683,Phuket,organic,6,3,bank_transfer,completed,0,2,0,1906,562,0
+684,Bangkok,organic,6,12,cod,completed,5,1,0,1079,553,0
+685,Nakhon Ratchasima,ads,6,1,bank_transfer,completed,0,1,0,259,564,0
+686,Phuket,referral,6,0,promptpay,completed,5,2,1,2418,565,1
+687,Chiang Mai,organic,6,14,credit_card,completed,0,3,0,3586,551,1
+688,Chon Buri,ads,6,4,bank_transfer,completed,0,4,0,3684,561,0
+690,Phuket,referral,6,14,promptpay,completed,0,2,0,1988,550,1
+691,Bangkok,ads,6,4,credit_card,completed,0,1,0,598,560,1
+692,Bangkok,ads,6,10,credit_card,completed,15,1,0,419,554,0
+693,Bangkok,ads,6,11,credit_card,completed,0,4,0,5395,553,1
+694,Chon Buri,organic,6,10,cod,completed,0,2,0,1688,553,1
+697,Bangkok,referral,6,11,promptpay,completed,0,2,0,14296,551,1
+698,Hat Yai,ads,6,9,promptpay,completed,0,2,0,2867,553,1
+699,Udon Thani,ads,6,4,bank_transfer,completed,5,3,1,9887,558,0
+700,Bangkok,referral,6,7,credit_card,completed,0,1,0,569,555,0
+701,Bangkok,ads,6,12,promptpay,cancelled,0,2,1,2588,549,1
+703,Bangkok,organic,6,9,bank_transfer,completed,10,3,0,5237,551,1
+705,Udon Thani,organic,6,5,cod,completed,5,2,0,708,555,1
+706,Bangkok,ads,6,0,promptpay,completed,15,1,0,2538,559,1
+707,Chon Buri,organic,6,12,promptpay,completed,0,4,0,2276,547,0
+708,Chon Buri,ads,6,12,cod,completed,0,1,0,509,547,1
+709,Khon Kaen,ads,6,5,cod,completed,0,1,0,219,553,0
+710,Hat Yai,ads,6,13,promptpay,completed,10,3,1,5407,545,1
+711,Bangkok,referral,6,9,cod,completed,0,1,0,3799,549,1
+712,Chiang Mai,organic,6,10,bank_transfer,completed,0,2,0,1976,548,0
+713,Bangkok,referral,6,5,promptpay,completed,0,2,0,9787,553,1
+714,Bangkok,organic,6,9,promptpay,completed,0,3,0,13885,548,1
+716,Udon Thani,referral,6,4,promptpay,completed,10,2,1,3858,553,1
+717,Nakhon Ratchasima,organic,6,7,promptpay,cancelled,5,2,0,2128,550,1
+718,Phuket,organic,6,12,promptpay,returned,15,1,0,219,544,0
+720,Nakhon Ratchasima,organic,6,12,credit_card,returned,5,2,0,2878,542,1
+721,Chon Buri,organic,6,7,credit_card,completed,0,1,0,259,547,0
+722,Udon Thani,organic,6,5,promptpay,completed,5,1,0,339,549,1
+723,Bangkok,organic,6,13,credit_card,completed,10,1,1,2358,541,1
+726,Chon Buri,organic,6,0,promptpay,completed,0,3,1,16506,554,1
+727,Bangkok,ads,6,5,cod,completed,0,1,0,2799,549,1
+728,Bangkok,ads,6,7,credit_card,completed,0,1,0,3698,546,0
+729,Hat Yai,organic,6,10,promptpay,completed,15,2,1,3097,543,1
+730,Bangkok,organic,6,12,credit_card,completed,0,1,1,3657,541,1
+731,Bangkok,organic,6,13,promptpay,completed,15,1,1,599,539,0
+732,Bangkok,referral,6,6,bank_transfer,returned,10,2,0,1468,546,0
+733,Chon Buri,referral,6,3,bank_transfer,completed,5,2,0,398,549,0
+734,Hat Yai,ads,6,0,bank_transfer,completed,0,3,1,22226,552,1
+735,Bangkok,ads,6,10,promptpay,completed,0,1,0,429,542,1
+736,Bangkok,ads,6,12,promptpay,cancelled,20,1,0,419,540,1
+737,Chon Buri,ads,6,3,bank_transfer,completed,0,2,0,1878,549,1
+738,Bangkok,ads,6,0,promptpay,completed,5,2,1,3517,551,1
+739,Phuket,referral,6,3,promptpay,cancelled,0,2,0,1476,548,1
+740,Khon Kaen,organic,6,2,credit_card,completed,0,1,0,509,549,1
+741,Hat Yai,ads,6,1,credit_card,completed,0,1,0,998,550,1
+742,Bangkok,organic,6,12,promptpay,completed,0,2,0,408,539,1
+743,Chon Buri,referral,6,4,cod,completed,0,3,1,2986,547,1
+745,Nakhon Ratchasima,ads,6,14,bank_transfer,completed,10,2,1,7818,537,1
+747,Nakhon Ratchasima,organic,6,8,bank_transfer,completed,5,1,1,10659,542,1
+748,Bangkok,ads,6,6,credit_card,completed,0,1,0,3738,544,0
+749,Bangkok,organic,6,14,cod,completed,0,2,1,11538,536,1
+750,Chiang Mai,ads,6,0,promptpay,completed,0,1,1,659,550,1
+751,Phuket,ads,6,2,promptpay,completed,0,2,0,1496,547,1
+752,Bangkok,referral,6,12,cod,completed,0,3,0,3122,537,1
+753,Bangkok,ads,7,3,credit_card,completed,0,2,0,4137,545,1
+754,Khon Kaen,referral,7,8,credit_card,completed,0,3,1,4736,540,1
+755,Chiang Mai,ads,7,5,promptpay,completed,0,2,0,2727,543,1
+756,Nakhon Ratchasima,organic,7,11,promptpay,completed,0,2,1,10778,537,1
+758,Udon Thani,referral,7,10,cod,cancelled,0,1,0,1129,537,1
+760,Khon Kaen,organic,7,3,credit_card,returned,5,2,1,2768,544,1
+762,Bangkok,ads,7,3,bank_transfer,completed,0,3,1,8706,543,0
+764,Hat Yai,organic,7,9,bank_transfer,completed,0,2,0,8476,536,1
+765,Bangkok,organic,7,3,bank_transfer,completed,10,2,1,5197,542,0
+766,Hat Yai,ads,7,12,promptpay,completed,10,1,0,1059,533,1
+767,Bangkok,ads,7,13,credit_card,completed,15,2,0,2387,532,1
+768,Udon Thani,organic,7,6,bank_transfer,completed,0,2,1,798,538,1
+770,Bangkok,organic,7,13,cod,completed,5,2,0,4217,530,1
+771,Bangkok,organic,7,6,promptpay,completed,0,1,0,329,537,1
+772,Bangkok,organic,7,7,credit_card,completed,0,2,0,5798,536,0
+773,Bangkok,organic,7,12,promptpay,completed,5,1,1,11319,531,0
+774,Khon Kaen,referral,7,2,credit_card,completed,10,4,1,27533,540,0
+775,Khon Kaen,organic,7,8,credit_card,returned,0,2,0,2098,534,1
+776,Khon Kaen,ads,7,6,cod,completed,0,2,0,528,536,1
+777,Bangkok,organic,7,13,credit_card,completed,5,4,0,5286,529,0
+778,Khon Kaen,organic,7,8,credit_card,completed,0,2,0,588,534,1
+779,Bangkok,organic,7,14,promptpay,cancelled,15,1,0,1139,528,0
+780,Hat Yai,ads,7,2,cod,completed,10,2,1,11488,540,0
+781,Chon Buri,organic,7,3,credit_card,completed,0,2,1,4926,538,0
+782,Chon Buri,referral,7,5,credit_card,completed,0,2,0,1458,536,0
+783,Hat Yai,organic,7,9,credit_card,completed,5,1,0,14307,532,1
+784,Khon Kaen,ads,7,13,credit_card,cancelled,5,4,1,4154,527,0
+786,Bangkok,referral,7,10,promptpay,completed,0,1,0,139,530,1
+787,Nakhon Ratchasima,referral,7,13,bank_transfer,completed,0,1,0,419,526,1
+788,Nakhon Ratchasima,ads,7,9,cod,completed,0,1,0,2909,530,1
+789,Bangkok,ads,7,5,promptpay,completed,0,2,1,30285,534,0
+791,Hat Yai,organic,7,11,credit_card,completed,0,1,0,398,527,1
+792,Nakhon Ratchasima,ads,7,10,promptpay,completed,5,3,0,6576,528,0
+793,Chiang Mai,organic,7,0,promptpay,completed,0,2,1,13948,538,1
+794,Bangkok,organic,7,13,credit_card,returned,0,2,1,8008,525,0
+795,Chiang Mai,ads,7,13,cod,cancelled,0,2,0,1958,525,1
+796,Bangkok,referral,7,6,credit_card,completed,0,2,1,3616,532,1
+797,Hat Yai,referral,7,6,bank_transfer,completed,20,3,1,5457,531,1
+798,Udon Thani,ads,7,8,promptpay,completed,5,2,0,4696,529,0
+799,Bangkok,ads,7,11,promptpay,completed,0,3,1,7037,525,1
+800,Bangkok,organic,7,0,promptpay,completed,5,2,1,6276,536,0
+801,Bangkok,organic,7,6,credit_card,completed,15,1,1,10659,530,1
+803,Udon Thani,organic,7,13,cod,completed,5,3,1,2266,521,1
+804,Hat Yai,organic,7,0,credit_card,completed,0,3,1,3396,534,1
+805,Khon Kaen,organic,7,6,promptpay,completed,5,2,1,998,527,1
+806,Bangkok,organic,7,14,credit_card,completed,0,1,0,119,519,1
+807,Bangkok,ads,7,14,cod,completed,0,3,0,1607,519,1
+808,Nakhon Ratchasima,referral,7,9,cod,completed,15,1,0,4109,524,0
+810,Udon Thani,referral,7,14,cod,completed,0,2,0,2607,518,0
+811,Bangkok,ads,7,5,promptpay,cancelled,0,3,1,7107,527,1
+812,Bangkok,organic,7,7,promptpay,completed,0,2,1,5566,525,0
+813,Udon Thani,ads,7,6,cod,completed,10,1,0,1049,526,1
+814,Bangkok,ads,7,8,cod,completed,0,1,0,139,523,0
+816,Bangkok,organic,7,12,cod,completed,0,3,1,6287,519,0
+817,Phuket,ads,7,5,bank_transfer,completed,0,3,0,4074,526,0
+818,Khon Kaen,ads,7,12,credit_card,completed,0,1,1,1219,518,1
+819,Bangkok,referral,7,0,credit_card,completed,0,1,0,209,530,1
+820,Chiang Mai,organic,7,2,cod,completed,0,2,1,13908,528,1
+822,Hat Yai,organic,7,0,credit_card,completed,0,1,0,1069,530,1
+823,Bangkok,referral,7,0,promptpay,completed,0,1,0,109,530,1
+824,Bangkok,ads,7,11,promptpay,cancelled,0,1,0,2109,518,1
+825,Bangkok,ads,7,1,promptpay,completed,0,2,1,3678,528,0
+826,Bangkok,organic,7,8,bank_transfer,completed,0,1,0,299,521,1
+827,Chiang Mai,organic,7,7,credit_card,completed,0,2,1,12657,522,1
+828,Chon Buri,organic,7,11,cod,completed,0,1,1,2829,518,0
+829,Bangkok,ads,7,1,promptpay,cancelled,0,1,0,399,528,1
+830,Chiang Mai,ads,7,4,credit_card,completed,0,3,0,2285,525,0
+831,Bangkok,organic,7,12,credit_card,completed,10,1,0,1609,517,1
+832,Bangkok,ads,7,2,credit_card,completed,0,3,0,4096,526,0
+833,Bangkok,referral,7,7,promptpay,completed,0,1,0,1049,521,0
+834,Nakhon Ratchasima,ads,7,5,promptpay,completed,0,1,1,2358,523,0
+835,Chon Buri,ads,7,1,credit_card,cancelled,0,2,0,2057,527,0
+836,Hat Yai,organic,7,11,promptpay,completed,15,1,0,2229,516,0
+837,Bangkok,ads,7,2,promptpay,completed,5,4,0,4686,525,0
+838,Bangkok,organic,7,10,cod,returned,0,3,1,16577,517,1
+840,Khon Kaen,ads,7,10,bank_transfer,returned,0,2,0,3885,517,0
+842,Bangkok,organic,7,6,credit_card,completed,0,2,1,10167,521,1
+843,Bangkok,referral,7,6,credit_card,returned,0,1,1,4069,520,1
+844,Chon Buri,ads,7,13,cod,completed,0,4,1,14496,513,1
+845,Chiang Mai,ads,7,0,promptpay,cancelled,0,2,1,27797,526,0
+846,Phuket,ads,7,9,promptpay,completed,0,2,0,2868,517,0
+847,Nakhon Ratchasima,ads,7,1,credit_card,completed,5,1,0,1949,524,1
+848,Hat Yai,referral,7,1,credit_card,completed,15,1,0,909,524,1
+849,Bangkok,ads,7,8,credit_card,completed,0,1,0,2538,516,1
+850,Hat Yai,organic,7,4,credit_card,completed,0,1,1,579,519,0
+851,Phuket,organic,7,14,credit_card,completed,0,1,0,3309,509,1
+852,Chon Buri,ads,7,7,promptpay,completed,0,1,1,2419,516,0
+853,Hat Yai,referral,7,12,credit_card,completed,0,1,0,849,511,1
+854,Bangkok,organic,7,3,bank_transfer,completed,0,1,1,1959,520,1
+855,Khon Kaen,organic,7,13,cod,completed,0,1,0,3738,510,0
+856,Bangkok,ads,7,9,cod,cancelled,10,1,0,479,514,1
+857,Chiang Mai,ads,7,6,promptpay,completed,0,1,1,5877,516,0
+858,Udon Thani,organic,7,2,credit_card,completed,0,1,1,27378,520,1
+859,Nakhon Ratchasima,ads,7,5,credit_card,completed,5,1,0,7598,517,1
+860,Bangkok,referral,7,8,credit_card,completed,0,1,0,119,514,1
+861,Khon Kaen,ads,7,7,cod,completed,0,3,0,2156,514,1
+864,Chon Buri,ads,7,5,promptpay,returned,5,1,0,1069,516,1
+865,Khon Kaen,ads,7,6,cod,completed,10,3,1,7975,515,0
+866,Hat Yai,organic,7,5,promptpay,completed,10,1,0,399,516,0
+867,Chiang Mai,ads,7,3,credit_card,completed,15,1,0,1269,517,0
+868,Chiang Mai,organic,7,3,promptpay,completed,5,1,1,26478,517,1
+870,Nakhon Ratchasima,organic,7,4,credit_card,completed,0,3,1,5335,516,0
+871,Phuket,referral,7,9,cod,completed,0,2,1,2428,510,1
+872,Bangkok,ads,7,14,credit_card,completed,0,1,0,2909,505,1
+873,Bangkok,organic,7,9,promptpay,completed,0,4,0,6335,510,1
+874,Bangkok,organic,7,14,cod,completed,0,3,1,15186,505,1
+875,Udon Thani,organic,7,1,credit_card,completed,0,1,0,949,518,1
+876,Hat Yai,ads,7,11,promptpay,completed,0,3,0,1447,508,1
+877,Bangkok,ads,7,4,bank_transfer,cancelled,0,2,1,10628,514,0
+878,Nakhon Ratchasima,organic,8,11,bank_transfer,returned,0,2,0,1137,506,1
+879,Bangkok,organic,8,3,cod,completed,15,2,0,1938,514,0
+880,Phuket,organic,8,8,credit_card,completed,0,3,1,5557,509,1
+881,Chiang Mai,organic,8,8,credit_card,completed,10,2,1,2168,509,1
+882,Udon Thani,referral,8,9,cod,completed,10,1,1,1219,508,1
+883,Bangkok,organic,8,0,bank_transfer,cancelled,0,1,0,838,517,0
+884,Phuket,ads,8,10,credit_card,completed,5,4,0,3065,506,1
+885,Bangkok,ads,8,0,promptpay,completed,5,1,0,919,516,0
+886,Nakhon Ratchasima,organic,8,0,bank_transfer,completed,0,1,1,11319,515,1
+887,Bangkok,referral,8,3,promptpay,completed,0,2,0,3418,512,1
+888,Nakhon Ratchasima,organic,8,3,credit_card,cancelled,0,1,1,1959,512,0
+890,Chon Buri,ads,8,0,credit_card,completed,0,2,0,1638,514,1
+891,Nakhon Ratchasima,ads,8,8,promptpay,completed,0,3,0,4075,506,0
+893,Chon Buri,referral,8,4,cod,completed,20,1,1,579,510,0
+894,Phuket,organic,8,11,credit_card,completed,0,1,0,3429,503,1
+896,Bangkok,referral,8,5,credit_card,completed,0,2,0,6308,508,1
+897,Bangkok,organic,8,13,bank_transfer,completed,10,2,1,5647,500,0
+898,Bangkok,organic,8,9,promptpay,completed,0,1,0,4769,504,1
+900,Phuket,organic,8,8,promptpay,completed,5,2,0,1798,505,1
+901,Bangkok,ads,8,3,credit_card,completed,0,2,1,25896,510,0
+902,Bangkok,ads,8,4,credit_card,completed,10,1,0,798,509,1
+903,Chon Buri,ads,8,9,bank_transfer,completed,5,1,0,4109,503,1
+904,Bangkok,referral,8,4,bank_transfer,completed,0,1,0,1139,508,0
+905,Bangkok,organic,8,11,credit_card,completed,10,1,0,409,501,1
+906,Chon Buri,organic,8,13,promptpay,completed,0,4,0,9695,499,0
+907,Phuket,ads,8,14,bank_transfer,completed,0,4,0,3983,498,1
+908,Bangkok,ads,8,2,credit_card,cancelled,0,2,1,2868,510,1
+909,Chon Buri,referral,8,0,promptpay,completed,0,2,1,4388,512,1
+910,Khon Kaen,organic,8,13,credit_card,completed,0,1,0,329,499,0
+911,Khon Kaen,ads,8,8,promptpay,completed,5,1,0,2899,504,0
+912,Bangkok,organic,8,2,promptpay,completed,0,4,1,16806,509,1
+913,Bangkok,organic,8,14,promptpay,completed,5,3,1,23667,497,0
+914,Chiang Mai,organic,8,12,credit_card,completed,0,2,0,4448,499,1
+915,Bangkok,ads,8,2,promptpay,completed,0,1,0,2757,508,1
+916,Bangkok,ads,8,8,promptpay,completed,0,2,1,14088,501,0
+917,Hat Yai,organic,8,11,promptpay,completed,20,1,0,1249,498,1
+918,Udon Thani,ads,8,4,credit_card,completed,0,3,0,3936,505,1
+919,Chon Buri,ads,8,1,bank_transfer,completed,0,1,0,2799,508,1
+920,Bangkok,ads,8,0,promptpay,completed,0,1,0,419,509,1
+921,Hat Yai,organic,8,5,promptpay,completed,0,1,0,549,504,1
+922,Nakhon Ratchasima,organic,8,8,credit_card,completed,0,3,1,7976,501,1
+923,Chiang Mai,organic,8,12,credit_card,completed,5,2,1,6546,497,1
+925,Chon Buri,organic,8,13,promptpay,cancelled,10,4,1,18086,495,1
+926,Udon Thani,referral,8,1,credit_card,completed,15,3,1,15776,507,0
+927,Chon Buri,referral,8,11,promptpay,completed,0,2,0,4228,496,1
+929,Bangkok,organic,8,1,promptpay,completed,10,1,0,109,506,1
+930,Nakhon Ratchasima,organic,8,13,credit_card,completed,0,3,0,14462,494,0
+931,Bangkok,organic,8,1,promptpay,completed,0,1,0,329,505,0
+932,Bangkok,referral,8,5,credit_card,completed,0,4,1,22745,501,0
+933,Bangkok,ads,8,3,promptpay,completed,0,2,1,16928,503,1
+934,Bangkok,organic,8,5,bank_transfer,completed,0,1,0,2618,501,0
+935,Bangkok,referral,8,9,credit_card,completed,0,1,0,669,497,1
+936,Bangkok,referral,8,7,credit_card,completed,5,2,1,4758,499,1
+938,Udon Thani,ads,8,5,credit_card,completed,0,1,0,249,500,0
+939,Nakhon Ratchasima,ads,8,5,credit_card,completed,0,4,1,13275,500,1
+940,Hat Yai,referral,8,7,promptpay,completed,0,1,0,349,498,1
+941,Khon Kaen,ads,8,7,credit_card,completed,0,1,0,2899,498,0
+942,Bangkok,organic,8,12,bank_transfer,completed,0,1,1,2558,492,1
+943,Phuket,ads,8,10,credit_card,completed,0,4,1,8731,494,1
+944,Bangkok,organic,8,13,credit_card,completed,15,2,0,6907,491,0
+945,Bangkok,organic,8,8,promptpay,cancelled,0,1,1,13239,496,1
+947,Nakhon Ratchasima,organic,8,13,credit_card,completed,0,1,0,1609,490,1
+948,Chiang Mai,ads,8,13,promptpay,completed,5,1,0,3738,490,1
+950,Bangkok,organic,8,14,promptpay,completed,0,1,0,1718,489,1
+951,Bangkok,referral,8,11,credit_card,completed,5,3,0,2217,491,1
+953,Nakhon Ratchasima,ads,8,6,promptpay,completed,0,1,0,1759,495,1
+954,Bangkok,referral,8,14,promptpay,completed,0,2,1,998,486,0
+955,Nakhon Ratchasima,organic,8,0,credit_card,completed,0,3,1,14927,500,0
+956,Chiang Mai,ads,8,8,cod,completed,0,2,1,7218,492,1
+957,Bangkok,ads,8,12,credit_card,completed,0,1,0,119,488,0
+958,Nakhon Ratchasima,ads,8,3,cod,completed,0,1,0,139,497,1
+959,Bangkok,organic,8,1,promptpay,completed,0,1,0,1759,498,0
+960,Khon Kaen,organic,8,6,credit_card,returned,0,2,0,5517,493,1
+962,Nakhon Ratchasima,referral,8,3,promptpay,cancelled,5,2,1,33758,496,1
+963,Hat Yai,ads,8,0,credit_card,completed,10,1,1,13239,499,0
+965,Khon Kaen,ads,8,10,credit_card,completed,0,3,1,4966,488,0
+966,Bangkok,organic,8,7,credit_card,completed,0,1,0,11397,491,1
+968,Bangkok,organic,8,6,cod,completed,0,1,0,1759,492,0
+969,Chon Buri,organic,8,11,promptpay,completed,0,3,0,7914,487,0
+970,Chon Buri,organic,8,12,credit_card,completed,0,2,0,877,486,1
+971,Bangkok,organic,8,13,promptpay,returned,0,1,1,3829,485,1
+972,Chon Buri,ads,8,0,cod,completed,0,1,0,3429,497,1
+973,Bangkok,organic,8,8,credit_card,completed,0,1,0,109,489,1
+974,Khon Kaen,referral,8,14,promptpay,completed,0,2,0,6908,483,1
+975,Chiang Mai,organic,8,2,promptpay,completed,0,4,0,1714,495,1
+976,Bangkok,ads,8,2,bank_transfer,returned,15,2,0,797,495,0
+977,Bangkok,ads,8,6,credit_card,completed,0,2,0,1108,491,1
+978,Khon Kaen,ads,8,5,promptpay,completed,10,2,0,1368,491,1
+979,Chon Buri,organic,8,8,bank_transfer,completed,0,2,0,2277,488,0
+980,Chon Buri,organic,8,2,credit_card,cancelled,0,1,0,879,494,1
+981,Chon Buri,ads,8,14,promptpay,returned,0,2,1,778,482,0
+982,Bangkok,organic,8,12,credit_card,completed,0,2,1,2307,484,1
+983,Hat Yai,organic,8,0,credit_card,completed,0,2,0,488,495,1
+985,Bangkok,ads,8,2,bank_transfer,cancelled,0,1,0,3518,493,1
+986,Udon Thani,organic,8,3,cod,completed,20,1,0,419,492,0
+987,Bangkok,organic,8,0,credit_card,completed,0,3,1,29064,495,0
+988,Nakhon Ratchasima,ads,8,7,cod,completed,10,1,0,669,487,1
+989,Bangkok,organic,8,6,bank_transfer,completed,0,4,1,7155,488,1
+990,Bangkok,organic,8,14,bank_transfer,completed,0,1,0,329,480,0
+992,Udon Thani,organic,8,11,promptpay,completed,0,1,1,16419,482,1
+993,Bangkok,organic,8,10,credit_card,completed,0,1,0,438,483,0
+994,Bangkok,organic,8,6,promptpay,completed,0,2,0,1798,487,0
+995,Bangkok,ads,8,12,promptpay,completed,0,4,0,7833,481,0
+996,Hat Yai,organic,8,1,bank_transfer,completed,0,1,0,398,492,1
+997,Bangkok,organic,8,6,credit_card,completed,0,2,0,778,487,1
+998,Phuket,ads,8,14,promptpay,completed,0,1,0,758,478,0
+999,Phuket,organic,8,5,promptpay,completed,0,1,1,3829,487,1
+1000,Phuket,organic,8,3,bank_transfer,completed,5,2,0,6127,489,0
+1002,Bangkok,organic,8,4,credit_card,completed,0,1,0,299,488,1
+1004,Bangkok,organic,8,11,promptpay,completed,0,3,0,2035,480,1
+1005,Khon Kaen,organic,8,2,credit_card,completed,0,2,0,1588,489,1
+1007,Bangkok,organic,8,13,promptpay,completed,0,1,0,2658,477,1
+1008,Nakhon Ratchasima,organic,8,3,promptpay,cancelled,15,1,0,758,487,1
+1009,Udon Thani,organic,8,8,cod,completed,0,1,0,3429,481,1
+1010,Bangkok,organic,8,13,credit_card,completed,5,1,0,958,476,1
+1011,Udon Thani,referral,8,1,credit_card,completed,0,1,0,779,488,1
+1013,Bangkok,ads,8,7,bank_transfer,completed,0,3,1,18417,482,0
+1014,Nakhon Ratchasima,referral,8,9,promptpay,completed,0,2,0,11676,479,1
+1016,Hat Yai,organic,8,13,promptpay,completed,0,3,1,5945,475,1
+1017,Bangkok,ads,8,3,bank_transfer,completed,5,1,0,719,485,1
+1018,Bangkok,organic,8,14,credit_card,completed,15,1,0,229,473,1
+1019,Bangkok,ads,8,13,credit_card,completed,0,1,0,299,474,0
+1020,Chon Buri,ads,8,9,credit_card,completed,0,1,1,599,478,1
+1021,Bangkok,referral,8,6,promptpay,cancelled,0,2,0,4768,481,1
+1022,Udon Thani,organic,8,11,credit_card,completed,5,2,0,2387,476,1
+1024,Bangkok,ads,9,10,cod,cancelled,0,1,1,4069,476,1
+1025,Bangkok,referral,9,11,promptpay,completed,0,1,0,3309,475,1
+1026,Hat Yai,organic,9,10,promptpay,completed,5,2,0,2878,476,1
+1027,Chon Buri,referral,9,3,credit_card,completed,0,1,0,1759,483,1
+1028,Khon Kaen,ads,9,2,bank_transfer,completed,5,1,1,49257,484,0
+1029,Chon Buri,organic,9,4,cod,completed,0,2,1,3258,482,1
+1030,Nakhon Ratchasima,ads,9,5,credit_card,completed,0,2,0,2046,480,1
+1031,Bangkok,organic,9,8,promptpay,cancelled,10,3,0,1925,477,1
+1032,Hat Yai,ads,9,14,cod,completed,0,2,0,1308,471,1
+1033,Bangkok,referral,9,3,promptpay,cancelled,10,1,0,859,482,1
+1034,Bangkok,organic,9,10,bank_transfer,completed,0,2,0,7917,475,0
+1035,Bangkok,organic,9,6,promptpay,returned,0,1,0,659,478,1
+1036,Nakhon Ratchasima,organic,9,13,cod,completed,0,1,0,2229,471,0
+1037,Bangkok,organic,9,6,cod,completed,5,2,0,6047,478,0
+1038,Khon Kaen,organic,9,8,cod,completed,0,1,0,1609,475,0
+1039,Phuket,organic,9,14,cod,completed,0,3,0,3156,469,1
+1040,Phuket,ads,9,11,credit_card,completed,5,2,1,1818,472,1
+1041,Udon Thani,ads,9,4,promptpay,completed,0,2,1,11508,478,1
+1042,Nakhon Ratchasima,organic,9,4,promptpay,completed,0,3,1,3516,478,0
+1043,Phuket,referral,9,13,credit_card,completed,10,3,1,23646,469,1
+1044,Chiang Mai,ads,9,2,credit_card,completed,0,1,0,329,480,1
+1045,Phuket,organic,9,1,credit_card,completed,0,2,1,32746,481,1
+1046,Phuket,ads,9,6,promptpay,completed,0,1,0,2538,475,1
+1048,Bangkok,organic,9,9,credit_card,completed,0,1,0,889,472,1
+1050,Chiang Mai,organic,9,5,credit_card,completed,0,1,1,6139,476,0
+1051,Bangkok,referral,9,13,promptpay,completed,0,1,0,769,467,0
+1054,Bangkok,organic,9,9,bank_transfer,completed,0,1,1,13239,470,1
+1055,Nakhon Ratchasima,organic,9,2,credit_card,completed,0,3,0,2765,477,1
+1056,Chon Buri,ads,9,11,credit_card,completed,5,1,0,1049,467,1
+1057,Bangkok,ads,9,12,promptpay,completed,0,3,0,6265,466,1
+1059,Bangkok,ads,9,11,bank_transfer,completed,0,2,1,7687,467,1
+1060,Bangkok,organic,9,4,credit_card,completed,0,3,1,25165,474,0
+1061,Hat Yai,ads,9,4,promptpay,completed,0,1,0,1778,473,1
+1062,Bangkok,ads,9,14,credit_card,completed,0,3,1,14876,463,1
+1063,Bangkok,organic,9,14,credit_card,completed,15,3,1,7067,463,0
+1064,Chiang Mai,organic,9,11,cod,completed,0,2,0,1996,466,0
+1065,Bangkok,ads,9,9,credit_card,completed,0,2,0,936,468,1
+1067,Bangkok,referral,9,11,cod,completed,0,2,0,2528,465,1
+1068,Bangkok,organic,9,6,credit_card,completed,10,2,0,4188,470,1
+1069,Bangkok,organic,9,8,promptpay,returned,0,1,0,859,468,1
+1070,Udon Thani,organic,9,9,bank_transfer,completed,0,1,0,1079,467,1
+1071,Bangkok,ads,9,0,cod,completed,0,3,0,2786,476,1
+1072,Bangkok,organic,9,2,cod,completed,10,3,0,7526,474,1
+1073,Bangkok,organic,9,11,promptpay,completed,0,3,0,3686,464,0
+1074,Bangkok,ads,9,6,promptpay,completed,0,3,1,6256,469,0
+1075,Bangkok,referral,9,12,cod,completed,0,2,0,3297,463,0
+1076,Nakhon Ratchasima,organic,9,5,cod,completed,10,2,0,787,469,1
+1077,Bangkok,organic,9,12,promptpay,completed,0,1,0,999,462,1
+1078,Nakhon Ratchasima,organic,9,12,credit_card,completed,0,1,0,119,462,0
+1079,Bangkok,ads,9,11,cod,completed,0,4,1,3375,463,1
+1080,Chon Buri,organic,9,8,promptpay,completed,0,3,0,2647,466,1
+1082,Bangkok,organic,9,10,credit_card,completed,0,1,0,669,463,0
+1083,Bangkok,organic,9,13,cod,returned,0,1,0,849,460,1
+1084,Bangkok,organic,9,8,bank_transfer,completed,0,2,1,22747,465,1
+1085,Bangkok,organic,9,6,credit_card,completed,0,1,0,1129,467,1
+1086,Phuket,ads,9,2,promptpay,completed,0,3,0,6747,471,0
+1087,Khon Kaen,organic,9,0,credit_card,completed,0,1,0,219,472,1
+1088,Chiang Mai,organic,9,2,cod,completed,0,1,0,1059,470,0
+1089,Bangkok,referral,9,11,promptpay,completed,0,1,1,13239,461,1
+1090,Nakhon Ratchasima,organic,9,5,bank_transfer,completed,0,1,0,1329,467,1
+1091,Bangkok,ads,9,13,promptpay,completed,0,2,0,7407,459,1
+1092,Udon Thani,organic,9,4,promptpay,completed,0,1,0,219,468,1
+1093,Phuket,organic,9,11,promptpay,completed,0,2,0,5497,461,1
+1094,Chon Buri,organic,9,12,bank_transfer,completed,5,4,1,8236,460,0
+1096,Hat Yai,ads,9,14,cod,completed,0,1,0,879,457,1
+1097,Khon Kaen,referral,9,14,promptpay,completed,0,1,0,1329,457,0
+1098,Bangkok,organic,9,0,promptpay,completed,0,3,0,3487,471,1
+1101,Nakhon Ratchasima,organic,9,13,promptpay,completed,0,1,0,569,458,1
+1102,Nakhon Ratchasima,ads,9,10,promptpay,completed,5,1,0,2997,460,1
+1103,Bangkok,ads,9,8,promptpay,completed,0,1,0,429,462,1
+1105,Bangkok,organic,9,3,bank_transfer,completed,5,1,0,2397,467,0
+1106,Bangkok,referral,9,13,credit_card,completed,0,2,0,828,457,1
+1107,Khon Kaen,organic,9,7,cod,completed,0,1,0,4509,463,1
+1108,Phuket,ads,9,0,cod,completed,0,1,0,219,470,0
+1109,Bangkok,referral,9,6,promptpay,completed,0,2,0,2648,464,0
+1110,Bangkok,organic,9,12,promptpay,completed,0,1,0,1029,457,1
+1111,Chiang Mai,referral,9,2,promptpay,completed,0,1,1,3918,467,0
+1112,Udon Thani,ads,9,8,credit_card,completed,0,1,1,2847,461,0
+1113,Bangkok,ads,9,11,credit_card,completed,0,2,1,14248,458,0
+1114,Bangkok,ads,9,13,bank_transfer,returned,0,4,0,8494,455,0
+1115,Nakhon Ratchasima,referral,9,2,credit_card,completed,10,1,0,2779,466,1
+1116,Khon Kaen,organic,9,14,bank_transfer,completed,0,1,0,2538,453,1
+1117,Phuket,ads,9,5,cod,completed,0,3,1,5687,462,0
+1118,Chon Buri,organic,9,14,promptpay,completed,0,1,1,36878,453,1
+1120,Bangkok,ads,9,13,promptpay,cancelled,0,2,1,3477,454,1
+1121,Nakhon Ratchasima,ads,9,3,credit_card,completed,20,2,0,1687,464,1
+1122,Phuket,ads,9,5,promptpay,returned,0,1,0,769,462,1
+1123,Chiang Mai,ads,9,11,cod,completed,0,3,1,14607,456,1
+1124,Chiang Mai,organic,9,13,credit_card,completed,0,2,0,4356,453,1
+1125,Hat Yai,ads,9,14,credit_card,completed,0,3,1,20954,451,1
+1126,Bangkok,referral,9,1,cod,completed,0,1,0,1139,464,0
+1128,Nakhon Ratchasima,organic,9,8,promptpay,completed,0,1,0,409,456,1
+1129,Bangkok,ads,9,9,credit_card,completed,0,1,0,2799,455,0
+1130,Bangkok,organic,9,11,promptpay,completed,0,4,0,6025,452,1
+1131,Phuket,organic,9,12,cod,completed,0,1,0,509,451,1
+1133,Phuket,referral,9,14,credit_card,completed,10,3,0,16375,449,1
+1136,Nakhon Ratchasima,organic,9,8,promptpay,completed,15,2,0,1396,454,1
+1137,Hat Yai,ads,9,11,promptpay,completed,0,2,1,8877,451,1
+1141,Nakhon Ratchasima,ads,9,13,cod,completed,0,1,1,20069,449,1
+1142,Udon Thani,organic,9,7,promptpay,completed,5,2,1,10208,455,1
+1143,Bangkok,ads,9,9,promptpay,completed,0,2,0,3256,453,0
+1144,Bangkok,ads,9,14,promptpay,completed,0,4,1,20945,447,0
+1145,Bangkok,referral,9,3,credit_card,completed,20,1,0,1059,458,0
+1146,Bangkok,ads,9,14,promptpay,completed,15,1,0,2229,446,1
+1147,Phuket,ads,9,8,cod,completed,10,1,0,1309,452,1
+1149,Chon Buri,ads,9,5,promptpay,completed,0,1,0,3807,455,0
+1150,Bangkok,ads,9,10,promptpay,returned,0,1,0,769,449,0
+1152,Bangkok,organic,9,8,cod,completed,15,2,0,1678,451,1
+1153,Bangkok,referral,9,13,credit_card,completed,10,1,1,599,446,1
+1154,Nakhon Ratchasima,organic,9,10,promptpay,cancelled,0,2,1,3278,449,0
+1155,Bangkok,organic,9,3,promptpay,completed,0,3,0,7523,456,1
+1156,Phuket,ads,9,0,credit_card,completed,10,1,0,679,459,1
+1157,Chon Buri,organic,9,13,bank_transfer,completed,10,1,0,419,445,1
+1158,Bangkok,organic,9,13,promptpay,completed,0,3,1,2616,445,1
+1159,Chon Buri,organic,9,1,credit_card,completed,0,3,1,24666,456,1
+1160,Khon Kaen,organic,9,10,credit_card,completed,5,1,0,379,447,0
+1161,Udon Thani,ads,9,2,credit_card,returned,0,1,1,6139,455,1
+1162,Phuket,organic,10,4,cod,completed,0,1,1,1179,452,1
+1163,Khon Kaen,ads,10,3,credit_card,completed,0,1,0,399,453,0
+1164,Udon Thani,organic,10,9,credit_card,completed,0,1,0,2229,447,1
+1165,Bangkok,organic,10,8,credit_card,completed,5,3,0,3976,447,1
+1166,Bangkok,ads,10,0,credit_card,cancelled,0,2,0,2358,455,0
+1167,Bangkok,organic,10,5,promptpay,completed,0,1,0,109,450,1
+1168,Bangkok,referral,10,9,credit_card,completed,0,1,0,2337,445,1
+1169,Udon Thani,organic,10,6,cod,completed,5,2,0,1568,448,1
+1170,Bangkok,organic,10,4,promptpay,completed,0,1,0,1318,450,0
+1171,Hat Yai,organic,10,9,promptpay,completed,5,2,0,1748,444,0
+1172,Nakhon Ratchasima,ads,10,12,promptpay,completed,20,1,1,19558,441,1
+1173,Chon Buri,ads,10,8,credit_card,completed,0,1,0,2278,445,1
+1175,Bangkok,referral,10,13,bank_transfer,completed,0,1,0,11397,439,0
+1176,Khon Kaen,organic,10,1,promptpay,returned,10,3,1,18647,451,0
+1177,Nakhon Ratchasima,referral,10,1,credit_card,completed,10,1,0,6618,451,1
+1178,Bangkok,organic,10,13,credit_card,completed,10,1,0,2997,438,0
+1179,Chiang Mai,organic,10,5,promptpay,completed,5,4,1,20455,446,1
+1180,Udon Thani,ads,10,8,promptpay,completed,0,1,0,659,442,1
+1181,Phuket,ads,10,6,cod,completed,0,1,0,7598,444,1
+1182,Chon Buri,organic,10,2,credit_card,completed,0,2,1,14318,448,1
+1183,Bangkok,ads,10,5,credit_card,completed,0,1,0,859,445,1
+1184,Phuket,ads,10,8,promptpay,completed,5,2,0,2575,442,1
+1185,Bangkok,referral,10,1,promptpay,completed,0,1,0,889,448,0
+1186,Bangkok,ads,10,5,promptpay,completed,0,2,0,3778,444,1
+1187,Chon Buri,ads,10,1,cod,completed,0,1,1,1179,448,0
+1188,Phuket,organic,10,11,credit_card,completed,5,3,0,2496,438,1
+1190,Chiang Mai,organic,10,12,promptpay,completed,10,1,0,13527,437,0
+1191,Hat Yai,organic,10,2,bank_transfer,completed,0,1,0,2029,446,1
+1195,Nakhon Ratchasima,organic,10,4,bank_transfer,completed,20,1,0,849,443,0
+1196,Hat Yai,organic,10,13,credit_card,completed,0,1,0,2779,434,0
+1197,Bangkok,referral,10,2,cod,completed,0,2,1,17016,445,1
+1198,Khon Kaen,organic,10,7,credit_card,completed,5,3,0,3917,439,1
+1199,Chiang Mai,referral,10,12,credit_card,completed,0,1,0,1017,434,1
+1200,Bangkok,organic,10,11,promptpay,returned,0,1,1,5658,435,1
+1201,Bangkok,ads,10,9,bank_transfer,completed,10,1,0,1347,437,1
+1202,Chon Buri,organic,10,0,promptpay,returned,0,2,0,1456,446,0
+1203,Bangkok,ads,10,7,credit_card,completed,0,3,0,3017,439,0
+1205,Phuket,referral,10,8,credit_card,completed,0,1,0,569,437,0
+1206,Bangkok,organic,10,2,credit_card,completed,0,1,1,599,443,1
+1207,Chiang Mai,referral,10,9,credit_card,completed,0,2,0,4377,435,1
+1208,Udon Thani,organic,10,4,cod,completed,0,1,0,4738,440,0
+1210,Bangkok,referral,10,5,bank_transfer,completed,0,2,0,3107,439,0
+1211,Bangkok,referral,10,8,cod,completed,0,3,1,22416,435,0
+1212,Chiang Mai,organic,10,2,promptpay,completed,0,1,0,2779,441,0
+1213,Chon Buri,organic,10,6,promptpay,completed,0,1,0,1759,437,1
+1214,Hat Yai,ads,10,10,credit_card,completed,0,1,0,1329,433,0
+1215,Bangkok,referral,10,4,cod,completed,0,3,0,2336,439,1
+1216,Nakhon Ratchasima,ads,10,0,credit_card,completed,0,2,1,5318,443,1
+1217,Chiang Mai,organic,10,1,promptpay,completed,5,2,1,10098,442,0
+1220,Udon Thani,ads,10,2,credit_card,completed,0,2,0,1396,440,1
+1221,Hat Yai,organic,10,8,credit_card,completed,5,3,1,21787,434,0
+1222,Udon Thani,organic,10,12,credit_card,completed,0,2,1,7028,429,0
+1225,Chon Buri,organic,10,14,credit_card,completed,15,2,0,6827,426,1
+1226,Khon Kaen,ads,10,13,bank_transfer,completed,0,2,0,1118,427,0
+1227,Bangkok,referral,10,8,cod,cancelled,0,2,0,3418,431,0
+1228,Chiang Mai,ads,10,3,promptpay,completed,0,2,1,4018,436,1
+1229,Bangkok,ads,10,7,cod,completed,0,1,1,6139,432,1
+1230,Chiang Mai,ads,10,0,credit_card,completed,0,1,0,1049,439,1
+1231,Udon Thani,organic,10,13,promptpay,completed,0,1,0,4058,425,1
+1232,Khon Kaen,referral,10,11,credit_card,completed,0,2,0,2857,427,1
+1233,Bangkok,ads,10,14,credit_card,completed,10,1,0,5818,424,1
+1234,Phuket,ads,10,13,promptpay,completed,0,2,1,34597,424,1
+1236,Chiang Mai,referral,10,7,credit_card,completed,0,1,0,879,430,0
+1237,Bangkok,organic,10,0,bank_transfer,completed,0,2,1,4908,436,1
+1239,Bangkok,organic,10,13,credit_card,completed,0,1,0,339,423,0
+1240,Bangkok,organic,10,10,credit_card,completed,0,2,1,44476,426,1
+1242,Bangkok,ads,10,14,credit_card,completed,0,2,0,1577,422,1
+1243,Chon Buri,ads,10,1,promptpay,completed,5,2,0,2198,435,1
+1244,Nakhon Ratchasima,ads,10,5,credit_card,completed,0,1,0,1869,431,0
+1246,Udon Thani,ads,10,4,promptpay,completed,0,2,1,4488,432,1
+1247,Chiang Mai,referral,10,3,credit_card,completed,0,2,1,5707,433,0
+1248,Bangkok,ads,10,12,credit_card,completed,10,1,0,399,423,1
+1249,Hat Yai,organic,10,11,credit_card,completed,5,1,0,659,423,1
+1250,Chon Buri,organic,10,11,promptpay,completed,5,1,0,678,423,1
+1251,Nakhon Ratchasima,organic,10,4,promptpay,completed,10,3,0,3107,430,0
+1252,Khon Kaen,organic,10,10,credit_card,completed,0,2,1,15137,424,1
+1253,Phuket,organic,10,7,promptpay,completed,10,2,0,3478,426,1
+1254,Chiang Mai,organic,10,0,promptpay,completed,0,1,0,569,433,0
+1255,Khon Kaen,organic,10,12,promptpay,completed,10,1,0,889,421,1
+1256,Udon Thani,referral,10,4,promptpay,completed,0,1,0,238,428,1
+1257,Khon Kaen,referral,10,4,cod,completed,0,1,0,438,428,1
+1258,Nakhon Ratchasima,organic,10,2,credit_card,completed,0,2,0,3658,430,1
+1260,Bangkok,organic,10,1,promptpay,completed,0,3,0,1687,431,1
+1261,Nakhon Ratchasima,ads,10,13,credit_card,completed,0,1,0,3147,418,1
+1262,Bangkok,referral,10,8,promptpay,completed,0,1,0,189,423,1
+1264,Udon Thani,ads,10,3,promptpay,completed,5,1,0,3679,428,1
+1266,Nakhon Ratchasima,referral,10,3,cod,completed,0,2,1,1328,428,1
+1267,Bangkok,organic,10,13,promptpay,returned,15,1,0,509,418,1
+1268,Phuket,organic,10,3,promptpay,completed,0,1,1,3829,428,1
+1269,Nakhon Ratchasima,ads,10,11,promptpay,completed,0,1,0,1069,420,1
+1270,Chon Buri,referral,10,3,cod,completed,0,3,0,2295,428,0
+1271,Bangkok,ads,10,5,cod,completed,0,1,0,329,426,1
+1272,Chiang Mai,organic,10,2,promptpay,completed,0,1,0,3799,429,0
+1273,Bangkok,ads,10,13,credit_card,completed,0,3,1,3367,418,1
+1274,Hat Yai,organic,10,11,credit_card,completed,0,3,1,13835,420,1
+1275,Nakhon Ratchasima,ads,10,11,promptpay,completed,0,1,1,9779,419,1
+1276,Udon Thani,organic,10,3,promptpay,completed,0,1,1,1179,427,1
+1277,Nakhon Ratchasima,referral,10,4,promptpay,completed,0,3,0,1747,426,1
+1278,Chiang Mai,ads,10,3,credit_card,completed,0,2,1,2587,427,0
+1279,Phuket,organic,10,2,promptpay,completed,0,1,0,909,427,1
+1280,Nakhon Ratchasima,organic,10,10,credit_card,cancelled,10,3,1,14574,419,1
+1281,Bangkok,organic,10,8,bank_transfer,completed,0,1,0,1059,421,0
+1284,Bangkok,organic,10,14,credit_card,completed,5,1,0,549,414,1
+1285,Khon Kaen,referral,10,3,cod,completed,20,2,0,10486,425,1
+1287,Khon Kaen,organic,10,4,credit_card,completed,0,1,0,779,423,1
+1288,Udon Thani,organic,10,3,cod,completed,0,1,0,559,424,0
+1289,Bangkok,ads,10,1,credit_card,completed,0,1,1,13239,426,0
+1290,Bangkok,organic,10,5,credit_card,returned,5,3,1,40136,422,1
+1291,Chiang Mai,ads,10,6,promptpay,completed,10,2,1,1998,421,1
+1292,Bangkok,ads,10,2,cod,completed,0,1,0,329,425,0
+1294,Bangkok,organic,10,12,bank_transfer,completed,0,1,0,109,414,1
+1295,Bangkok,organic,10,1,credit_card,completed,0,1,0,569,425,1
+1296,Bangkok,organic,10,6,bank_transfer,completed,0,1,0,2779,420,1
+1297,Bangkok,organic,10,6,credit_card,completed,0,1,0,299,420,1
+1298,Chon Buri,organic,10,13,bank_transfer,completed,10,1,0,1079,413,1
+1299,Bangkok,ads,10,2,promptpay,completed,10,1,0,2779,424,1
+1300,Phuket,organic,11,3,promptpay,completed,0,1,0,109,422,1
+1301,Bangkok,ads,11,13,promptpay,completed,0,1,1,13239,412,1
+1302,Bangkok,ads,11,2,credit_card,completed,5,2,0,9467,423,0
+1303,Chon Buri,referral,11,0,promptpay,completed,0,2,0,2308,425,1
+1304,Phuket,organic,11,13,credit_card,completed,10,2,0,4708,412,1
+1307,Khon Kaen,ads,11,13,credit_card,completed,10,1,0,2109,411,0
+1308,Khon Kaen,organic,11,8,promptpay,completed,0,3,1,35033,416,1
+1309,Chiang Mai,organic,11,9,promptpay,completed,0,2,0,5408,415,1
+1311,Bangkok,ads,11,10,promptpay,completed,0,3,0,5177,413,1
+1312,Bangkok,ads,11,4,credit_card,completed,0,1,0,259,419,1
+1313,Bangkok,referral,11,9,credit_card,completed,0,1,0,2109,414,1
+1314,Khon Kaen,organic,11,12,promptpay,returned,10,1,0,429,411,0
+1315,Hat Yai,ads,11,10,credit_card,completed,0,2,0,2396,413,1
+1316,Bangkok,ads,11,3,promptpay,completed,0,2,0,1628,420,1
+1317,Nakhon Ratchasima,organic,11,1,credit_card,completed,0,3,1,8657,421,1
+1319,Bangkok,organic,11,8,credit_card,completed,5,3,0,4267,414,1
+1320,Bangkok,organic,11,3,credit_card,completed,0,1,0,1438,418,1
+1321,Bangkok,organic,11,4,promptpay,returned,0,2,0,858,417,1
+1322,Nakhon Ratchasima,organic,11,5,promptpay,completed,0,1,0,1759,416,1
+1323,Chon Buri,organic,11,12,promptpay,completed,0,1,1,3959,409,1
+1324,Bangkok,ads,11,7,bank_transfer,completed,0,1,0,379,413,1
+1325,Chiang Mai,ads,11,5,credit_card,completed,5,3,1,64625,415,1
+1326,Bangkok,ads,11,7,credit_card,completed,0,1,0,449,413,1
+1327,Hat Yai,organic,11,7,promptpay,completed,5,1,0,2898,412,1
+1329,Bangkok,ads,11,2,promptpay,completed,0,2,1,45896,417,0
+1330,Udon Thani,organic,11,14,cod,completed,0,1,0,849,405,1
+1331,Bangkok,organic,11,6,bank_transfer,completed,0,2,0,1518,413,1
+1332,Bangkok,organic,11,0,credit_card,completed,0,1,0,779,419,1
+1333,Bangkok,organic,11,7,credit_card,completed,15,1,0,858,411,1
+1334,Udon Thani,organic,11,11,promptpay,completed,20,2,1,2268,407,1
+1335,Bangkok,organic,11,11,credit_card,completed,0,2,0,5818,407,1
+1336,Udon Thani,organic,11,2,cod,completed,0,1,1,16419,415,1
+1337,Hat Yai,referral,11,11,cod,returned,10,2,1,14937,406,1
+1338,Chiang Mai,ads,11,1,promptpay,completed,0,1,0,769,416,1
+1339,Nakhon Ratchasima,organic,11,4,credit_card,cancelled,0,2,1,10597,413,1
+1342,Bangkok,ads,11,9,credit_card,completed,0,1,0,549,407,1
+1343,Nakhon Ratchasima,referral,11,10,promptpay,completed,0,1,0,458,406,0
+1344,Chiang Mai,ads,11,3,credit_card,completed,0,2,1,14598,413,1
+1345,Bangkok,ads,11,2,credit_card,completed,0,2,0,1057,414,1
+1346,Bangkok,referral,11,4,credit_card,completed,0,1,0,1949,412,1
+1348,Chiang Mai,organic,11,1,promptpay,completed,0,2,1,12777,415,0
+1349,Phuket,organic,11,11,credit_card,completed,0,1,0,999,404,0
+1350,Khon Kaen,organic,11,2,credit_card,completed,20,1,0,329,413,1
+1351,Bangkok,organic,11,7,credit_card,completed,10,1,0,1329,407,1
+1352,Chon Buri,organic,11,7,cod,completed,0,1,1,20069,407,1
+1353,Nakhon Ratchasima,organic,11,14,cod,completed,0,1,0,1759,400,0
+1354,Hat Yai,organic,11,13,promptpay,completed,0,1,0,849,401,1
+1356,Bangkok,referral,11,9,promptpay,completed,0,1,0,379,405,1
+1357,Bangkok,organic,11,0,credit_card,completed,0,2,1,7776,414,1
+1358,Udon Thani,organic,11,2,credit_card,completed,0,2,1,7668,411,0
+1359,Chiang Mai,organic,11,11,promptpay,completed,0,1,0,1759,402,1
+1360,Nakhon Ratchasima,ads,11,3,credit_card,completed,0,1,0,2278,410,1
+1361,Bangkok,ads,11,4,promptpay,completed,0,1,1,4069,409,0
+1362,Chon Buri,ads,11,3,promptpay,completed,0,2,0,6338,409,1
+1363,Khon Kaen,organic,11,9,bank_transfer,completed,0,3,0,4797,403,1
+1365,Bangkok,organic,11,2,bank_transfer,completed,0,2,1,2056,410,1
+1366,Nakhon Ratchasima,ads,11,11,credit_card,completed,0,1,0,438,400,1
+1367,Nakhon Ratchasima,ads,11,6,cod,completed,0,1,0,4509,405,0
+1368,Bangkok,ads,11,4,credit_card,completed,0,1,1,4069,407,1
+1370,Bangkok,organic,11,12,promptpay,completed,0,1,0,849,398,1
+1371,Bangkok,organic,11,2,promptpay,completed,5,2,0,1448,408,1
+1372,Phuket,organic,11,8,cod,completed,0,1,0,139,402,1
+1373,Nakhon Ratchasima,referral,11,10,credit_card,completed,0,1,0,859,400,1
+1374,Bangkok,ads,11,9,cod,completed,0,1,0,1118,401,1
+1375,Phuket,ads,11,5,promptpay,completed,0,1,0,1138,405,1
+1376,Nakhon Ratchasima,referral,11,1,bank_transfer,completed,0,1,0,1609,408,1
+1377,Nakhon Ratchasima,ads,11,0,promptpay,completed,0,2,0,338,409,1
+1378,Nakhon Ratchasima,organic,11,12,credit_card,completed,10,1,0,209,396,1
+1379,Khon Kaen,referral,11,11,promptpay,completed,20,3,1,17985,397,0
+1380,Bangkok,organic,11,11,bank_transfer,completed,0,1,0,858,397,1
+1381,Bangkok,organic,11,8,credit_card,completed,0,2,1,3607,400,1
+1383,Bangkok,organic,11,10,credit_card,completed,10,2,1,17587,398,1
+1384,Bangkok,ads,11,11,cod,completed,5,2,1,5938,396,1
+1385,Nakhon Ratchasima,organic,11,10,promptpay,completed,0,3,1,19806,397,1
+1386,Nakhon Ratchasima,ads,11,6,promptpay,completed,10,2,1,1737,401,1
+1387,Chiang Mai,organic,11,6,promptpay,completed,5,3,0,2807,401,1
+1388,Hat Yai,organic,11,7,promptpay,completed,0,1,0,569,400,1
+1389,Bangkok,ads,11,13,credit_card,completed,10,2,0,5718,394,0
+1390,Chon Buri,organic,11,11,bank_transfer,completed,0,2,0,2307,395,1
+1391,Chiang Mai,organic,11,11,credit_card,completed,0,2,0,2778,395,1
+1393,Nakhon Ratchasima,organic,11,11,cod,completed,0,2,1,8717,395,1
+1394,Hat Yai,organic,11,4,credit_card,completed,0,1,0,1269,402,1
+1395,Bangkok,organic,11,10,credit_card,completed,10,2,1,4788,396,1
+1396,Bangkok,ads,11,11,promptpay,completed,0,1,0,1129,394,1
+1397,Nakhon Ratchasima,organic,11,5,promptpay,completed,15,1,0,1758,400,1
+1398,Bangkok,organic,11,12,promptpay,completed,0,2,1,6107,393,0
+1400,Nakhon Ratchasima,organic,11,2,promptpay,completed,5,1,0,409,402,1
+1401,Bangkok,referral,11,9,cod,completed,0,3,0,1505,395,1
+1403,Phuket,ads,11,8,promptpay,completed,0,4,1,4706,396,1
+1404,Bangkok,organic,11,7,promptpay,completed,5,1,0,2909,397,1
+1405,Bangkok,organic,11,13,promptpay,completed,5,2,0,1517,391,1
+1407,Nakhon Ratchasima,organic,11,3,bank_transfer,returned,0,2,0,2018,400,1
+1408,Bangkok,organic,11,0,promptpay,completed,10,2,0,4636,403,1
+1409,Khon Kaen,ads,11,8,credit_card,completed,0,1,0,1118,395,1
+1410,Bangkok,organic,11,12,promptpay,completed,0,2,0,1567,391,1
+1411,Bangkok,ads,11,8,credit_card,completed,0,2,1,19317,395,1
+1412,Nakhon Ratchasima,referral,11,2,credit_card,completed,0,1,0,2007,401,1
+1413,Phuket,ads,11,7,promptpay,completed,10,2,1,7926,395,0
+1414,Chon Buri,organic,11,12,credit_card,completed,20,2,0,9547,390,1
+1415,Bangkok,ads,11,9,promptpay,completed,0,1,1,19558,393,1
+1416,Chon Buri,organic,11,14,promptpay,completed,0,1,0,1718,388,1
+1417,Chon Buri,ads,11,9,credit_card,completed,15,1,0,569,393,1
+1418,Bangkok,organic,11,1,promptpay,completed,0,2,0,2236,400,1
+1419,Phuket,ads,11,9,credit_card,completed,0,1,0,1278,391,1
+1420,Khon Kaen,referral,11,1,cod,completed,0,1,0,849,399,1
+1421,Bangkok,referral,11,2,credit_card,completed,0,2,0,2808,397,1
+1422,Bangkok,organic,11,4,credit_card,completed,0,1,0,2229,395,1
+1423,Hat Yai,ads,11,3,cod,completed,0,2,0,2836,395,0
+1424,Bangkok,ads,11,10,cod,cancelled,0,1,0,3939,388,1
+1425,Chiang Mai,organic,11,8,cod,completed,0,2,1,5857,390,1
+1426,Bangkok,ads,11,11,credit_card,completed,0,1,0,399,387,1
+1427,Bangkok,organic,11,2,promptpay,completed,0,2,1,4267,396,1
+1428,Chiang Mai,organic,11,10,cod,returned,0,1,1,1179,388,1
+1429,Udon Thani,organic,11,5,cod,completed,0,2,1,2708,393,1
+1431,Bangkok,ads,11,2,promptpay,completed,10,2,1,33917,395,1
+1433,Bangkok,ads,11,14,promptpay,completed,0,1,0,499,382,1
+1434,Udon Thani,organic,11,12,credit_card,completed,0,1,1,659,384,1
+1435,Chiang Mai,organic,11,3,credit_card,completed,0,1,1,16419,393,1
+1436,Chiang Mai,referral,11,5,promptpay,cancelled,20,1,0,1449,391,1
+1437,Bangkok,ads,11,6,credit_card,completed,0,3,1,23616,390,1
+1439,Chon Buri,referral,11,5,bank_transfer,completed,0,1,0,1029,391,1
+1440,Hat Yai,organic,12,14,credit_card,completed,0,3,1,20815,381,1
+1441,Chon Buri,organic,12,13,promptpay,completed,0,1,1,3279,382,1
+1442,Hat Yai,organic,12,2,cod,completed,0,1,0,1098,393,1
+1443,Bangkok,organic,12,7,bank_transfer,completed,0,2,1,17297,388,1
+1444,Chiang Mai,organic,12,9,cod,completed,10,1,1,3657,386,0
+1446,Udon Thani,ads,12,7,promptpay,completed,0,1,0,418,386,1
+1447,Bangkok,ads,12,12,credit_card,completed,15,1,0,189,381,1
+1448,Bangkok,organic,12,7,credit_card,completed,0,2,0,2136,386,1
+1451,Bangkok,referral,12,8,promptpay,returned,0,1,0,849,383,1
+1452,Bangkok,organic,12,4,bank_transfer,completed,0,1,0,1849,386,1
+1454,Bangkok,ads,12,0,promptpay,returned,0,3,0,9636,390,1
+1455,Bangkok,organic,12,4,promptpay,cancelled,5,2,1,14246,386,1
+1456,Bangkok,ads,12,12,credit_card,completed,10,4,1,28924,378,1
+1458,Bangkok,organic,12,11,credit_card,cancelled,0,2,0,1328,378,0
+1459,Nakhon Ratchasima,organic,12,14,promptpay,completed,20,2,0,2018,375,1
+1460,Nakhon Ratchasima,ads,12,8,promptpay,completed,0,2,0,1878,381,0
+1461,Udon Thani,organic,12,0,promptpay,cancelled,0,2,1,14266,389,1
+1462,Chon Buri,organic,12,14,credit_card,completed,10,2,0,1847,375,1
+1463,Bangkok,organic,12,10,promptpay,completed,0,1,0,339,378,1
+1464,Phuket,referral,12,1,promptpay,completed,0,4,0,2805,387,1
+1467,Bangkok,organic,12,10,credit_card,completed,0,1,0,2369,378,1
+1468,Bangkok,organic,12,10,credit_card,completed,5,2,1,8478,378,1
+1469,Bangkok,organic,12,3,bank_transfer,completed,5,2,0,2008,384,1
+1470,Hat Yai,referral,12,0,credit_card,completed,0,1,1,3279,387,1
+1471,Chon Buri,organic,12,1,cod,completed,0,3,0,5805,385,1
+1472,Khon Kaen,organic,12,7,promptpay,completed,0,1,0,139,379,0
+1473,Nakhon Ratchasima,organic,12,11,cod,completed,5,2,0,4206,375,1
+1474,Chiang Mai,organic,12,8,credit_card,returned,0,2,1,7837,378,1
+1475,Bangkok,organic,12,14,credit_card,completed,10,3,1,5367,372,1
+1476,Bangkok,organic,12,3,promptpay,completed,0,2,0,1828,382,1
+1477,Hat Yai,organic,12,7,credit_card,completed,20,1,1,579,378,1
+1478,Hat Yai,referral,12,1,promptpay,completed,0,2,1,19698,384,1
+1480,Nakhon Ratchasima,ads,12,3,credit_card,completed,0,1,0,379,382,1
+1482,Bangkok,ads,12,14,credit_card,cancelled,0,1,0,379,370,1
+1483,Chiang Mai,organic,12,9,credit_card,completed,0,1,0,657,375,1
+1484,Nakhon Ratchasima,ads,12,8,promptpay,completed,0,1,0,379,375,1
+1486,Bangkok,ads,12,2,bank_transfer,cancelled,15,1,0,259,381,1
+1487,Khon Kaen,ads,12,12,promptpay,completed,5,3,1,2147,371,1
+1489,Udon Thani,organic,12,8,cod,completed,15,1,0,1129,374,1
+1490,Bangkok,organic,12,2,bank_transfer,completed,0,2,0,4577,380,1
+1491,Chiang Mai,organic,12,1,promptpay,completed,0,3,1,3027,380,1
+1492,Bangkok,referral,12,5,credit_card,completed,0,2,1,5468,376,0
+1493,Bangkok,organic,12,7,credit_card,completed,0,1,0,1698,374,1
+1494,Chon Buri,organic,12,3,promptpay,returned,0,4,1,15826,378,1
+1495,Hat Yai,referral,12,9,promptpay,completed,0,2,1,4647,372,1
+1497,Nakhon Ratchasima,ads,12,8,promptpay,completed,15,1,0,12327,372,1
+1498,Udon Thani,ads,12,12,credit_card,cancelled,0,1,1,11319,368,0
+1499,Chiang Mai,organic,12,6,promptpay,completed,0,1,0,818,374,1
+1500,Bangkok,organic,12,1,credit_card,completed,15,1,0,4509,379,1
+1501,Khon Kaen,organic,12,4,credit_card,completed,0,2,1,3998,376,1
+1502,Udon Thani,organic,12,3,credit_card,completed,0,3,1,8655,377,1
+1503,Chiang Mai,ads,12,3,promptpay,completed,5,1,0,299,377,1
+1504,Bangkok,organic,12,5,credit_card,completed,5,1,0,339,374,1
+1506,Khon Kaen,referral,12,5,credit_card,completed,10,3,1,30975,374,1
+1507,Khon Kaen,organic,12,7,promptpay,completed,5,2,1,4848,372,1
+1508,Hat Yai,organic,12,11,credit_card,completed,0,1,0,2779,367,1
+1509,Nakhon Ratchasima,organic,12,0,promptpay,completed,0,2,0,2016,378,1
+1510,Bangkok,organic,12,5,credit_card,completed,0,2,0,1497,373,1
+1511,Chiang Mai,organic,12,4,promptpay,completed,0,1,0,569,373,0
+1512,Chiang Mai,organic,12,13,credit_card,completed,0,1,0,399,364,1
+1513,Chiang Mai,organic,12,11,promptpay,completed,0,1,1,3829,366,1
+1514,Bangkok,ads,12,8,cod,completed,5,3,1,14585,369,1
+1515,Chon Buri,ads,12,8,credit_card,completed,0,3,1,21077,369,1
+1516,Chiang Mai,referral,12,4,promptpay,completed,0,2,0,1258,373,1
+1517,Hat Yai,organic,12,6,credit_card,completed,20,1,0,379,370,1
+1519,Udon Thani,referral,12,7,credit_card,completed,10,2,0,3747,369,1
+1520,Bangkok,organic,12,3,promptpay,completed,5,4,0,2056,373,1
+1521,Bangkok,ads,12,3,promptpay,completed,15,2,1,22268,373,1
+1522,Phuket,referral,12,9,cod,completed,10,1,0,379,367,1
+1523,Chon Buri,organic,12,4,promptpay,completed,5,4,1,44376,371,1
+1524,Bangkok,referral,12,0,credit_card,completed,10,3,0,4487,375,1
+1525,Chon Buri,referral,12,1,promptpay,completed,0,1,0,1449,374,0
+1527,Khon Kaen,organic,12,3,credit_card,cancelled,0,2,0,4717,371,1
+1528,Bangkok,organic,12,3,promptpay,completed,0,3,0,5677,371,1
+1529,Nakhon Ratchasima,ads,12,13,promptpay,cancelled,0,1,0,2779,361,1
+1530,Bangkok,ads,12,14,promptpay,returned,0,3,1,20666,360,1
+1531,Chon Buri,organic,12,3,credit_card,completed,0,4,1,9466,370,1
+1532,Hat Yai,ads,12,9,credit_card,completed,0,4,1,34276,363,1
+1533,Nakhon Ratchasima,ads,12,14,promptpay,completed,15,3,1,4467,358,1
+1534,Bangkok,ads,12,13,cod,completed,0,1,0,509,359,1
+1535,Phuket,ads,12,10,credit_card,completed,15,1,0,259,361,0
+1536,Bangkok,referral,12,7,credit_card,completed,15,2,0,3636,364,0
+1537,Phuket,organic,12,7,credit_card,completed,0,1,0,769,364,0
+1538,Phuket,ads,12,3,credit_card,completed,0,1,0,299,367,1
+1539,Bangkok,ads,12,11,promptpay,cancelled,0,2,1,4677,359,1
+1540,Bangkok,ads,12,5,cod,returned,5,2,1,24147,365,1
+1541,Udon Thani,ads,12,5,promptpay,completed,0,2,0,1327,365,1
+1542,Bangkok,organic,12,3,bank_transfer,completed,20,1,0,1677,367,1
+1543,Bangkok,organic,12,5,promptpay,completed,0,1,1,16419,365,1
+1544,Khon Kaen,organic,12,14,promptpay,completed,10,1,0,379,356,0
+1545,Nakhon Ratchasima,ads,12,13,promptpay,completed,20,1,0,1449,357,1
+1546,Bangkok,ads,12,0,promptpay,completed,0,2,0,3828,369,0
+1547,Hat Yai,referral,12,10,credit_card,completed,0,2,1,17207,359,0
+1548,Bangkok,organic,12,10,promptpay,returned,0,3,1,17255,359,0
+1549,Nakhon Ratchasima,organic,12,0,bank_transfer,returned,0,2,0,1647,369,1
+1550,Bangkok,organic,12,0,credit_card,completed,0,2,0,1628,368,1
+1551,Khon Kaen,ads,12,9,cod,completed,0,3,1,2907,359,0
+1552,Khon Kaen,ads,12,11,cod,completed,15,3,0,8254,357,0
+1553,Bangkok,organic,12,14,credit_card,completed,0,1,0,319,354,1
+1554,Hat Yai,organic,12,7,cod,completed,0,1,0,1849,361,1
+1555,Bangkok,ads,12,6,cod,completed,0,2,1,2358,362,1
+1556,Khon Kaen,organic,12,7,promptpay,completed,0,3,0,2045,360,0
+1557,Chiang Mai,organic,12,8,credit_card,completed,5,1,0,1759,359,1
+1559,Phuket,organic,12,12,credit_card,completed,0,1,1,3959,354,1
+1560,Udon Thani,organic,12,6,promptpay,completed,15,1,0,2577,360,0
+1561,Bangkok,ads,12,0,credit_card,completed,0,2,1,14548,366,1
+1562,Khon Kaen,organic,12,4,credit_card,completed,0,3,1,22155,361,0
+1563,Khon Kaen,organic,12,2,bank_transfer,completed,15,1,1,1219,363,1
+1564,Udon Thani,organic,12,4,credit_card,completed,5,1,0,329,361,1
+1565,Udon Thani,ads,12,0,credit_card,cancelled,0,2,0,5207,365,0
+1566,Hat Yai,ads,12,2,promptpay,completed,10,3,1,6137,363,1
+1567,Hat Yai,organic,12,1,promptpay,cancelled,10,1,0,1558,364,1
+1568,Bangkok,organic,1,7,promptpay,completed,0,1,0,818,357,1
+1569,Udon Thani,organic,1,13,cod,completed,15,3,0,2526,351,1
+1570,Bangkok,organic,1,0,promptpay,completed,0,2,1,3637,364,1
+1571,Nakhon Ratchasima,organic,1,11,promptpay,completed,0,1,1,13239,353,0
+1572,Chon Buri,ads,1,13,credit_card,completed,0,2,0,4967,351,1
+1573,Hat Yai,ads,1,5,cod,completed,0,2,0,2927,358,1
+1574,Chon Buri,ads,1,6,promptpay,completed,0,2,1,2396,357,0
+1575,Bangkok,organic,1,9,promptpay,completed,0,3,0,4797,353,0
+1577,Khon Kaen,referral,1,2,credit_card,completed,0,1,1,659,359,0
+1578,Chon Buri,ads,1,2,promptpay,completed,0,2,1,8517,359,1
+1579,Bangkok,organic,1,12,promptpay,completed,0,1,0,409,348,0
+1580,Bangkok,referral,1,9,promptpay,completed,0,4,1,11904,351,1
+1581,Bangkok,ads,1,2,cod,completed,0,2,0,1498,358,1
+1582,Udon Thani,ads,1,5,promptpay,completed,0,1,0,199,355,0
+1583,Bangkok,organic,1,4,bank_transfer,returned,10,3,1,19076,356,1
+1584,Bangkok,organic,1,1,credit_card,completed,0,1,0,2098,359,0
+1585,Bangkok,ads,1,0,credit_card,cancelled,0,1,0,1018,359,0
+1586,Udon Thani,ads,1,10,promptpay,completed,0,1,1,31977,349,1
+1587,Nakhon Ratchasima,organic,1,11,promptpay,completed,0,1,0,349,348,0
+1588,Udon Thani,ads,1,8,cod,cancelled,0,1,0,139,351,0
+1589,Bangkok,organic,1,7,credit_card,completed,15,1,0,2157,352,1
+1590,Bangkok,organic,1,13,credit_card,completed,0,3,1,13576,345,1
+1591,Bangkok,referral,1,13,bank_transfer,completed,0,1,0,379,345,0
+1592,Phuket,ads,1,4,cod,completed,0,3,0,3346,354,1
+1593,Chon Buri,referral,1,4,credit_card,completed,0,1,0,1059,354,1
+1594,Bangkok,ads,1,12,credit_card,completed,0,1,1,1959,346,0
+1595,Hat Yai,ads,1,13,promptpay,completed,0,3,0,2937,345,1
+1596,Chon Buri,organic,1,8,promptpay,completed,0,1,1,3829,350,0
+1597,Bangkok,referral,1,11,promptpay,completed,0,1,0,2639,347,1
+1598,Bangkok,organic,1,4,bank_transfer,completed,0,1,1,9779,354,1
+1599,Chon Buri,organic,1,7,credit_card,completed,0,1,0,509,350,1
+1600,Bangkok,organic,1,1,promptpay,completed,0,1,0,1069,356,0
+1601,Nakhon Ratchasima,ads,1,3,credit_card,completed,0,2,1,12398,354,1
+1602,Nakhon Ratchasima,ads,1,12,bank_transfer,completed,5,2,1,19297,345,1
+1603,Chon Buri,referral,1,7,cod,completed,0,1,1,4838,349,1
+1604,Nakhon Ratchasima,referral,1,10,bank_transfer,completed,5,2,1,9617,346,0
+1605,Bangkok,referral,1,6,credit_card,completed,15,1,1,3709,350,1
+1606,Khon Kaen,organic,1,2,credit_card,completed,5,2,0,5698,354,1
+1607,Phuket,ads,1,10,promptpay,completed,15,1,0,329,346,0
+1609,Phuket,referral,1,11,bank_transfer,completed,0,2,0,3727,344,0
+1610,Udon Thani,ads,1,9,bank_transfer,completed,0,2,1,4598,346,0
+1611,Bangkok,organic,1,12,promptpay,completed,0,1,0,2109,343,1
+1612,Bangkok,organic,1,8,credit_card,completed,0,1,0,1029,347,1
+1613,Hat Yai,organic,1,7,cod,completed,15,1,0,1329,347,0
+1614,Bangkok,ads,1,2,bank_transfer,completed,5,2,0,1448,351,0
+1615,Chiang Mai,organic,1,12,promptpay,completed,0,1,0,259,341,0
+1616,Phuket,organic,1,0,credit_card,completed,5,1,0,219,353,1
+1617,Hat Yai,ads,1,2,bank_transfer,completed,5,1,0,259,351,1
+1618,Khon Kaen,organic,1,7,credit_card,completed,10,1,0,189,346,1
+1619,Bangkok,organic,1,10,promptpay,completed,15,3,0,3236,343,0
+1620,Hat Yai,ads,1,9,credit_card,completed,0,3,0,1906,343,0
+1621,Udon Thani,ads,1,2,cod,completed,20,1,1,11877,350,1
+1623,Bangkok,organic,1,14,cod,cancelled,5,1,0,5278,338,0
+1624,Chon Buri,ads,1,10,credit_card,cancelled,0,2,1,12995,342,0
+1625,Udon Thani,organic,1,8,credit_card,cancelled,5,1,0,8218,343,1
+1626,Phuket,organic,1,14,bank_transfer,completed,0,2,1,17628,337,1
+1628,Hat Yai,ads,1,4,credit_card,completed,10,1,0,2538,346,1
+1629,Udon Thani,organic,1,9,credit_card,completed,0,2,0,728,341,0
+1630,Bangkok,ads,1,11,promptpay,completed,0,1,0,1329,339,0
+1631,Bangkok,ads,1,11,cod,completed,5,2,0,1638,339,0
+1632,Chiang Mai,ads,1,2,credit_card,completed,0,3,0,5165,348,1
+1633,Khon Kaen,organic,1,3,bank_transfer,completed,0,1,0,1018,347,1
+1634,Bangkok,ads,1,9,promptpay,completed,0,2,1,4868,340,1
+1636,Chon Buri,organic,1,5,promptpay,completed,15,4,0,4985,344,1
+1637,Bangkok,organic,1,5,bank_transfer,completed,0,4,0,4554,344,1
+1638,Phuket,referral,1,0,credit_card,completed,0,1,0,219,349,0
+1639,Phuket,ads,1,3,credit_card,completed,0,1,0,329,345,1
+1640,Nakhon Ratchasima,organic,1,3,credit_card,completed,0,1,0,678,345,1
+1641,Bangkok,ads,1,11,promptpay,completed,0,1,0,409,337,1
+1642,Bangkok,referral,1,2,promptpay,returned,0,2,0,1008,346,1
+1644,Bangkok,organic,1,11,promptpay,completed,10,1,0,379,336,0
+1645,Chon Buri,organic,1,5,promptpay,completed,0,1,0,559,341,0
+1646,Chon Buri,organic,1,9,promptpay,completed,0,1,0,758,337,0
+1647,Bangkok,organic,1,7,promptpay,completed,0,1,0,1059,339,1
+1648,Bangkok,ads,1,14,credit_card,completed,5,1,1,27378,331,1
+1649,Bangkok,referral,1,12,promptpay,completed,0,1,0,399,333,1
+1650,Bangkok,ads,1,4,credit_card,completed,0,1,0,2037,341,1
+1652,Bangkok,organic,1,8,promptpay,completed,0,1,0,658,336,0
+1653,Chon Buri,ads,1,10,credit_card,completed,0,3,1,17746,334,0
+1654,Hat Yai,ads,1,7,promptpay,completed,0,1,0,1949,337,0
+1655,Chon Buri,organic,1,6,promptpay,completed,10,1,0,229,338,0
+1656,Udon Thani,ads,1,13,credit_card,completed,0,2,1,3586,331,0
+1657,Bangkok,ads,1,9,bank_transfer,cancelled,15,3,0,4455,334,1
+1658,Chiang Mai,organic,1,0,cod,completed,0,1,0,998,343,1
+1659,Phuket,organic,1,12,credit_card,completed,0,1,0,1069,331,0
+1660,Hat Yai,ads,1,12,promptpay,completed,0,2,0,1248,330,0
+1661,Phuket,organic,1,4,bank_transfer,completed,0,2,0,3108,338,1
+1662,Bangkok,organic,1,13,cod,completed,0,1,0,1079,329,1
+1663,Bangkok,ads,1,10,cod,completed,0,1,0,218,332,0
+1664,Chiang Mai,ads,1,12,promptpay,returned,0,3,1,41686,330,1
+1665,Bangkok,ads,1,3,credit_card,returned,0,1,0,3939,339,0
+1666,Bangkok,organic,1,8,promptpay,completed,0,2,0,708,334,1
+1667,Bangkok,ads,1,0,promptpay,completed,0,1,0,1269,342,1
+1669,Chiang Mai,organic,1,3,credit_card,completed,15,1,0,799,338,0
+1670,Bangkok,organic,1,12,promptpay,completed,0,4,1,5696,329,0
+1671,Bangkok,referral,1,8,credit_card,completed,0,2,0,1398,333,1
+1672,Bangkok,organic,1,5,cod,completed,0,3,1,23806,334,1
+1674,Udon Thani,organic,1,0,cod,cancelled,0,1,0,769,339,1
+1675,Bangkok,organic,1,7,promptpay,completed,0,1,0,4769,332,1
+1676,Khon Kaen,ads,1,6,promptpay,completed,5,1,1,18439,333,1
+1677,Bangkok,organic,1,0,promptpay,completed,0,3,0,2817,339,0
+1678,Udon Thani,organic,1,8,promptpay,completed,10,3,0,1557,331,1
+1679,Bangkok,ads,1,13,credit_card,completed,0,3,0,3397,325,1
+1680,Chon Buri,organic,1,14,credit_card,returned,10,2,0,4477,324,1
+1681,Phuket,organic,1,9,credit_card,completed,0,2,0,4117,329,0
+1682,Phuket,organic,1,14,promptpay,completed,0,2,1,3485,323,1
+1683,Bangkok,organic,1,1,credit_card,completed,10,3,1,5287,335,1
+1685,Bangkok,organic,1,13,credit_card,completed,5,1,0,409,322,1
+1686,Bangkok,ads,1,7,promptpay,completed,10,1,0,909,328,0
+1687,Chiang Mai,ads,1,13,promptpay,completed,15,2,1,14268,322,1
+1688,Nakhon Ratchasima,ads,1,4,credit_card,completed,0,1,0,769,330,1
+1689,Khon Kaen,organic,1,0,promptpay,completed,0,2,0,1658,334,0
+1690,Chiang Mai,organic,1,10,bank_transfer,completed,10,1,0,2547,324,1
+1691,Bangkok,ads,2,6,credit_card,completed,0,1,0,1249,327,1
+1692,Chiang Mai,organic,2,1,cod,completed,0,4,0,11475,332,1
+1693,Bangkok,referral,2,14,bank_transfer,completed,0,4,1,5264,319,1
+1694,Chiang Mai,organic,2,0,credit_card,completed,20,3,1,21407,333,1
+1695,Bangkok,ads,2,4,credit_card,completed,0,1,1,1219,329,0
+1696,Bangkok,organic,2,9,promptpay,completed,0,1,0,349,324,1
+1697,Bangkok,ads,2,6,promptpay,completed,0,1,0,1249,327,0
+1698,Chiang Mai,ads,2,4,promptpay,completed,0,4,1,3324,328,0
+1699,Nakhon Ratchasima,ads,2,4,credit_card,completed,0,3,0,5656,328,0
+1700,Bangkok,ads,2,13,promptpay,completed,10,2,1,10208,319,1
+1701,Chon Buri,referral,2,5,promptpay,completed,10,3,1,10316,327,1
+1702,Bangkok,organic,2,4,credit_card,completed,5,1,0,249,327,0
+1703,Hat Yai,ads,2,12,credit_card,completed,0,1,1,3709,319,1
+1704,Hat Yai,ads,2,2,credit_card,completed,0,1,0,1079,329,1
+1705,Phuket,organic,2,9,cod,completed,0,1,1,579,322,1
+1706,Nakhon Ratchasima,ads,2,5,promptpay,completed,0,3,0,957,326,0
+1707,Phuket,organic,2,5,credit_card,completed,0,2,1,3368,325,1
+1708,Bangkok,ads,2,4,promptpay,completed,0,3,1,2845,326,1
+1709,Bangkok,organic,2,13,promptpay,completed,10,1,0,1049,316,1
+1710,Bangkok,referral,2,10,credit_card,completed,0,1,1,659,319,1
+1711,Bangkok,organic,2,9,credit_card,completed,10,1,0,449,320,1
+1712,Bangkok,organic,2,12,bank_transfer,completed,0,1,0,259,317,0
+1713,Bangkok,ads,2,6,promptpay,completed,0,3,1,3455,323,0
+1714,Bangkok,referral,2,10,credit_card,cancelled,15,2,1,15798,318,0
+1715,Chiang Mai,organic,2,4,promptpay,completed,0,1,0,1759,324,1
+1716,Khon Kaen,organic,2,6,credit_card,cancelled,0,2,0,2018,322,1
+1717,Bangkok,organic,2,13,cod,completed,10,2,0,2128,315,1
+1718,Khon Kaen,organic,2,13,credit_card,completed,0,1,0,1197,315,0
+1719,Bangkok,ads,2,1,credit_card,completed,0,1,1,1279,327,0
+1720,Chon Buri,ads,2,4,bank_transfer,completed,0,2,1,22957,324,0
+1722,Khon Kaen,organic,2,8,promptpay,completed,0,1,0,1129,319,1
+1723,Bangkok,organic,2,1,cod,completed,5,1,0,1609,326,0
+1724,Bangkok,organic,2,14,promptpay,completed,0,2,0,3758,313,1
+1725,Udon Thani,organic,2,0,credit_card,completed,0,2,0,5688,327,1
+1726,Bangkok,organic,2,1,credit_card,completed,0,3,1,20027,326,1
+1727,Chiang Mai,ads,2,13,promptpay,completed,0,2,0,1038,314,1
+1728,Bangkok,ads,2,7,bank_transfer,completed,0,1,0,719,320,1
+1729,Bangkok,referral,2,1,cod,completed,0,1,1,949,325,1
+1730,Khon Kaen,referral,2,4,promptpay,completed,0,1,0,6687,322,0
+1731,Chiang Mai,ads,2,9,credit_card,completed,5,2,0,2088,317,0
+1732,Nakhon Ratchasima,organic,2,13,promptpay,returned,0,2,0,3088,313,0
+1733,Khon Kaen,organic,2,2,credit_card,completed,0,3,0,1187,323,1
+1734,Bangkok,ads,2,8,credit_card,completed,5,2,1,11837,317,1
+1735,Phuket,ads,2,7,credit_card,completed,10,1,0,399,317,1
+1736,Phuket,referral,2,1,credit_card,cancelled,0,2,0,2878,323,1
+1737,Bangkok,ads,2,7,credit_card,completed,0,1,0,3309,317,0
+1738,Phuket,organic,2,14,promptpay,completed,0,1,0,909,310,1
+1739,Phuket,organic,2,6,promptpay,completed,5,1,0,2229,317,1
+1741,Nakhon Ratchasima,ads,2,8,promptpay,completed,0,1,0,859,315,1
+1742,Nakhon Ratchasima,organic,2,12,promptpay,completed,0,1,1,3829,310,1
+1743,Bangkok,organic,2,14,promptpay,completed,0,2,0,1298,308,0
+1744,Bangkok,organic,2,2,promptpay,completed,5,3,0,5987,320,1
+1746,Chiang Mai,referral,2,0,promptpay,completed,0,2,0,1898,322,1
+1747,Bangkok,ads,2,14,promptpay,completed,0,2,0,5046,307,1
+1748,Bangkok,organic,2,9,credit_card,completed,0,2,0,2007,312,0
+1749,Bangkok,organic,2,4,credit_card,completed,0,1,0,919,317,0
+1752,Bangkok,referral,2,1,promptpay,completed,0,1,0,4509,319,1
+1753,Khon Kaen,organic,2,10,promptpay,completed,0,1,1,2558,310,0
+1754,Bangkok,organic,2,9,promptpay,cancelled,0,4,0,11876,311,1
+1755,Udon Thani,referral,2,2,promptpay,completed,0,2,0,2358,318,1
+1756,Nakhon Ratchasima,ads,2,1,promptpay,completed,15,2,0,908,318,1
+1757,Bangkok,organic,2,6,credit_card,completed,10,2,0,3436,313,1
+1759,Bangkok,ads,2,14,cod,completed,5,3,1,18947,305,0
+1760,Bangkok,organic,2,10,credit_card,completed,0,2,0,1658,309,1
+1761,Bangkok,organic,2,8,credit_card,completed,10,1,0,1049,310,1
+1762,Bangkok,organic,2,9,credit_card,completed,0,1,0,1318,309,0
+1763,Phuket,organic,2,2,promptpay,completed,0,1,0,1449,316,0
+1764,Nakhon Ratchasima,organic,2,11,credit_card,completed,0,2,0,1308,307,0
+1765,Nakhon Ratchasima,ads,2,13,cod,completed,5,1,0,638,304,1
+1766,Bangkok,ads,2,5,promptpay,completed,0,2,0,1937,312,1
+1767,Bangkok,referral,2,6,credit_card,completed,0,4,1,17865,311,1
+1768,Bangkok,ads,2,8,cod,completed,0,2,1,5138,309,1
+1769,Phuket,ads,2,13,promptpay,cancelled,0,2,0,5317,303,1
+1770,Bangkok,organic,2,7,promptpay,completed,0,1,0,849,309,0
+1771,Chiang Mai,referral,2,6,credit_card,completed,0,3,0,6046,310,0
+1772,Bangkok,organic,2,10,bank_transfer,completed,0,1,1,18439,305,0
+1773,Chon Buri,ads,2,11,credit_card,cancelled,0,3,0,1746,304,1
+1774,Phuket,organic,2,6,promptpay,completed,10,1,1,1797,309,1
+1775,Khon Kaen,ads,2,12,promptpay,completed,0,2,1,1158,303,0
+1776,Nakhon Ratchasima,ads,2,12,credit_card,completed,15,1,0,769,303,1
+1777,Bangkok,referral,2,10,credit_card,completed,0,1,0,458,304,1
+1779,Bangkok,organic,2,12,promptpay,completed,0,1,0,559,301,0
+1780,Chiang Mai,organic,2,5,bank_transfer,completed,0,2,0,1798,308,1
+1781,Chon Buri,organic,2,1,promptpay,completed,15,2,0,3758,312,0
+1782,Chiang Mai,ads,2,4,credit_card,completed,0,1,0,719,308,0
+1783,Chon Buri,organic,2,7,cod,completed,0,3,1,7747,305,0
+1784,Chon Buri,ads,2,8,promptpay,completed,0,3,0,3686,304,1
+1785,Chiang Mai,organic,2,10,cod,returned,15,1,0,379,302,0
+1786,Khon Kaen,ads,2,8,promptpay,completed,0,3,1,12756,303,0
+1787,Bangkok,organic,2,2,promptpay,completed,0,4,0,7926,309,1
+1788,Phuket,organic,2,2,promptpay,completed,0,1,0,1139,309,1
+1789,Chiang Mai,organic,2,11,cod,completed,0,1,0,569,300,1
+1790,Hat Yai,organic,2,9,credit_card,completed,0,3,0,5077,302,0
+1791,Bangkok,ads,2,0,credit_card,completed,0,1,0,798,311,1
+1792,Chiang Mai,organic,2,5,promptpay,completed,0,2,1,2608,305,1
+1793,Chiang Mai,organic,2,9,promptpay,completed,0,3,0,10894,301,0
+1794,Chon Buri,ads,2,3,bank_transfer,completed,0,1,1,2419,307,1
+1795,Nakhon Ratchasima,ads,2,7,credit_card,cancelled,15,1,0,2037,303,1
+1797,Bangkok,referral,2,10,promptpay,completed,0,1,0,3747,300,1
+1798,Bangkok,organic,2,14,promptpay,completed,0,1,0,1079,296,0
+1799,Phuket,organic,2,10,promptpay,completed,10,1,1,10659,299,1
+1800,Bangkok,ads,2,9,credit_card,completed,0,1,0,2098,300,1
+1801,Bangkok,ads,2,13,credit_card,completed,0,1,0,199,296,1
+1802,Chon Buri,referral,2,13,cod,completed,0,1,0,5558,296,1
+1803,Udon Thani,referral,2,0,cod,completed,0,1,1,659,309,1
+1804,Hat Yai,ads,2,0,credit_card,completed,20,2,0,1318,309,1
+1805,Chiang Mai,organic,2,7,cod,completed,10,1,0,6618,302,1
+1806,Nakhon Ratchasima,organic,2,9,cod,completed,0,4,0,13943,299,0
+1807,Bangkok,ads,2,7,promptpay,completed,10,2,0,2548,299,0
+1808,Bangkok,organic,2,4,credit_card,completed,0,1,1,1179,302,1
+1809,Bangkok,organic,2,10,credit_card,completed,0,1,0,229,296,1
+1810,Udon Thani,ads,3,7,credit_card,completed,0,3,1,6056,298,1
+1811,Chiang Mai,ads,3,13,promptpay,completed,0,1,0,1079,292,1
+1812,Bangkok,organic,3,13,promptpay,completed,0,2,1,3267,292,1
+1813,Bangkok,ads,3,7,promptpay,completed,10,2,0,2108,297,1
+1814,Bangkok,organic,3,11,promptpay,completed,0,2,0,10867,293,0
+1815,Nakhon Ratchasima,organic,3,2,credit_card,completed,5,2,1,10637,301,1
+1816,Bangkok,ads,3,11,cod,completed,0,1,0,659,292,1
+1817,Bangkok,ads,3,8,promptpay,completed,0,2,0,2438,295,0
+1819,Udon Thani,organic,3,0,bank_transfer,completed,0,1,0,889,302,1
+1820,Udon Thani,referral,3,0,credit_card,completed,0,3,1,3767,302,1
+1821,Chon Buri,ads,3,12,promptpay,completed,0,1,0,2909,290,1
+1822,Bangkok,organic,3,8,cod,completed,0,1,1,3279,293,1
+1823,Phuket,organic,3,4,promptpay,completed,0,1,0,479,297,1
+1824,Nakhon Ratchasima,organic,3,4,credit_card,completed,0,3,1,24777,297,1
+1825,Hat Yai,ads,3,11,promptpay,completed,10,4,1,32525,290,1
+1826,Phuket,ads,3,9,credit_card,completed,10,1,1,27378,292,0
+1828,Udon Thani,referral,3,4,credit_card,completed,0,1,0,339,296,0
+1829,Bangkok,organic,3,7,cod,completed,5,1,1,1158,292,1
+1830,Chiang Mai,organic,3,3,promptpay,completed,0,1,0,2138,296,1
+1831,Chon Buri,ads,3,7,cod,completed,15,4,1,13414,292,0
+1832,Bangkok,organic,3,4,credit_card,completed,0,2,0,2037,295,1
+1833,Nakhon Ratchasima,organic,3,6,credit_card,completed,0,1,0,218,292,0
+1834,Bangkok,organic,3,11,credit_card,completed,0,1,0,329,287,1
+1835,Nakhon Ratchasima,organic,3,3,promptpay,completed,0,3,1,20686,295,0
+1836,Phuket,organic,3,6,promptpay,completed,0,3,0,1974,292,1
+1837,Bangkok,referral,3,6,credit_card,completed,0,1,0,1759,292,1
+1838,Bangkok,referral,3,7,promptpay,completed,5,1,0,438,290,0
+1839,Khon Kaen,organic,3,12,bank_transfer,completed,0,2,0,4117,285,1
+1841,Chiang Mai,ads,3,4,promptpay,completed,10,3,0,7426,293,0
+1842,Phuket,referral,3,9,promptpay,completed,5,1,0,1049,288,0
+1843,Bangkok,organic,3,1,credit_card,completed,0,2,0,1798,296,1
+1844,Bangkok,organic,3,10,cod,completed,0,1,0,1849,285,0
+1845,Chon Buri,organic,3,8,cod,completed,5,3,1,10837,287,1
+1846,Bangkok,organic,3,3,cod,completed,0,1,0,3939,292,0
+1847,Hat Yai,organic,3,10,promptpay,completed,0,1,0,3237,285,0
+1849,Bangkok,organic,3,9,bank_transfer,cancelled,0,2,1,26116,285,0
+1850,Hat Yai,ads,3,5,promptpay,completed,5,2,1,1628,289,1
+1851,Udon Thani,ads,3,5,promptpay,completed,0,1,0,559,289,0
+1852,Chiang Mai,organic,3,4,promptpay,completed,0,4,1,35644,289,0
+1853,Udon Thani,organic,3,6,promptpay,completed,0,3,1,3867,287,1
+1854,Nakhon Ratchasima,referral,3,10,cod,completed,0,3,1,21316,283,1
+1855,Udon Thani,referral,3,0,cod,completed,0,1,1,2829,293,0
+1856,Nakhon Ratchasima,referral,3,7,credit_card,completed,0,1,0,639,286,0
+1857,Khon Kaen,ads,3,7,promptpay,completed,0,3,0,2895,285,0
+1859,Khon Kaen,ads,3,10,cod,completed,20,2,0,1377,282,1
+1860,Chiang Mai,ads,3,7,promptpay,completed,0,2,0,2477,285,0
+1862,Nakhon Ratchasima,referral,3,13,promptpay,completed,0,2,1,4678,279,1
+1863,Chiang Mai,organic,3,3,cod,completed,5,1,1,4069,289,1
+1864,Khon Kaen,ads,3,8,promptpay,completed,0,1,0,1029,283,1
+1865,Bangkok,organic,3,3,credit_card,completed,0,1,1,6139,287,1
+1866,Hat Yai,ads,3,13,credit_card,completed,0,1,0,1527,277,0
+1867,Bangkok,referral,3,7,promptpay,completed,0,3,1,3747,283,1
+1869,Khon Kaen,ads,3,12,promptpay,completed,15,2,0,1988,277,1
+1870,Udon Thani,organic,3,5,promptpay,completed,5,4,0,17774,284,1
+1871,Udon Thani,ads,3,14,promptpay,completed,0,3,0,7236,275,0
+1874,Bangkok,organic,3,14,promptpay,completed,0,3,1,3135,274,0
+1875,Bangkok,ads,3,2,promptpay,completed,15,3,1,14707,286,0
+1876,Udon Thani,organic,3,2,cod,completed,0,2,1,13908,286,0
+1877,Bangkok,referral,3,10,promptpay,completed,0,1,0,1849,278,0
+1878,Phuket,ads,3,9,cod,completed,0,3,0,2186,279,1
+1879,Bangkok,organic,3,1,credit_card,completed,0,1,0,1269,286,0
+1880,Khon Kaen,ads,3,13,credit_card,completed,0,4,0,2435,274,0
+1881,Chon Buri,ads,3,4,bank_transfer,completed,5,2,1,20398,283,1
+1882,Chon Buri,referral,3,4,credit_card,completed,0,3,1,24567,283,1
+1883,Chon Buri,organic,3,13,credit_card,completed,0,1,0,219,273,0
+1884,Udon Thani,organic,3,11,credit_card,completed,0,1,1,3829,275,0
+1885,Bangkok,ads,3,2,cod,completed,0,2,0,4017,284,1
+1886,Bangkok,referral,3,7,promptpay,cancelled,0,1,0,3939,279,1
+1889,Bangkok,ads,3,2,cod,cancelled,5,2,1,18116,283,1
+1890,Nakhon Ratchasima,organic,3,4,promptpay,completed,0,2,0,1956,280,1
+1891,Nakhon Ratchasima,referral,3,5,credit_card,completed,0,4,0,4705,279,1
+1893,Bangkok,referral,3,1,cod,completed,0,3,1,14455,282,1
+1894,Bangkok,referral,3,9,promptpay,completed,0,3,1,14294,274,1
+1895,Nakhon Ratchasima,organic,3,12,cod,completed,0,2,0,1407,271,1
+1896,Phuket,referral,3,6,promptpay,completed,0,1,0,2639,276,0
+1897,Chon Buri,ads,3,10,credit_card,completed,5,1,0,1269,272,0
+1898,Chon Buri,organic,3,14,promptpay,completed,0,1,0,139,268,0
+1899,Phuket,organic,3,4,credit_card,completed,10,1,0,199,278,1
+1902,Udon Thani,ads,3,8,promptpay,completed,0,1,0,339,272,1
+1903,Bangkok,organic,3,3,promptpay,completed,0,2,0,1557,277,0
+1904,Hat Yai,ads,3,1,promptpay,completed,0,1,0,659,279,0
+1905,Chon Buri,organic,3,14,promptpay,completed,10,1,0,299,265,1
+1906,Udon Thani,referral,3,8,cod,completed,0,1,0,659,271,1
+1907,Chon Buri,organic,3,10,cod,completed,0,1,0,7358,269,1
+1908,Nakhon Ratchasima,ads,3,9,credit_card,completed,20,1,0,209,270,0
+1909,Phuket,organic,3,14,credit_card,completed,0,2,1,2768,265,0
+1911,Hat Yai,organic,3,10,credit_card,cancelled,0,1,0,1718,268,1
+1913,Bangkok,ads,3,0,cod,completed,0,1,0,669,278,1
+1914,Hat Yai,organic,3,9,cod,completed,5,2,0,617,268,1
+1915,Khon Kaen,ads,3,7,cod,completed,0,1,1,659,270,1
+1917,Chiang Mai,ads,3,13,credit_card,cancelled,0,2,0,3107,264,1
+1918,Chiang Mai,organic,3,0,cod,completed,5,1,0,659,277,0
+1919,Bangkok,organic,3,5,credit_card,completed,0,1,1,949,272,1
+1920,Chon Buri,organic,3,8,promptpay,completed,0,1,0,2779,269,1
+1921,Chiang Mai,ads,3,5,credit_card,completed,0,2,0,1088,272,0
+1922,Phuket,organic,3,7,promptpay,completed,0,1,0,1129,270,0
+1924,Bangkok,organic,3,4,promptpay,completed,5,3,0,5377,272,0
+1925,Chiang Mai,organic,3,12,bank_transfer,completed,10,1,0,1079,264,1
+1926,Chiang Mai,organic,3,11,promptpay,returned,0,2,0,2338,265,1
+1927,Bangkok,ads,3,10,cod,completed,0,1,0,659,265,0
+1928,Chon Buri,referral,3,14,credit_card,completed,15,1,1,33807,261,0
+1932,Nakhon Ratchasima,organic,4,8,bank_transfer,completed,0,1,0,319,266,1
+1933,Udon Thani,ads,4,9,bank_transfer,completed,0,2,0,1017,265,1
+1934,Chon Buri,organic,4,0,credit_card,completed,0,1,1,2829,274,1
+1935,Bangkok,organic,4,0,credit_card,completed,0,2,0,1798,273,0
+1936,Bangkok,referral,4,5,bank_transfer,completed,15,1,0,2109,268,0
+1937,Nakhon Ratchasima,organic,4,10,bank_transfer,completed,0,2,0,3368,263,1
+1938,Bangkok,ads,4,12,credit_card,completed,0,1,1,13689,261,1
+1939,Phuket,organic,4,5,promptpay,completed,0,2,0,4027,268,1
+1941,Nakhon Ratchasima,organic,4,9,cod,completed,0,2,1,9087,264,1
+1942,Bangkok,ads,4,4,cod,completed,0,3,0,11276,269,0
+1943,Udon Thani,ads,4,8,promptpay,returned,0,3,0,3584,264,0
+1944,Chiang Mai,referral,4,3,credit_card,completed,5,1,0,779,269,0
+1945,Nakhon Ratchasima,referral,4,10,credit_card,completed,10,2,0,1738,262,1
+1946,Chiang Mai,referral,4,2,promptpay,completed,0,2,0,1517,270,1
+1947,Bangkok,organic,4,3,credit_card,completed,0,2,1,40907,269,0
+1948,Phuket,organic,4,0,bank_transfer,completed,0,1,0,2909,271,1
+1949,Bangkok,ads,4,2,promptpay,completed,0,3,1,22996,269,1
+1950,Bangkok,organic,4,6,cod,completed,5,1,0,1759,265,1
+1953,Bangkok,organic,4,4,bank_transfer,completed,0,1,0,1849,265,0
+1954,Bangkok,ads,4,14,promptpay,completed,5,1,0,758,255,0
+1955,Bangkok,organic,4,8,credit_card,completed,10,1,0,2118,261,1
+1956,Bangkok,organic,4,1,credit_card,completed,0,1,0,559,268,1
+1958,Bangkok,organic,4,0,credit_card,completed,0,1,0,889,269,1
+1959,Khon Kaen,ads,4,1,promptpay,completed,0,2,1,13138,267,0
+1960,Bangkok,ads,4,10,credit_card,completed,0,1,0,479,258,0
+1961,Khon Kaen,referral,4,5,cod,completed,0,2,1,6916,262,1
+1962,Chon Buri,referral,4,7,promptpay,completed,0,2,1,10778,260,1
+1963,Khon Kaen,organic,4,7,credit_card,completed,15,1,0,1139,260,1
+1964,Chiang Mai,ads,4,6,promptpay,completed,0,3,1,12904,261,1
+1965,Udon Thani,organic,4,5,credit_card,completed,15,1,1,2829,261,1
+1966,Udon Thani,referral,4,1,promptpay,completed,0,1,0,1609,265,0
+1968,Bangkok,ads,4,1,credit_card,completed,0,1,0,349,265,1
+1969,Bangkok,ads,4,10,credit_card,completed,0,1,0,379,256,1
+1970,Phuket,referral,4,6,promptpay,completed,0,1,1,18439,259,1
+1971,Khon Kaen,organic,4,3,credit_card,completed,0,1,0,9018,262,1
+1972,Bangkok,organic,4,0,cod,completed,0,2,1,5917,265,0
+1973,Chiang Mai,organic,4,10,credit_card,completed,0,1,0,1647,255,0
+1974,Phuket,organic,4,10,credit_card,completed,0,1,1,2419,255,0
+1975,Chiang Mai,organic,4,3,credit_card,completed,0,4,1,8295,262,1
+1976,Bangkok,organic,4,7,credit_card,completed,15,4,1,4034,257,1
+1977,Bangkok,ads,4,9,bank_transfer,completed,0,4,1,6695,255,0
+1978,Udon Thani,organic,4,8,cod,completed,0,3,0,2537,256,0
+1980,Bangkok,ads,4,7,credit_card,completed,0,2,1,7498,257,1
+1981,Nakhon Ratchasima,organic,4,6,credit_card,returned,10,1,1,599,258,0
+1982,Khon Kaen,organic,4,2,promptpay,completed,10,3,1,21606,262,0
+1983,Hat Yai,ads,4,10,credit_card,cancelled,5,2,0,2936,253,0
+1985,Bangkok,organic,4,12,credit_card,completed,10,1,1,10659,250,1
+1986,Hat Yai,referral,4,1,credit_card,completed,5,1,0,889,261,1
+1987,Nakhon Ratchasima,ads,4,14,credit_card,completed,0,1,0,769,247,0
+1988,Phuket,ads,4,14,promptpay,completed,0,1,0,479,247,0
+1989,Khon Kaen,ads,4,5,credit_card,completed,5,1,0,299,256,0
+1991,Bangkok,referral,4,2,bank_transfer,completed,0,1,1,599,258,1
+1992,Bangkok,organic,4,12,credit_card,completed,20,2,0,2248,248,1
+1993,Bangkok,referral,4,9,credit_card,cancelled,0,1,0,879,250,1
+1994,Bangkok,ads,4,7,promptpay,completed,0,1,1,13689,252,0
+1995,Chiang Mai,organic,4,1,promptpay,completed,0,2,1,16558,258,0
+1996,Phuket,ads,4,4,promptpay,completed,0,2,0,8937,255,1
+2000,Chiang Mai,ads,4,0,credit_card,completed,5,1,0,1069,257,1
+2001,Hat Yai,ads,4,7,promptpay,completed,0,2,0,1027,249,0
+2002,Chiang Mai,organic,4,0,bank_transfer,completed,0,2,0,718,256,1
+2003,Nakhon Ratchasima,organic,4,12,promptpay,completed,0,2,0,4308,244,0
+2004,Hat Yai,organic,4,8,promptpay,completed,15,1,1,1219,248,0
+2005,Khon Kaen,referral,4,10,bank_transfer,completed,0,4,1,14406,245,0
+2006,Nakhon Ratchasima,organic,4,4,credit_card,completed,0,1,0,1309,251,0
+2007,Nakhon Ratchasima,referral,4,1,credit_card,completed,15,1,0,3309,254,0
+2008,Bangkok,organic,4,2,promptpay,completed,0,1,0,1069,252,1
+2009,Bangkok,ads,4,12,promptpay,completed,0,1,0,1329,242,1
+2010,Nakhon Ratchasima,organic,4,7,bank_transfer,completed,0,2,1,22978,247,0
+2011,Phuket,referral,4,2,promptpay,completed,0,4,1,18036,252,1
+2012,Chiang Mai,ads,4,6,credit_card,returned,5,1,0,119,248,0
+2013,Hat Yai,referral,4,9,credit_card,completed,0,2,1,2818,245,1
+2014,Phuket,organic,4,7,promptpay,completed,15,3,1,7175,246,1
+2015,Bangkok,ads,4,4,promptpay,completed,0,3,1,5626,249,1
+2016,Bangkok,organic,4,3,credit_card,cancelled,0,3,1,3586,250,1
+2017,Bangkok,ads,4,11,credit_card,completed,0,1,1,2419,242,1
+2018,Udon Thani,organic,4,12,promptpay,returned,10,1,0,189,241,1
+2020,Bangkok,organic,4,11,credit_card,completed,0,1,0,849,241,1
+2021,Bangkok,referral,4,12,credit_card,returned,5,1,0,349,240,1
+2022,Udon Thani,organic,4,12,credit_card,completed,0,1,0,189,239,1
+2023,Bangkok,ads,4,11,credit_card,completed,0,2,0,1357,240,0
+2024,Udon Thani,organic,4,14,promptpay,completed,0,1,1,1318,237,0
+2025,Udon Thani,ads,4,6,cod,completed,0,2,0,1576,244,1
+2026,Chon Buri,organic,4,12,promptpay,completed,10,1,0,378,238,0
+2027,Nakhon Ratchasima,ads,4,12,promptpay,completed,0,2,1,12038,238,1
+2028,Chiang Mai,referral,4,2,promptpay,returned,0,1,0,1269,247,0
+2029,Udon Thani,ads,4,1,credit_card,completed,10,1,0,209,248,0
+2030,Khon Kaen,organic,4,10,promptpay,completed,0,1,0,769,239,1
+2031,Nakhon Ratchasima,organic,4,2,promptpay,completed,15,1,0,419,247,0
+2032,Khon Kaen,referral,4,11,promptpay,completed,20,1,0,1849,238,0
+2034,Khon Kaen,organic,4,11,promptpay,completed,0,1,0,1849,237,1
+2035,Chiang Mai,organic,4,9,promptpay,completed,15,2,1,10638,239,0
+2036,Bangkok,organic,4,8,promptpay,completed,0,2,0,2778,240,1
+2037,Chiang Mai,ads,4,10,promptpay,completed,0,1,0,14307,237,1
+2038,Bangkok,organic,4,9,bank_transfer,returned,5,1,0,659,238,0
+2039,Chiang Mai,organic,4,4,credit_card,completed,0,2,0,988,242,0
+2040,Khon Kaen,referral,4,4,bank_transfer,completed,0,3,0,2387,242,1
+2041,Bangkok,organic,4,14,credit_card,completed,0,1,0,3679,231,1
+2042,Udon Thani,organic,4,7,promptpay,completed,0,1,0,2658,238,1
+2043,Udon Thani,organic,4,2,cod,completed,0,2,0,718,243,0
+2045,Chon Buri,organic,4,3,cod,completed,0,4,1,22153,242,0
+2046,Chon Buri,organic,4,14,promptpay,completed,0,2,1,1606,231,1
+2049,Bangkok,referral,5,4,promptpay,completed,0,1,0,449,240,1
+2050,Chiang Mai,ads,5,12,credit_card,completed,0,3,1,25185,232,0
+2051,Bangkok,ads,5,1,promptpay,completed,0,1,0,897,243,0
+2052,Chiang Mai,ads,5,4,cod,completed,0,1,0,1059,240,1
+2053,Chon Buri,organic,5,8,credit_card,completed,5,2,0,1518,235,0
+2054,Khon Kaen,referral,5,0,promptpay,completed,10,1,0,2898,243,0
+2055,Bangkok,ads,5,14,credit_card,completed,0,1,0,249,228,1
+2056,Phuket,organic,5,10,promptpay,completed,0,1,0,2618,232,1
+2057,Bangkok,ads,5,10,cod,returned,0,1,0,2109,232,1
+2058,Nakhon Ratchasima,referral,5,1,credit_card,cancelled,10,1,0,4769,241,1
+2059,Bangkok,organic,5,2,bank_transfer,completed,0,1,1,18439,240,0
+2060,Bangkok,referral,5,1,credit_card,completed,5,1,0,909,241,0
+2062,Bangkok,ads,5,4,promptpay,completed,0,1,0,2337,237,1
+2063,Khon Kaen,organic,5,12,promptpay,completed,0,2,0,2807,229,1
+2064,Bangkok,ads,5,6,cod,completed,0,3,0,10956,235,0
+2065,Udon Thani,ads,5,2,promptpay,cancelled,0,4,0,13493,238,1
+2066,Hat Yai,referral,5,10,cod,completed,0,1,0,919,230,1
+2067,Nakhon Ratchasima,referral,5,4,cod,completed,0,3,0,4246,236,1
+2068,Nakhon Ratchasima,ads,5,3,cod,completed,5,1,1,20069,237,0
+2069,Nakhon Ratchasima,organic,5,12,bank_transfer,cancelled,0,1,1,9779,227,1
+2070,Chiang Mai,organic,5,8,bank_transfer,completed,0,1,0,769,231,0
+2072,Nakhon Ratchasima,ads,5,14,promptpay,completed,0,1,0,329,225,1
+2073,Chon Buri,organic,5,0,cod,completed,0,2,0,2768,239,0
+2074,Nakhon Ratchasima,referral,5,2,promptpay,completed,0,1,0,678,237,0
+2076,Hat Yai,referral,5,6,promptpay,completed,0,1,0,1538,232,1
+2077,Udon Thani,organic,5,3,promptpay,cancelled,20,1,0,598,235,0
+2078,Khon Kaen,ads,5,2,credit_card,completed,0,1,0,2899,236,1
+2079,Khon Kaen,organic,5,8,credit_card,completed,0,3,1,3537,229,0
+2080,Bangkok,organic,5,5,promptpay,completed,10,2,0,5407,232,1
+2081,Nakhon Ratchasima,ads,5,12,promptpay,completed,0,1,0,349,225,1
+2082,Bangkok,ads,5,14,credit_card,completed,0,1,0,7598,223,1
+2083,Bangkok,organic,5,3,promptpay,completed,0,1,1,1179,234,1
+2084,Hat Yai,organic,5,0,credit_card,cancelled,0,1,0,2899,236,1
+2085,Bangkok,organic,5,7,credit_card,completed,0,1,0,209,229,0
+2086,Chiang Mai,organic,5,1,credit_card,completed,15,1,0,2618,235,1
+2087,Bangkok,organic,5,7,promptpay,returned,0,4,0,3284,229,1
+2088,Bangkok,referral,5,7,promptpay,completed,0,1,0,379,229,1
+2089,Hat Yai,referral,5,5,credit_card,completed,0,3,1,3525,231,1
+2090,Chiang Mai,ads,5,14,credit_card,completed,10,1,0,109,222,1
+2091,Bangkok,organic,5,1,credit_card,completed,0,1,1,60207,235,0
+2092,Nakhon Ratchasima,organic,5,6,credit_card,completed,0,1,1,1279,229,1
+2093,Udon Thani,organic,5,2,bank_transfer,completed,15,3,0,4336,233,0
+2094,Bangkok,organic,5,7,promptpay,completed,0,1,0,1329,228,0
+2095,Phuket,ads,5,9,credit_card,cancelled,0,1,0,229,226,0
+2096,Bangkok,organic,5,14,promptpay,completed,15,1,0,549,221,0
+2097,Bangkok,referral,5,14,promptpay,completed,0,1,0,5798,221,0
+2098,Hat Yai,referral,5,5,credit_card,completed,10,3,0,1467,229,0
+2099,Nakhon Ratchasima,ads,5,2,cod,completed,0,3,0,9136,232,1
+2100,Nakhon Ratchasima,referral,5,10,promptpay,completed,0,2,1,2787,224,0
+2101,Phuket,organic,5,5,cod,completed,0,1,0,559,229,0
+2102,Khon Kaen,referral,5,0,promptpay,completed,0,1,0,3429,234,1
+2103,Nakhon Ratchasima,organic,5,2,cod,completed,0,2,0,2988,232,1
+2104,Khon Kaen,organic,5,4,promptpay,completed,0,3,1,10316,230,1
+2106,Chiang Mai,ads,5,7,credit_card,completed,0,3,0,3026,226,0
+2107,Bangkok,ads,5,9,credit_card,completed,5,2,0,1398,224,0
+2108,Phuket,ads,5,0,cod,completed,0,2,1,5158,233,0
+2109,Bangkok,ads,5,14,promptpay,returned,20,2,1,18738,219,0
+2110,Chon Buri,ads,5,3,credit_card,completed,5,2,0,2436,230,1
+2111,Bangkok,organic,5,0,promptpay,completed,0,4,0,14103,233,0
+2112,Phuket,ads,5,4,credit_card,completed,0,2,1,17668,229,1
+2114,Udon Thani,organic,5,1,credit_card,completed,15,3,1,3997,231,1
+2115,Bangkok,referral,5,4,promptpay,completed,0,1,1,13239,228,1
+2116,Phuket,ads,5,0,promptpay,completed,0,1,0,4738,232,1
+2117,Chiang Mai,organic,5,4,bank_transfer,completed,0,1,0,818,228,1
+2118,Nakhon Ratchasima,organic,5,2,promptpay,completed,0,4,1,10235,230,1
+2119,Chon Buri,organic,5,1,promptpay,cancelled,0,3,1,12415,231,0
+2120,Bangkok,organic,5,9,credit_card,completed,0,1,0,758,222,0
+2121,Khon Kaen,ads,5,14,promptpay,completed,0,3,1,14536,217,1
+2122,Chon Buri,organic,5,2,cod,cancelled,0,1,0,9018,229,1
+2123,Chon Buri,organic,5,2,promptpay,completed,5,1,1,1279,229,0
+2124,Udon Thani,organic,5,9,bank_transfer,completed,0,3,0,2816,222,1
+2126,Hat Yai,ads,5,2,credit_card,completed,0,1,0,1079,228,1
+2127,Phuket,referral,5,2,promptpay,completed,20,2,0,1867,228,1
+2128,Nakhon Ratchasima,organic,5,11,cod,completed,10,4,1,6805,218,0
+2130,Udon Thani,organic,5,12,credit_card,completed,10,3,1,24185,216,1
+2131,Bangkok,organic,5,9,credit_card,completed,0,1,1,3829,219,1
+2132,Phuket,organic,5,9,promptpay,completed,15,3,0,2226,219,1
+2133,Bangkok,organic,5,3,credit_card,completed,0,2,1,12318,225,1
+2134,Chon Buri,referral,5,3,bank_transfer,completed,10,2,0,797,225,0
+2135,Chiang Mai,ads,5,13,credit_card,completed,5,1,1,11269,215,0
+2136,Bangkok,ads,5,2,promptpay,completed,0,2,0,4627,225,0
+2137,Chon Buri,ads,5,2,cod,completed,0,1,0,499,225,1
+2138,Nakhon Ratchasima,organic,5,1,credit_card,completed,0,2,1,4268,225,1
+2139,Udon Thani,ads,5,2,promptpay,completed,0,1,0,1759,224,1
+2140,Bangkok,ads,5,11,promptpay,completed,0,2,0,3098,214,0
+2141,Udon Thani,referral,5,5,bank_transfer,completed,10,2,0,1268,220,0
+2142,Chiang Mai,ads,5,2,credit_card,completed,0,1,0,379,223,1
+2143,Khon Kaen,organic,5,7,promptpay,completed,0,1,0,639,217,1
+2147,Chiang Mai,ads,5,3,bank_transfer,completed,0,3,1,17855,220,1
+2148,Phuket,ads,5,9,credit_card,completed,0,3,0,3625,214,0
+2149,Nakhon Ratchasima,ads,5,7,promptpay,completed,15,1,0,509,215,0
+2150,Chon Buri,ads,5,8,cod,cancelled,20,1,0,1849,214,1
+2152,Nakhon Ratchasima,ads,5,14,cod,completed,0,1,0,3939,208,0
+2154,Bangkok,ads,5,8,promptpay,cancelled,0,3,1,14886,213,0
+2155,Bangkok,organic,5,11,credit_card,cancelled,0,3,1,2357,210,0
+2156,Nakhon Ratchasima,ads,5,14,credit_card,completed,0,2,0,738,206,1
+2157,Phuket,referral,5,1,promptpay,returned,0,2,0,5957,219,1
+2158,Udon Thani,organic,5,4,credit_card,completed,10,2,0,698,215,1
+2159,Udon Thani,ads,5,6,credit_card,completed,10,2,1,16918,213,1
+2160,Chon Buri,organic,5,12,promptpay,completed,0,4,0,4446,206,1
+2161,Udon Thani,organic,5,6,promptpay,completed,20,2,0,4878,212,1
+2162,Khon Kaen,ads,5,13,promptpay,completed,0,1,0,1869,205,0
+2163,Phuket,organic,5,1,cod,returned,0,1,0,659,217,0
+2164,Khon Kaen,organic,5,3,promptpay,completed,0,1,0,5598,215,0
+2165,Hat Yai,ads,5,14,cod,cancelled,10,1,0,799,204,1
+2166,Phuket,referral,5,13,promptpay,completed,15,3,0,4095,204,1
+2167,Bangkok,organic,5,10,bank_transfer,completed,0,2,0,1608,207,0
+2168,Bangkok,ads,5,1,credit_card,completed,0,3,1,8077,216,0
+2169,Bangkok,referral,5,0,promptpay,completed,0,4,1,10435,217,0
+2170,Chiang Mai,referral,5,3,promptpay,completed,0,1,0,209,213,0
+2171,Bangkok,ads,5,8,credit_card,completed,0,1,1,20069,208,1
+2172,Bangkok,ads,5,6,credit_card,completed,10,2,0,5987,210,0
+2173,Bangkok,organic,5,5,credit_card,completed,10,2,0,6916,211,1
+2174,Bangkok,ads,5,7,cod,completed,0,2,1,29536,209,0
+2175,Phuket,organic,5,3,credit_card,completed,0,1,0,2109,213,1
+2176,Hat Yai,ads,5,12,promptpay,cancelled,0,1,0,249,203,0
+2177,Phuket,ads,5,2,bank_transfer,completed,5,2,1,12546,213,1
+2178,Khon Kaen,ads,5,5,bank_transfer,completed,0,2,0,1346,210,0
+2179,Nakhon Ratchasima,ads,5,14,credit_card,completed,0,1,0,639,200,1
+2180,Bangkok,referral,5,0,credit_card,completed,0,1,0,769,214,0
+2181,Bangkok,organic,6,10,credit_card,completed,10,1,1,3709,203,0
+2183,Khon Kaen,organic,6,7,promptpay,completed,0,1,0,1318,206,1
+2184,Chon Buri,ads,6,13,credit_card,completed,0,1,0,499,200,0
+2185,Hat Yai,organic,6,9,promptpay,completed,0,2,0,2857,204,1
+2186,Hat Yai,promo,6,0,promptpay,completed,0,3,1,8194,213,0
+2187,Chiang Mai,promo,6,1,promptpay,completed,0,3,1,12376,212,0
+2188,Khon Kaen,promo,6,9,promptpay,completed,0,3,1,6326,204,0
+2189,Nakhon Ratchasima,promo,6,13,credit_card,completed,0,1,0,1079,200,0
+2190,Chon Buri,promo,6,2,credit_card,completed,5,2,0,2018,211,0
+2191,Bangkok,promo,6,2,cod,completed,0,1,1,1219,211,0
+2192,Hat Yai,ads,6,7,credit_card,returned,0,2,1,8316,205,0
+2193,Bangkok,organic,6,14,credit_card,completed,10,2,0,1108,198,0
+2194,Phuket,organic,6,4,promptpay,completed,15,1,0,1609,208,1
+2196,Chiang Mai,ads,6,0,cod,completed,5,1,0,299,212,0
+2197,Chon Buri,organic,6,10,promptpay,completed,5,2,0,1057,202,1
+2198,Chiang Mai,promo,6,7,credit_card,completed,0,3,0,4187,205,0
+2199,Bangkok,promo,6,14,promptpay,completed,0,2,0,608,198,0
+2200,Hat Yai,promo,6,8,promptpay,completed,0,1,0,919,204,0
+2202,Phuket,promo,6,7,credit_card,completed,0,2,1,4578,205,0
+2203,Nakhon Ratchasima,promo,6,5,promptpay,returned,0,1,0,3799,207,0
+2204,Hat Yai,promo,6,13,credit_card,completed,15,2,0,2887,199,0
+2205,Chon Buri,promo,6,8,credit_card,completed,0,1,0,3898,204,0
+2206,Nakhon Ratchasima,promo,6,2,bank_transfer,completed,0,3,0,4134,210,1
+2207,Bangkok,promo,6,2,credit_card,completed,0,2,0,15156,210,1
+2208,Phuket,promo,6,8,credit_card,cancelled,5,3,1,30416,204,0
+2209,Nakhon Ratchasima,organic,6,7,promptpay,completed,0,1,1,22638,204,1
+2210,Chon Buri,ads,6,9,credit_card,completed,10,2,0,5278,202,1
+2213,Bangkok,ads,6,12,credit_card,completed,15,2,1,5578,199,1
+2214,Bangkok,ads,6,4,credit_card,completed,0,1,0,1759,207,1
+2215,Bangkok,promo,6,9,cod,completed,5,2,0,3538,202,0
+2216,Chon Buri,promo,6,0,credit_card,completed,0,1,0,399,211,0
+2217,Nakhon Ratchasima,promo,6,12,cod,completed,5,3,1,8366,199,1
+2218,Chiang Mai,promo,6,3,cod,completed,0,3,0,5957,208,0
+2219,Udon Thani,promo,6,4,credit_card,completed,5,2,1,17484,207,1
+2220,Bangkok,promo,6,14,credit_card,completed,5,3,1,5597,197,1
+2221,Bangkok,promo,6,1,promptpay,completed,0,1,0,299,210,1
+2222,Bangkok,organic,6,8,promptpay,completed,0,1,0,219,202,1
+2223,Udon Thani,organic,6,4,cod,completed,10,4,0,7376,206,0
+2224,Chon Buri,ads,6,13,cod,completed,0,4,1,19285,197,1
+2225,Chon Buri,organic,6,1,promptpay,completed,5,2,0,8405,209,1
+2226,Udon Thani,promo,6,10,promptpay,cancelled,0,3,0,7307,200,0
+2227,Phuket,promo,6,4,credit_card,cancelled,20,3,1,6797,206,0
+2228,Udon Thani,promo,6,8,promptpay,completed,0,3,1,3557,202,0
+2229,Phuket,promo,6,6,credit_card,completed,0,1,0,2229,204,0
+2230,Chon Buri,promo,6,1,cod,completed,0,1,0,2058,209,0
+2231,Bangkok,promo,6,2,credit_card,completed,0,2,0,3018,208,0
+2232,Chiang Mai,promo,6,5,cod,completed,0,1,1,13239,205,0
+2233,Khon Kaen,promo,6,6,promptpay,completed,5,1,1,4069,204,0
+2234,Nakhon Ratchasima,promo,6,5,bank_transfer,completed,0,3,1,8467,205,0
+2235,Bangkok,promo,6,5,credit_card,completed,0,2,0,2296,205,0
+2236,Chiang Mai,promo,6,12,promptpay,cancelled,0,1,0,1609,198,0
+2237,Khon Kaen,promo,6,8,credit_card,cancelled,0,2,0,3237,202,0
+2238,Bangkok,organic,6,4,promptpay,cancelled,0,2,1,11686,205,1
+2239,Chon Buri,organic,6,11,credit_card,completed,0,3,1,3186,198,1
+2240,Bangkok,ads,6,2,cod,completed,0,1,1,4069,207,0
+2242,Udon Thani,promo,6,9,promptpay,completed,0,1,0,639,200,0
+2243,Chon Buri,promo,6,3,credit_card,completed,0,1,0,1309,206,0
+2244,Hat Yai,promo,6,10,promptpay,completed,0,1,0,1129,199,0
+2245,Chon Buri,promo,6,1,promptpay,returned,5,2,1,4088,208,0
+2246,Bangkok,promo,6,10,credit_card,completed,0,3,1,4007,199,0
+2249,Hat Yai,promo,6,6,bank_transfer,completed,0,1,0,399,203,0
+2253,Nakhon Ratchasima,ads,6,0,credit_card,completed,5,1,0,2109,208,1
+2254,Hat Yai,ads,6,3,cod,cancelled,0,3,1,31315,205,1
+2255,Bangkok,promo,6,13,credit_card,cancelled,0,1,0,1059,195,0
+2256,Bangkok,promo,6,3,promptpay,completed,0,2,0,1347,205,0
+2257,Phuket,promo,6,5,promptpay,cancelled,0,1,0,409,203,0
+2258,Nakhon Ratchasima,promo,6,3,credit_card,returned,0,1,0,1249,205,0
+2259,Chon Buri,promo,6,14,credit_card,completed,0,2,0,1058,194,0
+2260,Bangkok,promo,6,2,promptpay,completed,0,1,0,189,206,0
+2261,Khon Kaen,promo,6,4,promptpay,completed,10,1,0,199,204,0
+2263,Bangkok,promo,6,9,promptpay,completed,5,2,0,1297,199,0
+2264,Chon Buri,promo,6,5,bank_transfer,completed,0,1,1,13239,203,0
+2265,Khon Kaen,promo,6,0,cod,completed,5,1,0,1778,208,0
+2266,Bangkok,promo,6,3,promptpay,returned,0,1,0,1249,205,0
+2267,Hat Yai,referral,6,0,promptpay,completed,0,1,0,567,207,0
+2268,Udon Thani,ads,6,8,cod,completed,0,1,0,449,199,0
+2270,Bangkok,promo,6,11,promptpay,completed,10,1,0,7358,196,0
+2273,Chiang Mai,promo,6,12,promptpay,completed,0,2,1,39627,195,0
+2274,Phuket,promo,6,10,bank_transfer,cancelled,0,2,1,14547,197,0
+2276,Chon Buri,promo,6,11,promptpay,completed,0,2,1,14508,196,0
+2277,Nakhon Ratchasima,ads,6,11,credit_card,completed,0,3,0,2797,195,1
+2278,Chon Buri,ads,6,11,credit_card,returned,0,3,0,1736,195,1
+2280,Chiang Mai,organic,6,9,promptpay,completed,20,2,0,5147,197,0
+2281,Bangkok,organic,6,12,promptpay,completed,0,4,1,20715,194,1
+2283,Chiang Mai,promo,6,7,promptpay,completed,0,1,0,219,199,1
+2285,Bangkok,promo,6,1,cod,completed,20,2,0,688,205,0
+2286,Nakhon Ratchasima,promo,6,13,promptpay,completed,0,2,1,34696,193,0
+2287,Chon Buri,promo,6,14,credit_card,completed,0,1,0,889,192,0
+2291,Bangkok,promo,6,7,promptpay,completed,0,1,1,10659,199,0
+2293,Khon Kaen,promo,6,13,promptpay,completed,0,1,0,329,193,0
+2294,Udon Thani,promo,6,1,promptpay,completed,0,1,0,4109,205,0
+2295,Chiang Mai,organic,6,4,credit_card,completed,0,1,0,449,201,1
+2296,Bangkok,referral,6,7,bank_transfer,completed,0,1,1,32838,198,0
+2297,Bangkok,promo,6,14,promptpay,completed,0,1,0,3087,191,0
+2298,Udon Thani,promo,6,13,credit_card,completed,0,2,0,1468,192,0
+2299,Udon Thani,promo,6,12,promptpay,cancelled,0,2,0,4418,193,0
+2300,Phuket,promo,6,8,credit_card,completed,0,1,0,219,197,1
+2301,Bangkok,promo,6,12,credit_card,completed,0,3,1,9236,193,0
+2302,Chiang Mai,promo,6,0,credit_card,completed,10,1,0,1069,205,0
+2303,Udon Thani,promo,6,11,credit_card,completed,0,1,1,949,194,1
+2304,Phuket,promo,6,9,promptpay,cancelled,0,1,0,769,196,0
+2305,Bangkok,ads,6,9,bank_transfer,completed,0,1,0,319,195,0
+2306,Chon Buri,ads,6,13,promptpay,completed,10,1,0,509,191,0
+2309,Nakhon Ratchasima,referral,6,7,promptpay,cancelled,0,1,0,799,197,1
+2310,Bangkok,promo,6,13,credit_card,completed,5,2,0,2768,191,0
+2312,Bangkok,promo,6,5,credit_card,cancelled,20,1,0,4738,199,0
+2313,Bangkok,promo,6,8,promptpay,completed,0,3,0,4656,196,1
+2314,Udon Thani,promo,6,5,credit_card,completed,0,1,1,13239,199,0
+2315,Bangkok,promo,6,3,cod,completed,0,1,0,209,201,0
+2317,Bangkok,promo,6,13,credit_card,completed,0,2,0,2017,190,1
+2318,Phuket,promo,6,0,promptpay,completed,0,1,0,8727,203,0
+2320,Bangkok,promo,6,13,promptpay,completed,5,1,1,10659,190,0
+2321,Bangkok,promo,6,5,promptpay,completed,15,1,1,2419,198,0
+2322,Bangkok,promo,6,6,promptpay,completed,5,2,0,4218,197,1
+2323,Khon Kaen,ads,6,8,credit_card,cancelled,5,1,0,518,194,1
+2324,Bangkok,organic,6,12,promptpay,completed,0,2,1,4628,190,0
+2325,Bangkok,organic,6,0,bank_transfer,completed,0,2,0,918,202,0
+2326,Nakhon Ratchasima,organic,6,1,credit_card,completed,5,4,1,6415,201,1
+2327,Bangkok,organic,6,5,promptpay,completed,0,1,0,1838,197,0
+2329,Nakhon Ratchasima,organic,6,9,credit_card,completed,0,2,0,6385,193,1
+2330,Bangkok,promo,6,0,cod,completed,0,4,1,17356,202,0
+2331,Chiang Mai,promo,6,0,promptpay,cancelled,10,1,0,1049,202,0
+2332,Chiang Mai,promo,6,7,credit_card,completed,0,2,0,12236,195,1
+2333,Bangkok,promo,6,2,credit_card,completed,0,1,0,2229,200,1
+2334,Phuket,promo,6,5,promptpay,completed,10,1,1,1318,197,0
+2335,Bangkok,promo,6,4,promptpay,completed,10,2,0,2507,198,1
+2336,Bangkok,promo,6,11,promptpay,completed,0,1,0,2899,191,0
+2337,Chon Buri,referral,6,1,promptpay,completed,0,2,0,2748,200,1
+2338,Phuket,organic,6,8,credit_card,completed,0,1,0,199,193,0
+2340,Hat Yai,ads,6,5,credit_card,completed,0,1,0,329,196,1
+2341,Nakhon Ratchasima,ads,6,4,promptpay,completed,0,3,1,23655,197,1
+2342,Nakhon Ratchasima,organic,6,8,promptpay,completed,0,2,1,1528,193,1
+2343,Bangkok,organic,6,7,bank_transfer,completed,5,4,1,9826,194,1
+2344,Nakhon Ratchasima,promo,6,8,promptpay,returned,0,2,0,2318,193,0
+2345,Nakhon Ratchasima,promo,6,6,credit_card,completed,10,2,1,7898,195,1
+2346,Phuket,promo,6,9,promptpay,completed,0,2,0,4576,192,0
+2347,Chiang Mai,promo,6,6,cod,completed,0,1,0,4109,195,0
+2348,Bangkok,promo,6,10,credit_card,completed,0,1,0,2138,191,0
+2349,Bangkok,promo,6,6,cod,completed,0,1,0,5798,195,0
+2350,Nakhon Ratchasima,promo,6,5,promptpay,completed,10,2,0,5428,196,1
+2351,Chon Buri,promo,6,1,promptpay,completed,0,1,0,2229,200,0
+2352,Bangkok,promo,6,0,credit_card,completed,0,1,0,909,201,0
+2353,Bangkok,promo,6,7,promptpay,completed,0,1,0,769,194,0
+2354,Chiang Mai,promo,6,2,credit_card,completed,0,2,0,3798,199,0
+2355,Bangkok,ads,6,0,credit_card,completed,5,1,0,559,200,0
+2356,Bangkok,organic,6,9,promptpay,completed,5,1,0,1249,191,1
+2357,Bangkok,referral,6,2,credit_card,completed,10,3,0,1657,198,1
+2359,Bangkok,promo,6,11,promptpay,completed,5,1,0,349,189,0
+2360,Bangkok,promo,6,5,promptpay,completed,0,1,0,349,195,0
+2361,Bangkok,promo,6,14,promptpay,completed,10,1,1,579,186,0
+2362,Bangkok,promo,6,9,credit_card,completed,0,1,0,259,191,0
+2363,Bangkok,promo,6,14,promptpay,returned,0,2,0,6677,186,0
+2364,Bangkok,promo,6,6,credit_card,completed,10,4,1,25885,194,0
+2366,Chiang Mai,promo,6,1,credit_card,completed,0,4,0,9251,199,0
+2369,Chon Buri,ads,6,10,credit_card,returned,10,1,0,518,189,0
+2370,Bangkok,ads,6,5,promptpay,completed,0,3,1,10497,194,1
+2371,Nakhon Ratchasima,ads,6,14,promptpay,completed,0,1,0,4509,185,1
+2372,Bangkok,ads,6,4,credit_card,returned,0,1,0,1029,195,1
+2373,Khon Kaen,promo,6,12,credit_card,completed,0,2,0,5708,187,0
+2374,Phuket,promo,6,1,bank_transfer,completed,0,1,0,2229,198,0
+2376,Chiang Mai,promo,6,7,cod,completed,0,2,0,3978,192,0
+2377,Hat Yai,promo,6,7,credit_card,completed,0,1,0,3087,192,0
+2378,Udon Thani,promo,6,3,bank_transfer,completed,5,1,0,1069,196,0
+2379,Bangkok,promo,6,5,promptpay,completed,0,1,0,1049,194,1
+2380,Udon Thani,promo,6,14,cod,completed,0,3,1,19227,185,0
+2381,Bangkok,promo,6,10,credit_card,completed,5,1,0,3518,189,0
+2382,Bangkok,promo,6,11,promptpay,completed,0,4,1,6515,188,0
+2383,Nakhon Ratchasima,promo,6,7,promptpay,completed,5,2,0,4828,192,0
+2384,Bangkok,promo,6,7,promptpay,completed,5,4,0,5615,192,0
+2385,Bangkok,organic,6,14,credit_card,completed,0,1,0,139,184,1
+2386,Chiang Mai,organic,6,2,credit_card,completed,0,1,0,2029,196,1
+2388,Chon Buri,organic,6,14,credit_card,completed,0,2,1,32136,184,1
+2389,Chiang Mai,organic,6,6,credit_card,completed,15,1,0,569,192,0
+2390,Nakhon Ratchasima,promo,6,12,credit_card,completed,5,1,0,2639,186,0
+2391,Chiang Mai,promo,6,4,promptpay,completed,10,2,1,23748,194,0
+2392,Hat Yai,promo,6,1,credit_card,completed,0,1,0,1538,197,0
+2393,Phuket,promo,6,7,credit_card,completed,5,1,0,669,191,0
+2394,Bangkok,promo,6,0,cod,completed,0,1,0,4109,198,0
+2395,Bangkok,promo,6,12,credit_card,completed,0,2,0,4648,186,0
+2397,Udon Thani,promo,6,10,promptpay,returned,0,2,0,658,188,0
+2398,Nakhon Ratchasima,promo,6,9,promptpay,completed,15,1,1,16419,189,0
+2399,Chon Buri,organic,6,12,credit_card,completed,5,1,0,779,185,0
+2400,Nakhon Ratchasima,ads,6,12,credit_card,completed,0,2,0,1628,185,1
+2401,Chon Buri,ads,6,4,credit_card,completed,5,2,0,2728,193,0
+2403,Nakhon Ratchasima,organic,6,4,promptpay,completed,0,1,1,3959,193,0
+2404,Bangkok,organic,6,12,cod,completed,0,1,0,2799,185,1
+2405,Phuket,referral,6,13,credit_card,completed,0,1,1,2419,184,1
+2406,Bangkok,organic,6,14,credit_card,completed,0,3,1,5966,183,1
+2407,Phuket,promo,6,1,bank_transfer,completed,0,1,0,2138,196,0
+2410,Nakhon Ratchasima,promo,6,2,credit_card,returned,10,1,0,919,195,0
+2411,Nakhon Ratchasima,promo,6,7,promptpay,completed,0,1,0,219,190,0
+2413,Bangkok,promo,6,13,cod,returned,0,1,0,379,184,0
+2414,Bangkok,promo,6,11,cod,completed,0,3,1,19577,186,0
+2415,Bangkok,promo,6,4,promptpay,completed,5,1,0,1118,193,0
+2416,Bangkok,promo,6,11,promptpay,cancelled,0,1,0,719,186,1
+2418,Bangkok,promo,6,8,promptpay,completed,0,1,0,219,189,0
+2419,Nakhon Ratchasima,promo,6,13,promptpay,completed,20,1,0,1759,184,0
+2420,Nakhon Ratchasima,promo,6,4,cod,completed,0,2,0,738,193,0
+2421,Bangkok,ads,6,2,credit_card,completed,5,4,0,10045,194,1
+2423,Bangkok,organic,6,5,promptpay,completed,15,3,0,4756,191,1
+2424,Udon Thani,ads,6,0,credit_card,completed,0,1,1,6139,196,0
+2425,Nakhon Ratchasima,organic,6,3,promptpay,completed,0,2,0,2218,193,0
+2427,Udon Thani,promo,6,10,credit_card,completed,0,4,0,7375,186,0
+2428,Phuket,promo,6,9,promptpay,completed,0,1,0,569,187,0
+2430,Bangkok,promo,6,4,bank_transfer,completed,0,1,0,769,192,1
+2432,Bangkok,promo,6,14,credit_card,completed,0,1,1,1959,182,0
+2433,Bangkok,promo,6,14,promptpay,completed,0,2,1,7037,182,0
+2434,Chon Buri,promo,6,2,credit_card,completed,15,1,0,1129,194,0
+2435,Bangkok,promo,6,4,cod,completed,0,2,0,2038,192,0
+2436,Bangkok,organic,6,0,bank_transfer,completed,0,1,0,438,195,1
+2437,Bangkok,ads,6,1,promptpay,completed,10,1,0,2369,194,0
+2438,Chon Buri,promo,6,9,credit_card,completed,0,3,1,12556,186,0
+2439,Bangkok,promo,6,7,promptpay,completed,0,3,0,5766,188,0
+2440,Bangkok,promo,6,3,bank_transfer,completed,20,1,0,409,192,0
+2441,Nakhon Ratchasima,promo,6,11,promptpay,completed,0,4,1,6916,184,0
+2442,Khon Kaen,promo,6,6,promptpay,completed,0,1,0,2229,189,0
+2444,Bangkok,promo,6,9,credit_card,cancelled,5,2,0,2178,186,0
+2446,Bangkok,promo,6,14,credit_card,completed,0,3,1,1577,181,0
+2447,Bangkok,promo,6,6,bank_transfer,completed,0,2,0,2508,189,0
+2448,Chiang Mai,promo,6,9,cod,cancelled,0,1,0,1269,186,0
+2449,Bangkok,ads,6,2,promptpay,completed,0,2,1,4588,192,0
+2450,Phuket,ads,6,6,credit_card,completed,0,1,0,799,188,0
+2451,Chon Buri,organic,6,12,cod,completed,0,3,1,10626,182,0
+2452,Nakhon Ratchasima,promo,6,2,credit_card,completed,0,3,1,4565,192,0
+2453,Hat Yai,promo,6,10,bank_transfer,completed,0,1,0,518,184,1
+2454,Bangkok,promo,6,3,bank_transfer,completed,0,1,0,2639,191,1
+2455,Khon Kaen,promo,6,10,cod,completed,0,1,0,3939,184,0
+2456,Bangkok,promo,6,4,credit_card,completed,15,2,0,1868,190,0
+2457,Hat Yai,promo,6,11,cod,completed,0,1,0,1249,183,0
+2459,Chiang Mai,promo,6,0,credit_card,returned,0,2,1,19508,194,0
+2460,Udon Thani,promo,6,11,credit_card,completed,0,1,0,7598,183,0
+2461,Nakhon Ratchasima,promo,6,14,cod,completed,0,2,1,14198,180,0
+2462,Bangkok,promo,6,0,promptpay,completed,0,2,1,1837,194,0
+2463,Bangkok,promo,6,6,bank_transfer,completed,0,2,0,7956,188,0
+2464,Chiang Mai,promo,6,5,credit_card,completed,0,1,1,659,189,0
+2465,Chiang Mai,promo,6,6,credit_card,completed,0,2,0,1766,188,0
+2466,Udon Thani,ads,6,14,bank_transfer,completed,10,2,0,3496,179,0
+2469,Udon Thani,ads,6,4,bank_transfer,returned,0,3,0,6146,189,1
+2470,Udon Thani,promo,6,10,credit_card,completed,0,2,1,4557,183,0
+2471,Bangkok,promo,6,13,cod,completed,0,1,0,299,180,0
+2476,Chon Buri,promo,6,8,promptpay,cancelled,0,1,1,1279,185,0
+2477,Khon Kaen,promo,6,12,promptpay,completed,0,1,1,1959,181,0
+2478,Bangkok,promo,6,14,promptpay,completed,0,1,0,339,179,0
+2479,Nakhon Ratchasima,promo,6,12,promptpay,completed,0,1,0,259,181,0
+2480,Bangkok,promo,6,7,bank_transfer,completed,0,1,0,909,186,0
+2481,Chon Buri,organic,6,4,credit_card,completed,0,1,0,1338,188,1
+2482,Bangkok,promo,6,11,bank_transfer,cancelled,5,1,0,1329,181,0
+2484,Udon Thani,promo,6,6,promptpay,completed,0,1,1,10659,186,0
+2485,Bangkok,promo,6,5,bank_transfer,completed,0,1,0,549,187,1
+2487,Khon Kaen,promo,6,14,promptpay,completed,0,1,0,1609,178,0
+2488,Hat Yai,organic,6,7,cod,completed,10,1,0,658,184,1
+2490,Bangkok,organic,6,6,promptpay,completed,0,3,1,3915,185,0
+2491,Khon Kaen,ads,6,9,promptpay,completed,0,1,1,2829,182,1
+2492,Khon Kaen,organic,6,1,promptpay,completed,0,2,0,938,190,0
+2493,Bangkok,ads,6,9,promptpay,completed,15,3,0,3396,182,1
+2494,Bangkok,organic,6,11,credit_card,completed,0,2,0,1856,180,0
+2495,Chon Buri,organic,6,3,cod,completed,0,1,0,669,188,1
+2497,Chon Buri,promo,6,5,credit_card,completed,0,1,0,1759,186,0
+2498,Bangkok,promo,6,1,promptpay,completed,5,2,1,3968,190,1
+2499,Phuket,promo,6,2,promptpay,completed,0,2,0,1248,189,0
+2501,Phuket,promo,6,3,promptpay,completed,0,1,1,2558,188,0
+2502,Nakhon Ratchasima,promo,6,6,cod,completed,5,2,1,11108,185,0
+2503,Udon Thani,promo,6,13,credit_card,completed,0,2,0,2047,178,0
+2504,Bangkok,promo,6,6,bank_transfer,completed,0,1,0,5598,185,0
+2505,Phuket,promo,6,0,promptpay,completed,0,2,0,2378,191,0
+2506,Udon Thani,promo,6,3,bank_transfer,completed,0,1,0,849,188,1
+2507,Chon Buri,organic,6,3,credit_card,completed,0,2,0,1228,187,1
+2508,Nakhon Ratchasima,ads,6,11,bank_transfer,returned,0,1,0,219,179,1
+2509,Phuket,organic,6,10,cod,completed,0,1,0,2498,180,0
+2510,Nakhon Ratchasima,organic,6,11,promptpay,completed,0,3,0,2957,179,0
+2511,Khon Kaen,promo,6,10,credit_card,completed,0,2,0,1177,180,0
+2512,Bangkok,promo,6,6,credit_card,completed,5,4,0,4214,184,0
+2513,Nakhon Ratchasima,promo,6,5,cod,completed,0,1,0,1449,185,0
+2514,Bangkok,promo,6,3,promptpay,completed,0,1,0,7598,187,0
+2515,Chiang Mai,promo,6,10,cod,completed,10,1,0,3237,180,0
+2516,Bangkok,promo,6,8,promptpay,completed,0,3,0,8996,182,0
+2518,Phuket,promo,6,1,cod,returned,0,1,0,1118,189,1
+2519,Bangkok,promo,6,2,promptpay,completed,0,2,0,788,188,0
+2520,Bangkok,promo,6,1,credit_card,completed,0,2,1,5338,189,0
+2521,Khon Kaen,promo,6,5,promptpay,completed,15,3,0,2277,185,0
+2522,Phuket,promo,6,13,promptpay,completed,0,1,0,5558,177,0
+2523,Chiang Mai,promo,6,7,promptpay,completed,0,4,0,4605,183,0
+2524,Bangkok,promo,6,6,promptpay,completed,0,3,1,3417,184,0
+2525,Hat Yai,referral,6,7,credit_card,completed,0,1,0,678,182,1
+2527,Bangkok,ads,6,8,cod,returned,15,1,0,559,181,1
+2528,Bangkok,ads,6,0,credit_card,completed,0,3,1,41426,189,1
+2529,Bangkok,promo,6,10,credit_card,completed,0,3,0,8686,179,0
+2530,Bangkok,promo,6,3,promptpay,returned,0,1,0,399,186,0
+2531,Nakhon Ratchasima,promo,6,0,credit_card,completed,0,2,0,3927,189,1
+2532,Nakhon Ratchasima,promo,6,9,promptpay,completed,0,2,1,11655,180,0
+2533,Bangkok,promo,6,13,promptpay,completed,20,2,0,1208,176,0
+2534,Nakhon Ratchasima,promo,6,8,credit_card,completed,5,1,0,499,181,0
+2535,Bangkok,promo,6,4,promptpay,completed,5,2,0,1017,185,0
+2536,Nakhon Ratchasima,promo,6,8,promptpay,completed,0,1,0,2007,181,0
+2537,Bangkok,promo,6,9,cod,completed,0,2,1,5388,180,0
+2538,Udon Thani,promo,6,9,credit_card,completed,0,1,0,909,180,0
+2539,Chon Buri,promo,6,6,promptpay,completed,0,1,0,449,183,1
+2540,Hat Yai,promo,6,0,credit_card,returned,10,1,0,2118,189,0
+2541,Khon Kaen,promo,6,0,promptpay,completed,10,3,1,8007,188,0
+2542,Phuket,promo,6,5,promptpay,completed,15,2,0,2677,183,0
+2543,Nakhon Ratchasima,promo,6,4,credit_card,completed,15,2,0,927,184,0
+2544,Chon Buri,promo,6,1,promptpay,completed,0,1,0,559,187,1
+2545,Bangkok,promo,6,9,promptpay,completed,5,1,0,659,179,0
+2546,Bangkok,promo,6,14,credit_card,completed,0,1,0,859,174,0
+2547,Chon Buri,promo,6,12,bank_transfer,completed,0,1,1,4069,176,0
+2548,Nakhon Ratchasima,promo,6,10,promptpay,completed,10,1,1,1279,178,0
+2549,Udon Thani,promo,6,9,credit_card,completed,0,2,0,1828,179,0
+2550,Hat Yai,promo,6,10,credit_card,completed,0,2,1,4436,178,0
+2551,Hat Yai,ads,6,11,promptpay,completed,0,2,0,2097,176,0
+2552,Chiang Mai,organic,6,5,credit_card,completed,0,2,0,2178,182,1
+2553,Chiang Mai,ads,6,7,cod,completed,0,1,1,21318,180,1
+2554,Bangkok,organic,6,1,promptpay,completed,0,1,0,199,186,1
+2555,Nakhon Ratchasima,ads,6,11,credit_card,completed,10,1,0,9018,176,1
+2556,Chiang Mai,promo,6,14,credit_card,completed,0,1,0,879,173,0
+2557,Bangkok,promo,6,8,promptpay,completed,0,1,1,6139,179,0
+2560,Chon Buri,promo,6,14,credit_card,completed,0,1,0,259,173,0
+2561,Nakhon Ratchasima,promo,6,11,credit_card,completed,0,2,0,6378,176,0
+2562,Udon Thani,promo,6,3,promptpay,completed,0,1,1,9779,184,0
+2563,Nakhon Ratchasima,promo,6,10,promptpay,completed,0,4,1,4413,177,0
+2564,Chiang Mai,promo,6,4,cod,completed,10,2,0,2438,183,0
+2565,Chon Buri,promo,6,10,cod,completed,5,1,1,10659,177,1
+2566,Bangkok,promo,6,0,cod,completed,15,2,0,1298,187,0
+2567,Chon Buri,promo,6,6,bank_transfer,completed,0,1,1,11319,181,0
+2568,Phuket,promo,6,10,promptpay,completed,0,1,0,659,177,0
+2569,Bangkok,promo,6,0,credit_card,completed,10,1,0,2369,187,0
+2570,Chiang Mai,promo,6,0,promptpay,completed,0,1,0,2639,187,0
+2572,Bangkok,ads,6,9,promptpay,completed,0,1,0,379,177,1
+2573,Bangkok,organic,6,14,bank_transfer,completed,0,2,0,1828,172,1
+2574,Bangkok,organic,6,6,credit_card,completed,0,3,0,1937,180,0
+2575,Khon Kaen,referral,6,8,cod,completed,0,3,0,4066,178,0
+2579,Chiang Mai,promo,6,8,credit_card,completed,0,3,1,42466,178,0
+2580,Bangkok,promo,6,0,credit_card,completed,0,1,1,3829,186,0
+2582,Nakhon Ratchasima,promo,6,5,credit_card,cancelled,0,1,0,509,181,0
+2583,Khon Kaen,promo,6,11,credit_card,completed,0,2,0,3197,175,0
+2585,Khon Kaen,promo,6,5,promptpay,completed,0,4,0,6142,181,0
+2586,Phuket,promo,6,0,credit_card,completed,10,1,0,1249,186,0
+2587,Phuket,promo,6,12,promptpay,completed,0,2,1,4117,174,0
+2588,Chiang Mai,promo,6,12,cod,returned,0,3,0,3147,174,0
+2589,Bangkok,organic,6,4,promptpay,completed,5,2,1,12398,181,0
+2592,Hat Yai,promo,6,11,promptpay,completed,0,2,0,3278,174,0
+2593,Bangkok,promo,6,8,credit_card,completed,10,1,1,11269,177,0
+2595,Bangkok,promo,6,4,promptpay,completed,20,2,1,10578,181,0
+2596,Nakhon Ratchasima,referral,6,6,promptpay,cancelled,5,1,0,229,178,0
+2600,Hat Yai,promo,6,4,promptpay,completed,0,1,0,859,180,0
+2601,Bangkok,promo,6,12,credit_card,completed,0,2,1,3948,172,0
+2602,Phuket,promo,6,14,credit_card,completed,5,2,1,14647,170,0
+2603,Chiang Mai,promo,6,10,credit_card,completed,10,2,0,5808,174,0
+2604,Chon Buri,promo,6,9,promptpay,completed,0,1,0,6858,175,1
+2605,Bangkok,promo,6,7,promptpay,completed,10,1,0,4509,177,0
+2606,Udon Thani,organic,7,13,cod,completed,5,3,0,5057,170,1
+2607,Bangkok,organic,7,1,credit_card,completed,0,1,0,518,182,1
+2609,Hat Yai,organic,7,12,promptpay,completed,0,1,0,2779,171,1
+2611,Hat Yai,ads,7,6,bank_transfer,completed,0,2,1,23217,177,0
+2612,Bangkok,ads,7,4,cod,completed,10,1,0,999,178,0
+2613,Bangkok,organic,7,1,promptpay,completed,10,1,0,3939,181,1
+2614,Bangkok,referral,7,7,credit_card,completed,0,1,0,669,175,1
+2615,Khon Kaen,ads,7,8,credit_card,completed,10,2,0,3147,174,1
+2616,Nakhon Ratchasima,ads,7,6,credit_card,completed,0,1,1,3657,176,0
+2619,Nakhon Ratchasima,organic,7,6,promptpay,completed,0,2,1,3958,175,1
+2620,Bangkok,organic,7,11,promptpay,completed,20,1,0,5818,170,1
+2621,Udon Thani,organic,7,0,cod,completed,0,2,0,2407,180,1
+2622,Bangkok,organic,7,9,cod,completed,0,4,0,4385,171,1
+2623,Bangkok,ads,7,14,cod,cancelled,20,1,0,998,166,1
+2624,Bangkok,organic,7,3,promptpay,completed,0,4,0,5395,177,1
+2627,Bangkok,ads,7,8,credit_card,completed,0,1,0,719,171,1
+2628,Bangkok,organic,7,1,cod,completed,0,3,0,4777,178,1
+2629,Phuket,organic,7,12,promptpay,completed,0,1,0,1309,167,0
+2630,Khon Kaen,ads,7,11,promptpay,completed,0,1,0,1269,168,1
+2632,Nakhon Ratchasima,referral,7,0,promptpay,returned,0,1,0,639,179,1
+2634,Chon Buri,referral,7,0,cod,completed,10,3,0,3377,178,0
+2635,Phuket,organic,7,2,credit_card,completed,0,1,1,31977,176,0
+2636,Chiang Mai,ads,7,0,bank_transfer,completed,0,3,1,4566,178,0
+2637,Udon Thani,organic,7,3,credit_card,completed,0,4,1,27884,174,1
+2639,Phuket,ads,7,3,credit_card,completed,0,2,0,1118,173,1
+2640,Bangkok,organic,7,3,credit_card,completed,0,1,0,1197,173,1
+2642,Bangkok,organic,7,6,credit_card,returned,5,3,0,4087,170,1
+2643,Bangkok,organic,7,1,promptpay,cancelled,10,1,0,1269,175,1
+2644,Bangkok,ads,7,3,credit_card,completed,15,1,0,419,173,1
+2645,Udon Thani,organic,7,3,promptpay,completed,0,1,0,438,173,1
+2646,Nakhon Ratchasima,organic,7,10,credit_card,completed,0,2,0,858,165,1
+2650,Bangkok,organic,7,8,promptpay,completed,0,1,0,889,166,0
+2651,Bangkok,organic,7,0,cod,completed,0,2,0,3667,174,0
+2652,Phuket,organic,7,6,promptpay,completed,0,1,0,909,167,1
+2653,Chiang Mai,organic,7,2,credit_card,completed,10,2,0,8267,171,1
+2654,Chon Buri,ads,7,10,promptpay,returned,15,1,0,11817,163,1
+2656,Bangkok,organic,7,3,promptpay,completed,20,1,1,16419,169,0
+2657,Phuket,ads,7,14,promptpay,completed,0,3,1,23106,158,0
+2658,Udon Thani,organic,7,12,credit_card,completed,0,1,0,419,160,0
+2659,Khon Kaen,organic,7,7,cod,completed,0,2,0,1628,165,0
+2660,Bangkok,ads,7,6,promptpay,completed,20,2,0,2757,166,1
+2662,Bangkok,organic,7,13,bank_transfer,completed,0,2,0,2598,158,1
+2663,Nakhon Ratchasima,referral,7,3,cod,completed,0,1,1,599,168,0
+2664,Chon Buri,organic,7,3,promptpay,completed,0,3,0,4757,167,0
+2665,Hat Yai,organic,7,8,promptpay,completed,0,2,0,2707,162,1
+2666,Khon Kaen,organic,7,5,cod,completed,0,4,1,2366,165,1
+2667,Phuket,ads,7,11,cod,returned,0,1,0,2258,159,0
+2668,Nakhon Ratchasima,organic,7,14,credit_card,cancelled,15,2,0,668,155,0
+2669,Bangkok,organic,7,7,promptpay,completed,0,1,0,2779,162,1
+2670,Chon Buri,organic,7,3,bank_transfer,completed,20,3,0,2387,165,1
+2671,Phuket,organic,7,1,credit_card,completed,0,3,0,2156,167,1
+2672,Phuket,organic,7,7,bank_transfer,completed,0,3,1,8826,161,0
+2673,Bangkok,organic,7,1,promptpay,completed,0,4,0,2866,167,1
+2674,Bangkok,organic,7,9,promptpay,completed,0,1,0,429,159,1
+2675,Chiang Mai,organic,7,10,promptpay,completed,0,2,0,1868,158,1
+2676,Bangkok,organic,7,7,promptpay,completed,0,3,0,7835,160,1
+2677,Bangkok,ads,7,11,promptpay,completed,0,1,0,1609,156,0
+2678,Khon Kaen,referral,7,10,credit_card,completed,0,1,1,7918,157,0
+2679,Bangkok,organic,7,2,promptpay,completed,0,1,0,4509,165,1
+2680,Hat Yai,ads,7,11,credit_card,cancelled,0,1,1,10659,156,1
+2681,Bangkok,organic,7,1,promptpay,completed,20,3,0,5347,166,1
+2682,Chon Buri,ads,7,14,credit_card,completed,10,2,1,12608,153,0
+2683,Chon Buri,referral,7,7,promptpay,completed,5,2,0,2107,160,0
+2684,Bangkok,ads,7,8,credit_card,completed,0,1,1,599,159,1
+2685,Khon Kaen,referral,7,0,cod,completed,0,2,0,1338,166,1
+2686,Bangkok,ads,7,0,promptpay,completed,5,1,0,1049,166,0
+2687,Chon Buri,organic,7,10,promptpay,completed,0,2,1,15118,156,1
+2688,Hat Yai,organic,7,12,bank_transfer,completed,0,1,0,3518,154,1
+2689,Bangkok,ads,7,14,credit_card,completed,0,3,0,3737,152,1
+2690,Phuket,referral,7,7,cod,completed,0,2,1,1967,158,0
+2691,Udon Thani,organic,7,1,promptpay,completed,15,1,0,319,164,1
+2692,Khon Kaen,referral,7,3,promptpay,completed,0,1,1,10659,161,1
+2694,Khon Kaen,referral,7,5,credit_card,completed,0,2,1,4397,159,0
+2695,Chon Buri,referral,7,11,credit_card,completed,10,3,0,2737,153,0
+2696,Khon Kaen,referral,7,5,cod,completed,15,2,1,17138,157,0
+2697,Udon Thani,organic,7,8,bank_transfer,completed,0,1,1,16419,154,0
+2698,Bangkok,ads,7,5,promptpay,completed,0,1,0,1869,157,0
+2699,Chon Buri,ads,7,4,promptpay,completed,0,2,0,1866,158,1
+2700,Nakhon Ratchasima,organic,7,4,credit_card,completed,0,1,0,679,158,1
+2701,Bangkok,ads,7,11,credit_card,completed,20,1,1,10659,151,0
+2703,Bangkok,organic,7,13,credit_card,completed,20,2,0,3346,148,0
+2704,Bangkok,ads,7,1,cod,completed,0,4,0,9244,160,1
+2706,Bangkok,ads,7,0,promptpay,completed,10,2,1,1778,159,1
+2707,Bangkok,ads,7,13,cod,completed,0,1,0,1249,146,0
+2708,Bangkok,ads,7,9,promptpay,completed,0,2,0,1376,150,1
+2710,Nakhon Ratchasima,referral,7,13,bank_transfer,completed,0,1,0,909,145,1
+2711,Phuket,organic,7,14,bank_transfer,completed,0,1,1,36878,144,0
+2712,Nakhon Ratchasima,referral,7,5,credit_card,completed,20,1,0,949,153,1
+2713,Chiang Mai,organic,7,13,cod,completed,0,3,1,12026,145,0
+2714,Bangkok,organic,7,12,promptpay,completed,5,2,1,22237,146,0
+2715,Hat Yai,referral,7,12,promptpay,completed,0,1,0,1718,145,1
+2716,Bangkok,organic,7,2,cod,completed,0,1,0,1029,155,0
+2717,Phuket,ads,7,14,promptpay,completed,0,1,0,889,142,0
+2718,Udon Thani,organic,7,5,promptpay,completed,0,1,1,12278,151,1
+2719,Khon Kaen,ads,7,9,credit_card,completed,0,2,0,1608,147,1
+2721,Chiang Mai,organic,7,12,cod,completed,0,2,1,5678,144,0
+2722,Udon Thani,referral,7,8,bank_transfer,completed,10,2,1,13898,148,0
+2723,Khon Kaen,organic,7,11,promptpay,completed,0,2,0,1078,145,1
+2724,Khon Kaen,referral,7,13,promptpay,completed,0,2,1,3958,142,0
+2725,Phuket,ads,7,0,credit_card,returned,20,3,1,21717,155,1
+2726,Chon Buri,referral,7,1,promptpay,cancelled,20,2,0,328,154,1
+2727,Bangkok,organic,7,2,bank_transfer,completed,0,2,0,1378,153,1
+2728,Chon Buri,organic,7,12,credit_card,completed,0,2,1,3555,142,0
+2729,Phuket,ads,7,2,credit_card,completed,0,1,0,1269,152,0
+2730,Udon Thani,ads,7,11,promptpay,completed,0,2,0,3878,143,0
+2731,Bangkok,ads,7,5,credit_card,cancelled,0,1,1,1219,149,1
+2732,Nakhon Ratchasima,ads,7,4,cod,completed,0,2,0,1847,149,1
+2733,Chon Buri,organic,7,2,promptpay,completed,0,1,0,679,151,1
+2734,Phuket,organic,7,12,credit_card,completed,0,4,0,9014,141,1
+2735,Khon Kaen,ads,8,14,credit_card,completed,0,4,1,6706,137,1
+2736,Chiang Mai,ads,8,13,bank_transfer,completed,15,2,0,3188,138,0
+2737,Nakhon Ratchasima,referral,8,9,promptpay,completed,0,3,1,13407,141,0
+2738,Bangkok,ads,8,8,promptpay,cancelled,5,1,0,209,142,0
+2739,Chiang Mai,ads,8,12,credit_card,completed,0,4,1,14796,138,0
+2740,Hat Yai,organic,8,9,cod,completed,0,2,1,5187,141,1
+2742,Bangkok,referral,8,0,cod,completed,0,1,0,1049,150,0
+2743,Udon Thani,ads,8,11,promptpay,completed,0,2,0,3927,138,0
+2744,Bangkok,referral,8,12,promptpay,completed,5,2,0,2466,137,0
+2745,Bangkok,ads,8,1,credit_card,completed,10,2,0,898,148,0
+2746,Udon Thani,organic,8,10,bank_transfer,completed,10,2,1,16748,139,1
+2747,Phuket,ads,8,12,promptpay,completed,20,4,0,2766,137,0
+2748,Phuket,ads,8,3,cod,completed,0,2,0,2536,146,1
+2749,Bangkok,organic,8,9,credit_card,completed,0,3,1,5087,140,1
+2751,Chiang Mai,organic,8,11,promptpay,completed,0,1,0,849,138,0
+2752,Bangkok,ads,8,4,promptpay,completed,0,3,1,15147,145,0
+2753,Bangkok,referral,8,1,promptpay,completed,0,2,0,2687,147,0
+2754,Chon Buri,ads,8,8,credit_card,completed,0,1,1,8138,140,1
+2755,Chon Buri,referral,8,1,promptpay,completed,0,2,1,24296,146,1
+2756,Phuket,organic,8,12,credit_card,completed,20,1,1,1279,135,0
+2757,Hat Yai,ads,8,7,credit_card,completed,0,2,0,828,140,0
+2759,Udon Thani,organic,8,14,credit_card,completed,0,1,0,3147,132,1
+2760,Bangkok,ads,8,3,bank_transfer,completed,0,2,1,4238,143,1
+2761,Nakhon Ratchasima,ads,8,1,promptpay,completed,0,4,1,14845,144,1
+2762,Chiang Mai,ads,8,10,credit_card,completed,10,1,1,11319,135,0
+2763,Chon Buri,ads,8,10,credit_card,completed,0,3,1,2067,135,1
+2764,Hat Yai,organic,8,5,credit_card,completed,0,1,0,1849,139,1
+2765,Chiang Mai,organic,8,13,bank_transfer,completed,0,1,0,189,131,0
+2766,Hat Yai,referral,8,0,promptpay,completed,0,1,0,669,144,1
+2768,Bangkok,organic,8,8,promptpay,completed,0,1,0,669,135,1
+2769,Chon Buri,organic,8,11,promptpay,completed,10,3,1,3377,132,1
+2770,Bangkok,ads,8,14,promptpay,completed,0,1,1,7418,129,1
+2771,Bangkok,referral,8,14,promptpay,completed,0,3,1,13387,128,1
+2772,Phuket,ads,8,9,credit_card,completed,0,2,1,9816,133,1
+2773,Nakhon Ratchasima,organic,8,5,promptpay,completed,20,1,0,949,137,1
+2774,Bangkok,ads,8,12,credit_card,completed,0,1,0,2658,130,1
+2775,Nakhon Ratchasima,organic,8,13,credit_card,completed,0,1,0,2639,129,0
+2776,Bangkok,organic,8,2,promptpay,completed,0,2,1,2268,140,1
+2777,Chiang Mai,ads,8,4,credit_card,completed,0,2,1,15648,138,0
+2778,Bangkok,ads,8,9,promptpay,completed,5,1,1,2358,133,0
+2779,Bangkok,referral,8,2,credit_card,completed,0,4,1,10655,140,0
+2780,Chiang Mai,ads,8,11,promptpay,completed,0,1,1,579,131,0
+2781,Udon Thani,ads,8,4,credit_card,completed,5,1,0,1017,137,1
+2782,Chiang Mai,organic,8,4,credit_card,completed,5,1,0,438,137,1
+2783,Chon Buri,ads,8,10,credit_card,completed,0,1,1,1959,131,0
+2784,Bangkok,ads,8,12,promptpay,completed,0,1,0,1079,129,1
+2785,Bangkok,referral,8,3,promptpay,completed,0,3,0,3036,138,1
+2786,Chiang Mai,ads,8,2,promptpay,completed,0,1,1,3657,139,0
+2788,Bangkok,ads,8,5,credit_card,completed,0,1,1,1959,135,0
+2789,Bangkok,ads,8,8,credit_card,returned,0,1,0,4509,132,1
+2790,Nakhon Ratchasima,ads,8,7,bank_transfer,completed,0,1,0,4509,133,0
+2791,Phuket,organic,8,13,promptpay,completed,0,1,0,429,127,1
+2792,Hat Yai,ads,8,3,promptpay,completed,0,2,1,34017,137,0
+2793,Chiang Mai,organic,8,10,cod,completed,0,1,0,769,130,1
+2794,Chon Buri,ads,8,12,credit_card,completed,0,1,0,409,127,1
+2795,Hat Yai,organic,8,14,promptpay,completed,0,2,0,9787,125,1
+2796,Chiang Mai,ads,8,4,credit_card,completed,5,2,0,3518,135,1
+2797,Chon Buri,organic,8,14,promptpay,cancelled,0,1,0,1069,125,0
+2798,Udon Thani,organic,8,13,credit_card,completed,0,2,1,3257,126,0
+2799,Chiang Mai,organic,8,12,credit_card,completed,0,1,0,859,127,0
+2800,Chon Buri,referral,8,4,credit_card,completed,0,3,1,55435,135,1
+2802,Chiang Mai,organic,8,1,cod,completed,0,2,0,3067,137,1
+2804,Bangkok,organic,8,13,bank_transfer,completed,0,1,1,949,125,1
+2805,Phuket,organic,8,1,promptpay,cancelled,0,3,0,5027,137,1
+2806,Bangkok,ads,8,9,cod,completed,5,4,1,6296,128,0
+2807,Chon Buri,ads,8,2,cod,completed,0,2,1,2218,135,0
+2808,Bangkok,ads,8,7,promptpay,completed,0,3,1,3317,130,0
+2809,Phuket,ads,8,9,promptpay,completed,5,1,0,2029,128,1
+2810,Udon Thani,organic,8,6,bank_transfer,completed,0,2,1,5248,131,0
+2812,Khon Kaen,ads,8,2,credit_card,cancelled,0,2,0,1147,134,1
+2813,Bangkok,ads,8,13,promptpay,completed,0,3,0,2427,122,0
+2814,Bangkok,organic,8,0,cod,completed,0,2,0,4218,135,1
+2815,Udon Thani,organic,8,8,promptpay,completed,0,1,0,4109,126,0
+2816,Chon Buri,ads,8,12,promptpay,completed,0,2,0,1428,122,0
+2817,Nakhon Ratchasima,ads,8,8,credit_card,completed,0,3,1,5845,126,0
+2818,Nakhon Ratchasima,organic,8,12,promptpay,completed,10,1,1,3959,122,0
+2821,Khon Kaen,ads,8,4,promptpay,completed,0,1,0,2278,130,1
+2822,Hat Yai,ads,8,5,cod,completed,5,1,0,1029,129,0
+2823,Bangkok,ads,8,11,promptpay,completed,0,1,0,1017,122,0
+2824,Udon Thani,organic,8,9,credit_card,completed,0,3,0,2606,124,1
+2825,Bangkok,ads,8,1,promptpay,completed,0,2,0,6287,132,1
+2826,Bangkok,organic,8,7,credit_card,completed,10,1,0,889,126,1
+2827,Chon Buri,ads,8,4,promptpay,completed,0,2,0,4717,129,1
+2828,Chiang Mai,organic,8,8,promptpay,completed,0,4,0,11345,125,1
+2829,Chiang Mai,organic,8,7,promptpay,completed,15,1,0,4109,126,1
+2832,Chon Buri,organic,8,6,cod,completed,0,2,1,2938,126,0
+2833,Khon Kaen,ads,8,13,promptpay,completed,5,1,0,259,119,0
+2835,Chon Buri,ads,8,1,credit_card,completed,0,2,0,5538,131,0
+2836,Bangkok,ads,8,9,cod,returned,5,3,1,8265,122,1
+2837,Nakhon Ratchasima,referral,8,0,bank_transfer,completed,0,2,1,3127,131,1
+2838,Nakhon Ratchasima,organic,8,3,promptpay,completed,15,2,0,668,128,0
+2840,Udon Thani,organic,8,12,promptpay,cancelled,0,3,0,5045,119,0
+2841,Nakhon Ratchasima,organic,8,6,promptpay,completed,0,1,1,13239,125,1
+2842,Chiang Mai,organic,8,3,promptpay,completed,0,2,0,1248,128,0
+2843,Bangkok,organic,8,2,credit_card,completed,0,2,1,3178,128,1
+2844,Nakhon Ratchasima,ads,8,1,cod,completed,0,1,0,1059,129,0
+2845,Bangkok,organic,8,6,cod,completed,0,2,0,1298,124,1
+2847,Chiang Mai,referral,8,6,promptpay,completed,0,1,0,1139,123,1
+2848,Chon Buri,referral,8,3,promptpay,completed,0,3,1,10935,126,1
+2849,Bangkok,ads,8,6,promptpay,completed,0,1,1,1898,123,1
+2850,Chon Buri,organic,8,11,cod,completed,0,2,1,3616,118,0
+2851,Chon Buri,organic,8,7,credit_card,completed,10,3,1,11827,122,1
+2852,Nakhon Ratchasima,ads,8,2,promptpay,completed,0,1,1,1279,127,1
+2853,Bangkok,organic,8,13,promptpay,completed,0,1,0,1759,116,0
+2854,Bangkok,referral,8,0,promptpay,completed,0,1,0,399,128,1
+2855,Bangkok,organic,8,11,credit_card,completed,5,2,0,3486,117,1
+2856,Chon Buri,organic,8,10,promptpay,completed,0,4,1,3606,118,1
+2857,Chon Buri,referral,8,4,promptpay,completed,0,1,0,509,123,0
+2858,Chon Buri,organic,8,2,promptpay,completed,0,2,0,2795,125,1
+2859,Khon Kaen,organic,8,9,credit_card,completed,0,2,0,3396,118,1
+2860,Udon Thani,referral,8,5,promptpay,completed,0,4,0,3515,121,1
+2861,Phuket,referral,8,0,credit_card,completed,10,3,0,7226,126,0
+2862,Chiang Mai,organic,8,12,cod,completed,0,1,0,1718,114,0
+2864,Hat Yai,referral,8,11,cod,completed,0,3,1,36265,114,0
+2865,Phuket,referral,8,4,promptpay,completed,0,4,1,23455,121,1
+2866,Phuket,ads,8,8,credit_card,completed,15,1,0,949,117,1
+2867,Nakhon Ratchasima,organic,8,14,promptpay,completed,0,1,0,719,111,0
+2868,Udon Thani,organic,8,11,promptpay,completed,0,1,0,3518,113,1
+2869,Nakhon Ratchasima,organic,8,14,promptpay,completed,0,3,1,22505,109,0
+2870,Nakhon Ratchasima,organic,8,2,promptpay,completed,0,1,0,299,121,1
+2873,Hat Yai,referral,8,3,bank_transfer,cancelled,0,2,0,808,119,0
+2874,Bangkok,organic,8,3,bank_transfer,completed,0,1,1,10659,119,1
+2875,Khon Kaen,ads,8,3,promptpay,completed,0,1,0,12327,119,1
+2876,Nakhon Ratchasima,organic,8,12,bank_transfer,returned,0,1,0,319,110,1
+2877,Hat Yai,referral,8,0,cod,completed,15,1,0,879,122,1
+2878,Bangkok,organic,8,0,credit_card,completed,0,1,0,569,122,0
+2879,Bangkok,ads,9,8,promptpay,completed,0,1,0,769,113,0
+2880,Phuket,organic,9,4,credit_card,completed,0,3,0,2263,117,0
+2881,Bangkok,organic,9,11,promptpay,completed,0,1,0,1069,110,1
+2882,Bangkok,organic,9,7,promptpay,completed,0,1,0,3807,114,1
+2883,Bangkok,referral,9,7,promptpay,completed,0,1,0,199,113,1
+2884,Bangkok,ads,9,5,cod,completed,0,1,1,2829,115,1
+2885,Nakhon Ratchasima,organic,9,12,cod,completed,0,2,0,9135,107,0
+2886,Nakhon Ratchasima,organic,9,14,cod,completed,0,1,0,119,105,0
+2887,Nakhon Ratchasima,ads,9,2,credit_card,completed,0,1,1,18439,117,0
+2889,Nakhon Ratchasima,organic,9,6,promptpay,completed,0,2,0,1448,112,0
+2890,Chon Buri,organic,9,7,credit_card,completed,10,1,0,2779,111,0
+2891,Bangkok,organic,9,12,promptpay,completed,0,1,0,4827,106,0
+2892,Chon Buri,referral,9,7,cod,returned,0,3,1,53254,110,1
+2893,Nakhon Ratchasima,ads,9,5,promptpay,completed,0,1,1,579,111,1
+2894,Chiang Mai,ads,9,11,promptpay,completed,0,1,0,409,104,1
+2895,Bangkok,organic,9,7,promptpay,completed,0,1,0,2109,108,0
+2897,Hat Yai,organic,9,12,credit_card,completed,0,2,0,1968,103,1
+2898,Bangkok,organic,9,4,credit_card,returned,0,1,0,449,111,1
+2899,Bangkok,referral,9,9,credit_card,completed,0,2,0,2528,106,1
+2900,Bangkok,organic,9,5,promptpay,completed,0,1,0,329,109,1
+2902,Phuket,organic,9,7,promptpay,completed,10,1,1,3829,107,1
+2904,Bangkok,organic,9,12,credit_card,completed,15,1,0,4109,101,0
+2905,Bangkok,organic,9,4,credit_card,completed,0,1,0,898,109,0
+2906,Nakhon Ratchasima,ads,9,5,promptpay,completed,0,1,0,909,108,1
+2907,Bangkok,organic,9,2,credit_card,completed,0,1,0,1309,110,0
+2908,Khon Kaen,organic,9,0,promptpay,completed,0,2,0,937,112,1
+2909,Hat Yai,referral,9,1,bank_transfer,completed,5,1,0,339,111,0
+2910,Udon Thani,ads,9,9,promptpay,completed,0,1,0,3799,103,0
+2911,Phuket,organic,9,6,credit_card,completed,5,1,0,1278,106,1
+2912,Bangkok,ads,9,10,promptpay,completed,0,1,0,849,102,1
+2913,Phuket,ads,9,12,credit_card,completed,5,1,1,3829,99,1
+2914,Chiang Mai,organic,9,7,promptpay,completed,20,3,0,3257,104,1
+2916,Bangkok,referral,9,13,cod,completed,0,1,0,2029,98,1
+2917,Hat Yai,referral,9,8,promptpay,completed,0,1,1,5658,102,1
+2918,Hat Yai,referral,9,14,credit_card,completed,0,2,0,5137,96,0
+2919,Bangkok,ads,9,0,promptpay,completed,0,4,0,6583,110,0
+2920,Bangkok,organic,9,5,credit_card,completed,15,2,0,2458,105,0
+2921,Nakhon Ratchasima,ads,9,7,credit_card,completed,0,1,1,949,103,0
+2922,Bangkok,ads,9,10,bank_transfer,returned,20,1,0,3309,100,0
+2925,Chon Buri,referral,9,2,credit_card,returned,0,3,1,15977,106,0
+2926,Phuket,ads,9,3,promptpay,completed,0,3,1,12896,105,0
+2927,Bangkok,referral,9,4,bank_transfer,completed,0,3,0,2446,104,1
+2928,Khon Kaen,organic,9,6,promptpay,cancelled,0,1,0,429,102,1
+2929,Bangkok,organic,9,9,promptpay,completed,15,4,0,14572,99,1
+2930,Bangkok,ads,9,0,credit_card,completed,0,1,0,259,107,1
+2931,Chiang Mai,ads,9,13,credit_card,cancelled,0,2,0,4176,94,0
+2932,Khon Kaen,ads,9,2,promptpay,completed,0,3,0,607,105,1
+2934,Udon Thani,ads,9,3,promptpay,completed,15,1,0,2639,103,0
+2935,Khon Kaen,ads,9,7,credit_card,completed,10,3,0,4186,98,0
+2936,Chiang Mai,ads,9,0,credit_card,completed,0,2,1,11497,105,1
+2937,Bangkok,ads,9,7,promptpay,cancelled,0,1,0,1139,98,0
+2938,Bangkok,organic,9,2,promptpay,completed,0,1,0,1598,103,0
+2939,Nakhon Ratchasima,ads,9,8,credit_card,cancelled,10,2,1,9968,96,0
+2940,Udon Thani,organic,9,0,credit_card,completed,0,1,0,399,104,0
+2941,Hat Yai,ads,9,13,promptpay,completed,10,1,1,599,91,1
+2942,Bangkok,referral,9,1,promptpay,completed,0,2,1,3497,103,1
+2943,Bangkok,ads,9,1,promptpay,completed,0,1,0,1977,102,1
+2944,Bangkok,referral,9,8,promptpay,completed,0,4,0,5665,95,1
+2945,Chon Buri,referral,9,11,cod,completed,15,2,1,6786,92,1
+2946,Phuket,referral,9,8,promptpay,completed,0,2,0,3486,95,0
+2947,Bangkok,referral,9,6,bank_transfer,completed,10,2,0,846,97,1
+2948,Chiang Mai,organic,9,9,credit_card,completed,0,2,0,2847,94,0
+2949,Khon Kaen,organic,9,5,promptpay,completed,10,3,1,9516,98,0
+2950,Bangkok,organic,9,6,credit_card,completed,0,3,1,21237,97,0
+2951,Nakhon Ratchasima,organic,9,8,promptpay,completed,15,1,0,758,94,1
+2952,Bangkok,organic,9,5,cod,completed,0,2,0,1287,97,0
+2953,Hat Yai,organic,9,6,promptpay,completed,0,1,1,2438,96,0
+2954,Phuket,organic,9,7,promptpay,completed,10,2,0,1346,95,0
+2955,Bangkok,organic,9,14,credit_card,completed,10,1,0,3939,88,0
+2956,Chon Buri,ads,9,3,credit_card,completed,0,1,0,698,99,1
+2957,Bangkok,organic,9,6,bank_transfer,completed,0,1,0,3799,96,1
+2958,Udon Thani,organic,9,14,credit_card,completed,5,2,1,2378,87,1
+2959,Nakhon Ratchasima,ads,9,13,credit_card,returned,0,4,0,8056,88,0
+2960,Bangkok,organic,9,7,cod,completed,15,1,0,1129,94,0
+2962,Khon Kaen,ads,9,10,credit_card,completed,5,1,0,1558,91,0
+2963,Chiang Mai,ads,9,5,credit_card,completed,0,2,0,1608,95,1
+2964,Bangkok,referral,9,14,credit_card,completed,0,2,0,4857,86,0
+2965,Hat Yai,ads,9,6,bank_transfer,completed,5,1,1,7418,94,1
+2968,Chiang Mai,referral,9,1,promptpay,completed,0,1,0,499,98,1
+2969,Khon Kaen,organic,9,9,credit_card,completed,5,3,1,4485,90,1
+2970,Bangkok,referral,9,14,promptpay,completed,0,3,1,10164,85,1
+2971,Udon Thani,referral,9,10,promptpay,completed,0,2,1,6377,89,0
+2972,Chiang Mai,referral,9,13,credit_card,completed,0,1,0,419,86,0
+2973,Bangkok,ads,9,14,cod,completed,0,2,1,10737,84,1
+2974,Khon Kaen,ads,9,6,credit_card,cancelled,0,2,0,3038,92,0
+2975,Chon Buri,organic,9,2,cod,completed,0,2,1,2857,96,1
+2976,Bangkok,organic,9,5,credit_card,completed,0,2,0,1798,92,0
+2977,Nakhon Ratchasima,ads,9,11,cod,completed,5,2,1,3066,86,0
+2978,Chiang Mai,organic,9,11,promptpay,completed,0,1,0,1129,86,0
+2979,Phuket,organic,9,0,promptpay,completed,0,1,0,949,97,0
+2980,Chon Buri,organic,9,4,credit_card,completed,0,2,0,2138,93,1
+2981,Chiang Mai,ads,9,2,promptpay,completed,0,2,1,7606,94,1
+2982,Khon Kaen,referral,9,3,promptpay,completed,0,2,0,1978,93,0
+2983,Bangkok,ads,9,9,credit_card,completed,0,1,0,559,87,0
+2984,Khon Kaen,referral,9,11,promptpay,completed,5,1,0,329,84,1
+2985,Chiang Mai,ads,9,11,credit_card,completed,0,2,1,5938,84,1
+2986,Chiang Mai,organic,9,3,bank_transfer,cancelled,20,3,0,1847,92,0
+2987,Bangkok,organic,9,10,promptpay,completed,10,1,0,219,84,0
+2988,Bangkok,organic,9,13,credit_card,completed,0,2,1,1888,81,1
+2989,Bangkok,organic,9,1,credit_card,completed,15,1,0,1129,93,0
+2990,Chiang Mai,ads,9,9,promptpay,completed,5,2,1,15538,85,0
+2991,Chon Buri,organic,9,7,promptpay,completed,0,2,0,4546,87,0
+2994,Khon Kaen,referral,9,11,promptpay,completed,0,2,0,2248,82,1
+2995,Bangkok,ads,9,2,credit_card,completed,5,1,0,1269,91,0
+2996,Chon Buri,ads,9,13,cod,completed,0,3,1,2106,80,1
+2997,Chiang Mai,organic,9,5,credit_card,completed,0,2,0,1606,88,0
+2998,Bangkok,referral,9,10,promptpay,completed,0,1,1,1959,82,1
+2999,Chon Buri,organic,9,12,cod,completed,0,1,1,16419,80,1
+3000,Bangkok,referral,9,9,bank_transfer,completed,0,2,0,798,83,0
+3002,Hat Yai,referral,10,2,credit_card,completed,0,2,0,4618,89,1
+3003,Bangkok,ads,10,1,credit_card,completed,10,1,0,3429,90,0
+3004,Chon Buri,ads,10,6,cod,completed,5,1,1,1219,85,0
+3006,Bangkok,referral,10,1,promptpay,completed,5,2,0,978,90,0
+3007,Bangkok,ads,10,4,promptpay,completed,0,1,0,1269,87,0
+3008,Hat Yai,ads,10,5,cod,returned,0,1,0,3799,86,1
+3010,Bangkok,referral,10,10,promptpay,cancelled,0,1,0,2029,80,1
+3011,Bangkok,ads,10,9,bank_transfer,completed,0,3,1,20725,81,1
+3013,Khon Kaen,organic,10,11,bank_transfer,completed,10,3,1,25647,77,1
+3014,Bangkok,ads,10,11,cod,completed,0,1,1,3279,77,1
+3015,Phuket,ads,10,14,cod,completed,0,1,0,509,73,0
+3016,Hat Yai,organic,10,2,credit_card,completed,15,2,0,6207,84,0
+3017,Udon Thani,organic,10,1,cod,completed,0,1,0,2799,84,0
+3018,Nakhon Ratchasima,organic,10,10,bank_transfer,completed,10,1,0,3738,75,1
+3020,Hat Yai,ads,10,6,promptpay,completed,5,2,0,3808,79,0
+3021,Bangkok,referral,10,11,credit_card,completed,0,1,0,299,74,0
+3023,Chiang Mai,referral,10,4,credit_card,completed,0,2,1,16928,80,0
+3024,Nakhon Ratchasima,organic,10,6,credit_card,completed,0,1,0,199,78,1
+3025,Chiang Mai,referral,10,11,bank_transfer,completed,0,2,1,2817,72,1
+3026,Khon Kaen,referral,10,5,promptpay,completed,0,4,0,11223,78,1
+3027,Udon Thani,organic,10,11,credit_card,completed,15,1,1,3959,72,1
+3028,Bangkok,ads,10,2,promptpay,completed,0,2,0,5407,80,1
+3030,Nakhon Ratchasima,organic,10,1,credit_card,returned,0,1,0,2639,80,1
+3033,Bangkok,organic,10,1,credit_card,completed,0,4,1,11315,80,1
+3034,Bangkok,ads,10,11,credit_card,completed,5,2,0,2675,70,1
+3035,Khon Kaen,organic,10,11,promptpay,completed,0,1,0,2158,70,0
+3036,Bangkok,referral,10,6,promptpay,completed,0,1,0,4769,74,0
+3037,Chiang Mai,referral,10,0,promptpay,completed,15,2,0,1428,80,1
+3038,Bangkok,organic,10,10,cod,completed,0,1,0,509,70,0
+3039,Bangkok,organic,10,5,promptpay,completed,10,1,0,679,75,1
+3040,Udon Thani,referral,10,0,credit_card,completed,0,1,0,299,80,0
+3041,Chon Buri,ads,10,10,credit_card,completed,0,1,1,7918,70,0
+3042,Khon Kaen,organic,10,12,credit_card,completed,5,3,1,3136,68,0
+3043,Bangkok,organic,10,5,credit_card,completed,0,1,0,1049,75,1
+3044,Bangkok,organic,10,8,credit_card,completed,0,3,0,5536,71,1
+3045,Chon Buri,organic,10,9,promptpay,completed,0,3,1,4576,70,0
+3046,Bangkok,organic,10,5,bank_transfer,completed,0,2,0,1767,74,1
+3047,Bangkok,ads,10,10,promptpay,completed,0,1,0,799,69,0
+3048,Khon Kaen,ads,10,13,promptpay,completed,0,2,0,1518,66,1
+3049,Chon Buri,organic,10,6,credit_card,completed,0,1,0,2498,72,0
+3050,Bangkok,ads,10,8,cod,returned,5,2,0,1268,70,1
+3051,Hat Yai,organic,10,4,cod,completed,10,4,0,4336,74,0
+3053,Bangkok,ads,10,2,credit_card,completed,0,1,0,2258,75,1
+3054,Bangkok,ads,10,7,credit_card,cancelled,5,1,0,399,70,0
+3056,Khon Kaen,organic,10,4,promptpay,completed,20,2,0,4228,73,0
+3057,Chiang Mai,referral,10,8,credit_card,completed,0,1,0,569,68,1
+3058,Chiang Mai,organic,10,8,promptpay,completed,0,2,0,1008,68,0
+3059,Bangkok,organic,10,2,cod,completed,15,3,1,3497,74,1
+3060,Bangkok,organic,10,3,credit_card,completed,0,1,1,2419,73,1
+3061,Phuket,ads,10,1,cod,completed,0,4,1,16614,75,0
+3062,Hat Yai,organic,10,2,credit_card,completed,5,4,0,2856,73,1
+3063,Hat Yai,referral,10,8,credit_card,completed,10,1,0,1338,67,0
+3064,Khon Kaen,ads,10,11,cod,cancelled,0,1,1,10659,63,1
+3065,Bangkok,referral,10,3,credit_card,completed,20,3,0,7545,71,0
+3066,Bangkok,ads,10,4,cod,completed,0,3,1,44496,70,0
+3067,Khon Kaen,organic,10,6,promptpay,completed,5,1,1,3709,68,0
+3068,Chon Buri,ads,10,13,credit_card,completed,5,2,0,3455,60,1
+3069,Bangkok,organic,10,14,promptpay,completed,10,2,1,22968,59,0
+3070,Hat Yai,organic,10,13,promptpay,cancelled,0,2,1,13668,60,1
+3072,Phuket,organic,10,1,bank_transfer,completed,0,1,1,10659,71,1
+3075,Hat Yai,organic,10,10,cod,returned,0,1,0,859,62,0
+3077,Udon Thani,organic,10,10,cod,returned,0,4,1,6526,61,1
+3078,Nakhon Ratchasima,referral,10,5,promptpay,completed,0,1,0,109,66,1
+3079,Khon Kaen,organic,10,3,credit_card,completed,0,2,1,5735,68,0
+3081,Nakhon Ratchasima,organic,10,8,cod,completed,0,1,0,889,63,1
+3082,Bangkok,ads,10,3,credit_card,completed,0,2,1,16926,67,0
+3083,Udon Thani,organic,10,12,promptpay,completed,0,2,1,1218,57,1
+3084,Chon Buri,organic,10,7,cod,completed,0,1,0,627,62,1
+3085,Phuket,ads,10,9,cod,cancelled,0,1,0,1538,60,1
+3086,Bangkok,organic,10,7,credit_card,completed,0,1,0,4769,62,1
+3087,Bangkok,referral,10,13,credit_card,returned,0,1,0,339,56,1
+3089,Bangkok,organic,10,12,promptpay,completed,0,2,1,8098,57,1
+3090,Bangkok,organic,10,7,promptpay,completed,10,1,0,1069,62,1
+3092,Bangkok,organic,10,13,credit_card,completed,0,4,0,4514,55,1
+3093,Phuket,organic,10,10,credit_card,completed,0,2,1,14598,58,0
+3094,Bangkok,ads,10,14,credit_card,completed,0,2,1,1328,53,0
+3096,Bangkok,referral,10,5,credit_card,completed,0,2,0,1758,62,0
+3097,Bangkok,organic,10,13,credit_card,returned,0,2,0,2326,53,1
+3098,Bangkok,organic,10,3,credit_card,completed,0,1,1,949,63,0
+3099,Bangkok,ads,10,4,promptpay,cancelled,0,1,0,7358,62,1
+3100,Khon Kaen,referral,10,0,credit_card,completed,20,3,1,4157,65,0
+3101,Chiang Mai,ads,10,2,promptpay,completed,0,3,0,4037,63,0
+3102,Nakhon Ratchasima,organic,10,3,promptpay,completed,0,1,0,1079,62,0
+3103,Nakhon Ratchasima,ads,10,12,promptpay,completed,0,1,0,1759,53,1
+3104,Chon Buri,organic,10,10,promptpay,completed,0,1,0,509,55,1
+3105,Chon Buri,ads,10,0,cod,completed,0,1,0,1609,65,1
+3106,Bangkok,organic,10,9,credit_card,completed,0,3,0,2645,55,1
+3107,Udon Thani,organic,10,4,credit_card,completed,0,1,0,999,60,1
+3109,Phuket,ads,10,9,cod,completed,0,4,1,14376,54,0
+3110,Nakhon Ratchasima,organic,10,9,cod,completed,5,2,1,4208,54,1
+3111,Bangkok,ads,10,8,credit_card,completed,0,1,0,299,55,1
+3112,Udon Thani,organic,10,1,promptpay,completed,0,1,0,659,62,0
+3113,Bangkok,ads,10,8,credit_card,completed,20,1,0,549,54,0
+3114,Bangkok,organic,10,1,credit_card,completed,0,1,0,1049,61,1
+3115,Nakhon Ratchasima,ads,10,13,cod,completed,0,1,0,1677,49,1
+3116,Bangkok,ads,10,4,cod,completed,0,1,1,11269,58,1
+3117,Chon Buri,referral,10,14,credit_card,completed,0,2,0,1288,48,1
+3118,Bangkok,ads,10,11,cod,completed,0,1,0,2109,51,0
+3119,Bangkok,ads,10,0,credit_card,completed,0,2,0,738,61,0
+3120,Bangkok,ads,10,4,cod,completed,0,1,0,4769,57,1
+3122,Bangkok,organic,11,7,cod,completed,5,1,0,349,53,0
+3123,Chiang Mai,ads,11,2,bank_transfer,completed,0,2,1,16018,58,1
+3124,Nakhon Ratchasima,organic,11,12,cod,completed,0,1,0,1069,48,1
+3125,Chon Buri,ads,11,1,promptpay,completed,0,1,0,219,59,1
+3126,Nakhon Ratchasima,ads,11,12,promptpay,returned,0,1,1,4069,47,1
+3127,Hat Yai,referral,11,1,bank_transfer,returned,0,1,0,1538,58,1
+3128,Bangkok,ads,11,2,credit_card,completed,0,1,0,2538,57,1
+3129,Bangkok,referral,11,13,promptpay,completed,0,2,1,1288,46,1
+3130,Nakhon Ratchasima,ads,11,5,credit_card,cancelled,0,1,0,1759,54,1
+3132,Bangkok,organic,11,6,cod,completed,0,1,0,449,53,1
+3133,Bangkok,referral,11,4,bank_transfer,completed,0,1,1,3829,54,0
+3134,Nakhon Ratchasima,referral,11,4,promptpay,completed,0,2,0,5116,54,0
+3135,Bangkok,organic,11,13,promptpay,completed,0,2,1,3688,45,0
+3138,Phuket,referral,11,9,cod,completed,0,3,1,17477,48,1
+3139,Phuket,ads,11,9,credit_card,completed,0,2,0,2275,47,1
+3140,Bangkok,organic,11,8,promptpay,completed,10,2,0,4168,48,1
+3141,Bangkok,ads,11,8,promptpay,completed,20,2,0,3887,48,1
+3144,Bangkok,referral,11,8,credit_card,completed,0,1,0,379,46,1
+3145,Khon Kaen,ads,11,4,credit_card,completed,0,1,0,779,49,0
+3146,Chiang Mai,ads,11,1,promptpay,completed,0,1,1,4069,52,1
+3147,Chiang Mai,organic,11,11,credit_card,completed,0,3,1,67834,42,1
+3148,Bangkok,organic,11,0,credit_card,completed,0,2,1,808,53,0
+3149,Bangkok,ads,11,0,promptpay,completed,0,1,1,1219,53,1
+3150,Nakhon Ratchasima,organic,11,0,bank_transfer,completed,0,1,0,1118,53,0
+3152,Nakhon Ratchasima,ads,11,3,promptpay,completed,5,1,0,189,50,1
+3153,Bangkok,organic,11,4,promptpay,completed,0,1,0,1269,48,0
+3155,Phuket,organic,11,4,promptpay,completed,0,1,0,1449,48,0
+3156,Chon Buri,organic,11,2,credit_card,completed,0,1,0,758,50,1
+3157,Nakhon Ratchasima,organic,11,7,promptpay,completed,0,1,0,3518,45,1
+3158,Nakhon Ratchasima,organic,11,2,promptpay,completed,0,2,0,3098,49,1
+3159,Chon Buri,referral,11,0,credit_card,completed,0,1,0,189,51,1
+3160,Bangkok,ads,11,5,bank_transfer,completed,0,1,1,3709,45,1
+3161,Chiang Mai,referral,11,14,promptpay,completed,0,2,1,3127,36,1
+3162,Bangkok,ads,11,14,promptpay,completed,0,1,1,599,36,0
+3163,Udon Thani,organic,11,10,promptpay,completed,5,1,0,499,40,0
+3164,Chiang Mai,organic,11,14,credit_card,completed,0,1,0,449,36,1
+3165,Bangkok,referral,11,14,promptpay,completed,0,1,0,1269,35,0
+3167,Chiang Mai,organic,11,3,promptpay,completed,0,2,0,958,46,0
+3169,Nakhon Ratchasima,organic,11,0,promptpay,completed,10,2,1,16828,49,1
+3170,Nakhon Ratchasima,organic,11,13,bank_transfer,completed,0,1,1,19558,36,1
+3172,Hat Yai,referral,11,3,promptpay,completed,0,1,0,569,46,1
+3173,Chiang Mai,ads,11,0,promptpay,completed,0,1,0,799,49,1
+3175,Khon Kaen,organic,11,4,bank_transfer,completed,15,1,0,259,44,1
+3176,Chiang Mai,organic,11,4,credit_card,completed,15,1,0,3799,44,0
+3177,Chon Buri,referral,11,6,promptpay,completed,10,2,0,4668,41,0
+3179,Bangkok,ads,11,6,promptpay,completed,0,2,1,11678,41,1
+3181,Bangkok,referral,11,13,credit_card,completed,0,1,0,2577,33,1
+3182,Bangkok,referral,11,5,cod,completed,0,4,1,5975,41,1
+3183,Bangkok,organic,11,3,credit_card,completed,5,2,1,1668,43,1
+3184,Bangkok,ads,11,6,promptpay,completed,10,3,1,8576,40,1
+3185,Bangkok,ads,11,4,credit_card,completed,0,2,1,1428,42,1
+3186,Bangkok,organic,11,14,cod,completed,0,2,0,7087,32,1
+3187,Bangkok,organic,11,9,credit_card,completed,10,3,1,3883,37,1
+3189,Hat Yai,organic,11,7,credit_card,completed,0,2,0,1388,39,1
+3190,Chiang Mai,ads,11,3,bank_transfer,completed,0,2,1,14298,42,1
+3191,Hat Yai,ads,11,3,promptpay,completed,0,3,1,5067,42,1
+3192,Bangkok,ads,11,0,cod,completed,0,2,0,1287,45,1
+3193,Bangkok,ads,11,8,cod,cancelled,5,1,1,2358,36,1
+3194,Bangkok,organic,11,13,cod,completed,0,1,1,11269,30,1
+3195,Chon Buri,referral,11,12,promptpay,completed,0,2,0,1436,31,1
+3196,Bangkok,referral,11,14,cod,completed,0,1,0,1049,29,1
+3197,Phuket,organic,11,13,promptpay,completed,10,2,1,3937,30,1
+3199,Nakhon Ratchasima,ads,11,2,promptpay,completed,0,2,0,8867,41,1
+3200,Udon Thani,organic,11,3,credit_card,completed,0,1,1,1959,40,1
+3201,Bangkok,ads,11,6,cod,cancelled,0,1,0,2779,36,1
+3202,Bangkok,organic,11,6,cod,completed,0,2,1,18257,35,1
+3203,Bangkok,organic,11,3,promptpay,completed,0,1,0,1759,38,1
+3204,Udon Thani,ads,11,3,credit_card,completed,0,2,1,4358,38,1
+3205,Chon Buri,ads,11,7,promptpay,completed,0,4,1,6986,34,1
+3206,Chon Buri,organic,11,9,bank_transfer,completed,0,2,1,21657,32,0
+3207,Nakhon Ratchasima,ads,11,11,credit_card,completed,10,1,0,549,29,1
+3208,Nakhon Ratchasima,ads,11,14,credit_card,completed,0,3,1,5246,26,1
+3209,Bangkok,organic,11,8,credit_card,completed,5,1,0,679,32,1
+3210,Khon Kaen,referral,11,13,credit_card,cancelled,0,1,0,2029,27,1
+3212,Chon Buri,referral,11,14,promptpay,completed,0,1,0,2909,25,1
+3213,Phuket,organic,11,13,credit_card,completed,0,1,1,22638,26,1
+3214,Udon Thani,organic,11,4,credit_card,completed,0,2,1,4348,35,0
+3215,Udon Thani,referral,11,2,promptpay,completed,15,1,1,18439,37,0
+3216,Bangkok,organic,11,5,promptpay,completed,0,1,0,6858,33,0
+3218,Khon Kaen,organic,11,13,credit_card,completed,0,3,1,7825,25,1
+3219,Bangkok,ads,11,2,promptpay,completed,0,1,0,499,35,0
+3220,Nakhon Ratchasima,organic,11,13,bank_transfer,completed,0,1,1,3829,24,1
+3221,Chiang Mai,organic,11,13,credit_card,completed,0,2,0,2978,24,1
+3222,Bangkok,organic,11,5,credit_card,completed,0,1,0,219,32,1
+3223,Bangkok,organic,11,6,promptpay,cancelled,5,1,1,3829,31,1
+3224,Bangkok,organic,11,3,credit_card,completed,0,1,0,2899,34,0
+3225,Hat Yai,organic,11,10,credit_card,completed,0,1,1,60207,26,1
+3226,Bangkok,organic,11,10,credit_card,completed,0,1,0,3939,26,1
+3227,Bangkok,referral,11,6,credit_card,completed,0,1,0,1059,30,1
+3228,Bangkok,ads,11,10,promptpay,completed,0,1,0,2029,26,1
+3229,Phuket,organic,11,1,promptpay,completed,10,1,0,1269,34,0
+3230,Bangkok,organic,11,6,credit_card,completed,0,3,1,13087,28,1
+3231,Chiang Mai,referral,11,12,credit_card,completed,20,1,0,569,22,1
+3233,Bangkok,organic,11,6,credit_card,completed,5,1,0,3429,27,1
+3234,Hat Yai,referral,11,1,promptpay,completed,0,2,0,1048,32,0
+3235,Bangkok,organic,11,13,credit_card,completed,20,3,0,6816,20,1
+3238,Phuket,ads,11,10,promptpay,completed,15,3,1,1647,22,1
+3239,Khon Kaen,ads,11,14,credit_card,completed,5,3,0,2207,17,1
+3240,Udon Thani,referral,11,2,promptpay,returned,0,1,0,719,29,1
+3242,Bangkok,referral,11,7,promptpay,completed,0,1,0,1059,24,1
+3243,Bangkok,ads,11,3,cod,completed,5,2,0,11416,28,1
+3244,Bangkok,referral,12,6,credit_card,completed,5,1,0,259,24,1
+3245,Bangkok,ads,12,8,cod,completed,15,1,0,799,21,1
+3248,Bangkok,referral,12,3,promptpay,cancelled,5,2,1,2454,25,1
+3249,Bangkok,ads,12,12,credit_card,completed,0,1,0,509,16,1
+3250,Bangkok,ads,12,8,promptpay,cancelled,0,1,0,859,20,1
+3251,Bangkok,organic,12,13,credit_card,completed,10,2,1,10228,15,0
+3253,Hat Yai,referral,12,13,cod,completed,0,3,1,3576,14,1
+3254,Hat Yai,referral,12,8,credit_card,completed,0,1,0,799,19,1
+3255,Chiang Mai,ads,12,8,credit_card,completed,0,3,1,6067,18,1
+3256,Chiang Mai,organic,12,12,bank_transfer,completed,10,1,0,2899,13,0
+3257,Nakhon Ratchasima,ads,12,14,credit_card,completed,0,2,0,4188,11,1
+3258,Bangkok,ads,12,2,bank_transfer,returned,10,2,1,12716,23,1
+3259,Phuket,organic,12,6,credit_card,completed,0,2,1,11768,19,0
+3260,Chiang Mai,organic,12,6,credit_card,completed,0,1,0,2799,19,1
+3261,Bangkok,organic,12,7,credit_card,completed,0,3,1,3127,18,1
+3262,Chiang Mai,referral,12,9,credit_card,completed,0,4,1,63303,16,0
+3263,Udon Thani,ads,12,12,cod,cancelled,0,4,1,12504,13,1
+3264,Bangkok,ads,12,14,credit_card,completed,0,3,1,9606,10,1
+3265,Phuket,ads,12,7,promptpay,completed,0,1,0,119,17,1
+3267,Phuket,organic,12,6,promptpay,completed,0,1,1,599,17,1
+3268,Nakhon Ratchasima,organic,12,10,promptpay,completed,0,1,0,559,13,1
+3270,Bangkok,ads,12,6,credit_card,completed,0,1,1,11319,17,1
+3272,Nakhon Ratchasima,organic,12,4,bank_transfer,completed,5,4,1,24525,18,1
+3274,Phuket,ads,12,9,promptpay,completed,0,1,0,1049,13,1
+3275,Nakhon Ratchasima,ads,12,3,bank_transfer,cancelled,0,2,0,2137,19,1
+3276,Bangkok,organic,12,3,credit_card,completed,0,1,0,769,19,1
+3277,Bangkok,organic,12,0,promptpay,completed,0,1,0,339,22,1
+3278,Khon Kaen,referral,12,13,cod,completed,0,1,0,509,8,1
+3279,Phuket,ads,12,7,promptpay,completed,0,2,0,1445,14,0
+3280,Chiang Mai,ads,12,11,promptpay,completed,0,1,1,3709,10,0
+3281,Bangkok,ads,12,6,cod,completed,0,1,0,1538,14,1
+3283,Bangkok,ads,12,13,promptpay,completed,0,1,0,399,7,1
+3284,Khon Kaen,organic,12,4,promptpay,completed,5,3,0,6875,16,1
+3285,Bangkok,organic,12,0,promptpay,completed,15,3,0,4727,20,1
+3286,Bangkok,organic,12,1,promptpay,cancelled,0,1,0,669,19,1
+3287,Bangkok,referral,12,2,promptpay,returned,5,1,0,799,17,1
+3288,Bangkok,organic,12,4,promptpay,completed,0,2,0,4517,15,1
+3289,Nakhon Ratchasima,ads,12,12,promptpay,cancelled,0,1,1,4069,7,0
+3290,Bangkok,ads,12,8,promptpay,completed,0,1,1,3829,11,1
+3291,Chiang Mai,organic,12,1,promptpay,completed,5,2,0,5678,17,1
+3292,Khon Kaen,organic,12,5,credit_card,completed,0,2,0,3597,13,0
+3293,Khon Kaen,ads,12,6,bank_transfer,completed,0,2,1,1998,12,0
+3294,Hat Yai,ads,12,1,credit_card,completed,10,1,0,1329,17,1
+3295,Khon Kaen,organic,12,0,credit_card,completed,0,1,0,999,17,1
+3296,Bangkok,referral,12,1,credit_card,returned,0,1,1,2419,16,1
+3297,Bangkok,referral,12,9,credit_card,completed,0,2,1,3238,8,1
+3298,Bangkok,ads,12,8,bank_transfer,completed,0,4,1,12175,9,1
+3299,Phuket,organic,12,13,promptpay,completed,0,2,0,1707,3,0
+3300,Khon Kaen,organic,12,2,credit_card,cancelled,0,2,0,3047,14,1

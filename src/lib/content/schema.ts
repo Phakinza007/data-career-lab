@@ -1,5 +1,6 @@
 import { z } from 'astro/zod';
 import { LANGS, LEVELS } from '../kinds';
+import { TRACK_IDS } from '../tracks';
 
 const id = z.string().regex(/^[a-z0-9-]+$/, 'id ใช้ได้แค่ a-z 0-9 และ -');
 const text = z.string().min(1);
@@ -63,7 +64,7 @@ export const lessonDataSchema = z.object({
 export const practiceSchema = z.object({ title: text, exercises: z.array(exerciseSchema).min(1) });
 
 export const lessonFrontmatterSchema = z.object({
-  track: z.enum(['da']),
+  track: z.enum(TRACK_IDS),
   module: z.string(),
   order: z.number().int().positive(),
   title: z.string(),
@@ -73,7 +74,7 @@ export const lessonFrontmatterSchema = z.object({
 });
 
 export const moduleSchema = z.object({
-  track: z.enum(['da']),
+  track: z.enum(TRACK_IDS),
   slug: z.string(),
   order: z.number().int().nonnegative(),
   title: z.string(),

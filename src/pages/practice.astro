@@ -1,9 +1,10 @@
 ---
+import { TRACK_IDS } from '../lib/tracks';
 import Base from '../layouts/Base.astro';
 import Drill from '../components/Drill';
 import { getDrillPool } from '../lib/content/drill';
 
-const { items, modules } = await getDrillPool('da');
+const { items, modules } = await getDrillPool(TRACK_IDS);
 ---
 <Base title="ฝึกซ้อม">
   <h1>ฝึกซ้อม</h1>

@@ -1,0 +1,521 @@
+goals:
+  - "ใช้ LogisticRegression ทำนายคลาส และแยกความต่างของ predict กับ predict_proba"
+  - "ปรับ threshold และเข้าใจว่าเกณฑ์เปลี่ยนผลอย่างไร"
+  - "อ่าน coefficient เป็น odds ratio"
+examples:
+  - id: "x1"
+    title: "เทรนและดูความน่าจะเป็น"
+    lang: "python"
+    prompt: |
+      ทำนายว่าลูกค้าจะซื้อซ้ำไหม และดูว่าโมเดลมั่นใจแค่ไหน
+    steps:
+      - text: |
+          เทรน LogisticRegression แล้ววัด accuracy บนชุดทดสอบ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          round(model.score(X_test, y_test), 4)
+      - text: |
+          ดูความน่าจะเป็นของ 3 แถวแรก — predict ให้แค่ 0/1 แต่ predict_proba บอกความมั่นใจ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          proba = model.predict_proba(X_test)[:, 1]
+          proba[:3].round(3), model.predict(X_test)[:3]
+    pitfall:
+      text: |
+        ใช้แต่ `predict` (0/1) แล้วทิ้งความน่าจะเป็น — ลูกค้าที่โมเดลให้ 0.51 กับ 0.95 ถูกมองเป็นคลาส 1 เหมือนกัน ทั้งที่ระดับความมั่นใจต่างกันมาก ทำให้จัดลำดับความสำคัญของลูกค้าไม่ได้
+  - id: "x2"
+    title: "ขยับ threshold"
+    lang: "python"
+    prompt: |
+      ถ้าเปลี่ยนเกณฑ์ตัดสินจาก 0.5 จะเกิดอะไรขึ้น
+    steps:
+      - text: |
+          นับจำนวนที่ทำนายว่าซื้อซ้ำและ accuracy ที่เกณฑ์ 0.5 / 0.6 / 0.7 — ยิ่งเกณฑ์สูง จำนวนที่ทำนายเป็นคลาส 1 ยิ่งน้อยลง
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          from sklearn.metrics import accuracy_score
+
+          proba = model.predict_proba(X_test)[:, 1]
+          rows = []
+          for th in (0.5, 0.6, 0.7):
+              pred = (proba >= th).astype(int)
+              rows.append((th, int(pred.sum()), round(accuracy_score(y_test, pred), 4)))
+          rows
+      - text: |
+          เทียบกับ baseline ที่ทายว่าซื้อซ้ำทุกคน (accuracy ~0.59) ก่อนสรุปว่าเกณฑ์ไหนดี
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          round(max(y_test.mean(), 1 - y_test.mean()), 4)
+    pitfall:
+      text: |
+        ยึดเกณฑ์ 0.5 เพราะเป็นค่าเริ่มต้นโดยไม่คิดว่าความผิดพลาดแต่ละแบบมีต้นทุนต่างกัน (เช่น พลาดลูกค้าที่จะซื้อซ้ำ vs ส่งโปรโมชันให้คนที่ไม่ซื้อซ้ำ) เกณฑ์ที่เหมาะขึ้นกับงาน ไม่ใช่กฎตายตัว
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      นับจำนวนลูกค้าที่โมเดลทำนายว่าจะซื้อซ้ำเมื่อใช้เกณฑ์ 0.7 เก็บไว้ในตัวแปร n_pos_07 เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_07 = int((proba >= ___).sum())
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_07 = int((proba >= 0.7).sum())
+    check: |
+      check_value(n_pos_07, _sol["n_pos_07"], name="n_pos_07")
+    hints:
+      - "เงื่อนไขคือ proba >= เกณฑ์ ที่ต้องการ"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy ของ LogisticRegression(max_iter=2000) บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      test_acc = round(model.score(X_test, y_test), 4)
+    check: |
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "ใช้ model.score(X_test, y_test)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ความน่าจะเป็นที่จะซื้อซ้ำของลูกค้าแถวแรกในชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร first_proba
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      first_proba = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      first_proba = round(model.predict_proba(X_test.iloc[[0]])[0, 1], 4)
+    check: |
+      check_value(first_proba, _sol["first_proba"], name="first_proba", tol=0.001)
+    hints:
+      - "คอลัมน์ที่ 1 ของ predict_proba คือคลาส 1"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จำนวนลูกค้าในชุดทดสอบที่โมเดลทำนายว่าจะซื้อซ้ำเมื่อใช้เกณฑ์ 0.5 (proba >= 0.5) เก็บไว้ในตัวแปร n_pos_05
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_05 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_05 = int((proba >= 0.5).sum())
+    check: |
+      check_value(n_pos_05, _sol["n_pos_05"], name="n_pos_05")
+    hints:
+      - "นับค่า True ด้วย .sum()"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จำนวนที่ทำนายว่าจะซื้อซ้ำเมื่อใช้เกณฑ์ 0.7 เก็บไว้ในตัวแปร n_pos_07
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_07 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_07 = int((proba >= 0.7).sum())
+    check: |
+      check_value(n_pos_07, _sol["n_pos_07"], name="n_pos_07")
+    hints:
+      - "เหมือน e3 แต่เกณฑ์ 0.7"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      accuracy บนชุดทดสอบเมื่อใช้เกณฑ์ 0.6 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร acc_06
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      acc_06 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      from sklearn.metrics import accuracy_score
+
+      acc_06 = round(accuracy_score(y_test, (proba >= 0.6).astype(int)), 4)
+    check: |
+      check_value(acc_06, _sol["acc_06"], name="acc_06", tol=0.001)
+    hints:
+      - "แปลง proba >= 0.6 เป็น 0/1 ด้วย .astype(int) แล้วเทียบกับ y_test"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      coefficient ของ feature channel_promo (ปัด 3 ตำแหน่ง) เก็บไว้ในตัวแปร coef_promo
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      coef_promo = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      coef_promo = round(model.coef_[0][list(X.columns).index('channel_promo')], 3)
+    check: |
+      check_value(coef_promo, _sol["coef_promo"], name="coef_promo", tol=0.01)
+    hints:
+      - "model.coef_ เป็นอาร์เรย์ 2 มิติ ใช้แถวที่ 0"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      odds ratio ของ channel_promo = exp(coefficient) ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร odds_ratio_promo
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      odds_ratio_promo = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+
+      coef_promo = model.coef_[0][list(X.columns).index('channel_promo')]
+      odds_ratio_promo = round(float(np.exp(coef_promo)), 3)
+    check: |
+      check_value(odds_ratio_promo, _sol["odds_ratio_promo"], name="odds_ratio_promo", tol=0.005)
+    hints:
+      - "ใช้ np.exp กับ coefficient"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ลองเกณฑ์ 0.3, 0.4, 0.5, 0.6, 0.7 แล้วหาเกณฑ์ที่ให้ accuracy สูงสุด (ถ้าเท่ากันเลือกเกณฑ์ที่น้อยกว่า) เก็บไว้ในตัวแปร best_threshold
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+      import pandas as pd
+      from sklearn.metrics import accuracy_score
+
+      proba = model.predict_proba(X_test)[:, 1]
+      acc_by_th = pd.Series({th: accuracy_score(y_test, (proba >= th).astype(int)) for th in (0.3, 0.4, 0.5, 0.6, 0.7)})
+      best_threshold = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+      import pandas as pd
+      from sklearn.metrics import accuracy_score
+
+      proba = model.predict_proba(X_test)[:, 1]
+      acc_by_th = pd.Series({th: accuracy_score(y_test, (proba >= th).astype(int)) for th in (0.3, 0.4, 0.5, 0.6, 0.7)})
+      best_threshold = float(acc_by_th.idxmax())
+    check: |
+      check_value(best_threshold, _sol["best_threshold"], name="best_threshold")
+    hints:
+      - "idxmax() คืน index แรกที่เจอค่าสูงสุด"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      accuracy ที่เกณฑ์ดีที่สุดจากข้อ e8 (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร best_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+      import pandas as pd
+      from sklearn.metrics import accuracy_score
+
+      proba = model.predict_proba(X_test)[:, 1]
+      acc_by_th = pd.Series({th: accuracy_score(y_test, (proba >= th).astype(int)) for th in (0.3, 0.4, 0.5, 0.6, 0.7)})
+      best_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+      import pandas as pd
+      from sklearn.metrics import accuracy_score
+
+      proba = model.predict_proba(X_test)[:, 1]
+      acc_by_th = pd.Series({th: accuracy_score(y_test, (proba >= th).astype(int)) for th in (0.3, 0.4, 0.5, 0.6, 0.7)})
+      best_acc = round(float(acc_by_th.max()), 4)
+    check: |
+      check_value(best_acc, _sol["best_acc"], name="best_acc", tol=0.001)
+    hints:
+      - "ใช้ acc_by_th.max()"
+quiz:
+  - id: "q1"
+    question: "predict_proba ให้อะไร"
+    choices:
+      - text: "ค่าที่ทำนายเป็น 0/1 เท่านั้น"
+        why: "นั่นคือ predict"
+      - text: "ความน่าจะเป็นของแต่ละคลาส"
+        correct: true
+        why: "ถูกต้อง — คอลัมน์ที่ 1 คือความน่าจะเป็นของคลาส 1"
+      - text: "accuracy ของโมเดล"
+        why: "accuracy ได้จาก score หรือ accuracy_score"
+      - text: "ชื่อคลาสที่ถูกต้อง"
+        why: "predict_proba ให้ตัวเลข ไม่ใช่ชื่อคลาส"
+  - id: "q2"
+    question: "ถ้าเพิ่ม threshold จาก 0.5 เป็น 0.7 จำนวนที่ถูกทำนายเป็นคลาส 1 จะเป็นอย่างไร"
+    choices:
+      - text: "มากขึ้นเสมอ"
+        why: "ตรงข้าม"
+      - text: "เท่าเดิมเสมอ"
+        why: "โดยทั่วไปจะเปลี่ยน"
+      - text: "น้อยลงหรือเท่าเดิม เพราะเงื่อนไขเข้มขึ้น"
+        correct: true
+        why: "ถูกต้อง — proba >= 0.7 เป็นเซตย่อยของ proba >= 0.5"
+      - text: "ขึ้นกับ random_state เท่านั้น"
+        why: "ไม่เกี่ยวกับ random_state"
+  - id: "q3"
+    question: "odds ratio ของ feature = 0.11 แปลว่าอะไร"
+    choices:
+      - text: "feature นี้เพิ่มโอกาสของคลาส 1 ขึ้น 11 เท่า"
+        why: "ค่าน้อยกว่า 1 คือลด ไม่ใช่เพิ่ม"
+      - text: "โมเดลแม่นยำ 11%"
+        why: "odds ratio ไม่ใช่ accuracy"
+      - text: "feature นี้ไม่มีผลเลย"
+        why: "ไม่มีผลคือ odds ratio = 1"
+      - text: "feature นี้ลดโอกาส (odds) ของคลาส 1 เมื่อปัจจัยอื่นคงที่"
+        correct: true
+        why: "ถูกต้อง — น้อยกว่า 1 คือลด มากกว่า 1 คือเพิ่ม"
+  - id: "q4"
+    question: "ทำไมไม่ควรยึดเกณฑ์ 0.5 เสมอ"
+    choices:
+      - text: "เพราะต้นทุนของความผิดพลาดแต่ละแบบในงานจริงไม่เท่ากัน จึงควรเลือกเกณฑ์ให้เหมาะกับงาน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ 0.5 ทำให้โมเดลช้า"
+        why: "ไม่เกี่ยวกับความเร็ว"
+      - text: "เพราะ scikit-learn ห้ามใช้ 0.5"
+        why: "ใช้ได้ เป็นค่าเริ่มต้น"
+      - text: "เพราะความน่าจะเป็นไม่เคยเกิน 0.5"
+        why: "ความน่าจะเป็นมีค่าตั้งแต่ 0 ถึง 1"
+summary:
+  - "LogisticRegression คำนวณความน่าจะเป็นของคลาส 1 แล้วตัดสินด้วย threshold (ค่าเริ่มต้น 0.5)"
+  - "เกณฑ์สูงขึ้น = ทำนายคลาส 1 น้อยลง — เลือกตามต้นทุนของความผิดพลาดในงานจริง"
+  - "exp(coefficient) คือ odds ratio: ช่องทาง promo ลด odds ซื้อซ้ำเหลือราว 0.11 เท่าเมื่อปัจจัยอื่นคงที่"
+interview:
+  - id: "i1"
+    q: "อธิบายความต่างระหว่าง predict และ predict_proba และเมื่อไรควรใช้ตัวไหน"
+    a: |
+      predict ให้คลาสสุดท้าย (0/1) ที่ตัดสินด้วยเกณฑ์ 0.5 ส่วน predict_proba ให้ความน่าจะเป็นจริง ใช้ predict_proba เมื่ออยากจัดอันดับลูกค้า (ติดต่อคนที่มีโอกาสสูงสุดก่อน) หรืออยากปรับเกณฑ์ตัดสินให้เหมาะกับต้นทุนของงาน และใช้ predict เมื่อต้องการคำตอบสุดท้ายที่ใช้เกณฑ์มาตรฐานแล้ว
+  - id: "i2"
+    q: "อธิบาย odds ratio ของ channel_promo ที่เท่ากับ ~0.11 ให้ทีมการตลาดฟัง"
+    a: |
+      ลูกค้าที่มาจากช่องทาง promo มีโอกาส (odds) ซื้อซ้ำต่ำกว่าช่องทางอ้างอิง (ads) มาก — เหลือประมาณ 11% ของ odds เมื่อเทียบกันโดยปัจจัยอื่นเหมือนกัน ซึ่งสอดคล้องกับที่เห็นจากข้อมูลว่าลูกค้า promo ซื้อซ้ำไม่ถึง 13% เทียบกับกว่า 60% ของช่องทางอื่น สรุปได้ว่าแคมเปญ promo ดึงลูกค้ามาก แต่ส่วนใหญ่ไม่กลับมา
+flashcards:
+  - id: "c1"
+    front: "threshold ใน logistic regression คืออะไร"
+    back: "เกณฑ์ความน่าจะเป็นที่ใช้ตัดสินเป็นคลาส 1 (ค่าเริ่มต้น 0.5) ปรับได้ตามต้นทุนของความผิดพลาด"
+  - id: "c2"
+    front: "odds ratio > 1 กับ < 1 แปลว่าอะไร"
+    back: "> 1 = feature นั้นเพิ่มโอกาสของคลาส 1, < 1 = ลดโอกาส (เมื่อปัจจัยอื่นคงที่)"

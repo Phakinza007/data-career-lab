@@ -1,0 +1,382 @@
+title: "ชุดฝึกท้าย module: พื้นฐาน ML และ scikit-learn"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตาราง ml_customers.csv มีกี่แถวและกี่คอลัมน์ เก็บไว้ในตัวแปร n_rows, n_cols
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_rows = len(df)
+      n_cols = df.shape[1]
+    check: |
+      check_value(n_rows, _sol["n_rows"], name="n_rows")
+      check_value(n_cols, _sol["n_cols"], name="n_cols")
+    hints:
+      - "ทบทวนบทที่ 1 (workflow)"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      สัดส่วนลูกค้าที่ซื้อซ้ำ (repeated = 1) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร repeat_rate
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      repeat_rate = round(df['repeated'].mean(), 4)
+    check: |
+      check_value(repeat_rate, _sol["repeat_rate"], name="repeat_rate", tol=0.0001)
+    hints:
+      - "ค่าเฉลี่ยของคอลัมน์ 0/1"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      แบ่ง train/test (test_size=0.25, random_state=42, stratify=y) แล้วเก็บจำนวนแถว train และ test ไว้ในตัวแปร n_train, n_test
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import train_test_split
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      n_train = len(X_train)
+      n_test = len(X_test)
+    check: |
+      check_value(n_train, _sol["n_train"], name="n_train")
+      check_value(n_test, _sol["n_test"], name="n_test")
+    hints:
+      - "ใช้ get_dummies(drop_first=True) สร้าง X ก่อน (ตัด customer_id, repeated, first_order_value)"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy ของ majority baseline บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร baseline_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      baseline_acc = round(max(y_test.mean(), 1 - y_test.mean()), 4)
+    check: |
+      check_value(baseline_acc, _sol["baseline_acc"], name="baseline_acc", tol=0.0001)
+    hints:
+      - "ทบทวนบทที่ 1"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy ของ LogisticRegression(max_iter=2000) บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      test_acc = round(model.score(X_test, y_test), 4)
+    check: |
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 1 และ 3"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      โจทย์ regression (target = first_order_value, split 75/25 random_state=42 ไม่ stratify): MAE ของ baseline ที่ทายค่าเฉลี่ย y_train ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร baseline_mae
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      import numpy as np
+
+      baseline_mae = round(mean_absolute_error(y_test, np.full(len(y_test), y_train.mean())), 2)
+    check: |
+      check_value(baseline_mae, _sol["baseline_mae"], name="baseline_mae", tol=0.01)
+    hints:
+      - "ทบทวนบทที่ 2"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      LinearRegression จากโจทย์ในข้อ p6: MAE และ R² บนชุดทดสอบ (MAE ปัด 2 ตำแหน่ง, R² ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร model_mae, r2
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      model_mae = round(mean_absolute_error(y_test, pred), 2)
+      r2 = round(r2_score(y_test, pred), 4)
+    check: |
+      check_value(model_mae, _sol["model_mae"], name="model_mae", tol=0.01)
+      check_value(r2, _sol["r2"], name="r2", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 2"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      โมเดลทำนายซื้อซ้ำ (LogisticRegression บน split มาตรฐาน): precision และ recall บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร precision, recall
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      precision = round(precision_score(y_test, pred), 4)
+      recall = round(recall_score(y_test, pred), 4)
+    check: |
+      check_value(precision, _sol["precision"], name="precision", tol=0.001)
+      check_value(recall, _sol["recall"], name="recall", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ROC-AUC ของโมเดลเดียวกัน (ใช้ความน่าจะเป็น) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      auc = round(roc_auc_score(y_test, proba), 4)
+    check: |
+      check_value(auc, _sol["auc"], name="auc", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      จำนวนลูกค้าในชุดทดสอบที่โมเดลทำนายว่าจะซื้อซ้ำเมื่อใช้เกณฑ์ 0.7 เก็บไว้ในตัวแปร n_pos_07
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      proba = model.predict_proba(X_test)[:, 1]
+      n_pos_07 = int((proba >= 0.7).sum())
+    check: |
+      check_value(n_pos_07, _sol["n_pos_07"], name="n_pos_07")
+    hints:
+      - "ทบทวนบทที่ 3 (threshold)"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      coefficient ของ channel_promo และ odds ratio (exp ของ coefficient) ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร coef_promo, odds_ratio_promo
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      import numpy as np
+
+      coef_promo = model.coef_[0][list(X.columns).index('channel_promo')]
+      odds_ratio_promo = round(float(np.exp(coef_promo)), 3)
+      coef_promo = round(float(coef_promo), 3)
+    check: |
+      check_value(coef_promo, _sol["coef_promo"], name="coef_promo", tol=0.01)
+      check_value(odds_ratio_promo, _sol["odds_ratio_promo"], name="odds_ratio_promo", tol=0.005)
+    hints:
+      - "ทบทวนบทที่ 3"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เพิ่ม feature "จำนวนออเดอร์ทั้งหมดของลูกค้า" (นับจาก data/orders.csv) แล้วเทรนใหม่บน split แบบเดิม: accuracy บนชุดทดสอบ เก็บไว้ในตัวแปร leaky_acc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = orders.groupby('customer_id').size().rename('n_orders')
+      df2 = df.merge(n_orders, on='customer_id')
+      X2 = pd.get_dummies(df2.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y2 = df2['repeated']
+      X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.25, random_state=42, stratify=y2)
+      leaky_model = LogisticRegression(max_iter=5000).fit(X2_train, y2_train)
+      leaky_acc = leaky_model.score(X2_test, y2_test)
+    check: |
+      check_value(leaky_acc, _sol["leaky_acc"], name="leaky_acc", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 1 (leakage)"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      โจทย์ทำนายออเดอร์แรกที่ถูกยกเลิก: accuracy ของการทาย "ไม่ยกเลิก" ทุกแถว และ recall ของ LogisticRegression ปกติบนชุดทดสอบ (ปัด always0_acc 4 ตำแหน่ง) เก็บไว้ในตัวแปร always0_acc, cancel_recall
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      always0_acc = round(accuracy_score(y_test, [0] * len(y_test)), 4)
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      cancel_recall = recall_score(y_test, model.predict(X_test))
+    check: |
+      check_value(always0_acc, _sol["always0_acc"], name="always0_acc", tol=0.0001)
+      check_value(cancel_recall, _sol["cancel_recall"], name="cancel_recall", tol=0.0001)
+    hints:
+      - "ทบทวนบทที่ 4 (accuracy paradox)"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      โจทย์เดียวกับ p13 แต่ใช้ class_weight="balanced": recall ของคลาสยกเลิกบนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร recall_bal
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      model = LogisticRegression(max_iter=2000, class_weight='balanced').fit(X_train, y_train)
+      recall_bal = round(recall_score(y_test, model.predict(X_test)), 4)
+    check: |
+      check_value(recall_bal, _sol["recall_bal"], name="recall_bal", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      DecisionTreeClassifier(random_state=42) ไม่จำกัดความลึกบน split มาตรฐานของโจทย์ซื้อซ้ำ: train accuracy และช่องว่าง (train − test) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร full_train_acc, gap_full
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      full_train_acc = round(tree.score(X_train, y_train), 4)
+      gap_full = round(tree.score(X_train, y_train) - tree.score(X_test, y_test), 4)
+    check: |
+      check_value(full_train_acc, _sol["full_train_acc"], name="full_train_acc", tol=0.001)
+      check_value(gap_full, _sol["gap_full"], name="gap_full", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 5"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      5-fold CV (KFold shuffle, random_state=42, X และ y ทั้งชุด) ค่าเฉลี่ย accuracy ของ DecisionTreeClassifier(max_depth=3, random_state=42) และของ LogisticRegression(max_iter=2000) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร depth3_cv_mean, logreg_cv_mean
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      depth3_cv_mean = round(cross_val_score(DecisionTreeClassifier(max_depth=3, random_state=42), X, y, cv=kf).mean(), 4)
+      logreg_cv_mean = round(cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=kf).mean(), 4)
+    check: |
+      check_value(depth3_cv_mean, _sol["depth3_cv_mean"], name="depth3_cv_mean", tol=0.001)
+      check_value(logreg_cv_mean, _sol["logreg_cv_mean"], name="logreg_cv_mean", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 5"

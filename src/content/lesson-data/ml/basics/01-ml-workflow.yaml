@@ -1,0 +1,423 @@
+goals:
+  - "อธิบาย workflow ของ supervised learning: features (X) กับ target (y)"
+  - "แบ่งข้อมูล train/test ให้ถูก (random_state, stratify)"
+  - "เทียบโมเดลกับ baseline เสมอ และสังเกต data leakage ได้"
+examples:
+  - id: "x1"
+    title: "สร้าง X/y และแบ่ง train/test"
+    lang: "python"
+    prompt: |
+      เตรียมข้อมูลลูกค้าให้พร้อมเทรนโมเดลทำนายว่าลูกค้าจะซื้อซ้ำไหม
+    steps:
+      - text: |
+          แยก features (X) กับ target (y) — get_dummies แปลงคอลัมน์ข้อความเป็น 0/1
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X.shape, round(y.mean(), 4)
+      - text: |
+          แบ่ง train/test ด้วย stratify=y — สัดส่วนซื้อซ้ำในสองชุดเกือบเท่ากัน (~0.59)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          X_train.shape, X_test.shape, round(y_train.mean(), 4), round(y_test.mean(), 4)
+    pitfall:
+      text: |
+        ไม่ใส่ `random_state` — โค้ดรันผ่านปกติ แต่ทุกครั้งที่รันจะได้การแบ่งข้อมูลคนละแบบ ผล accuracy เปลี่ยนไปเรื่อยๆ ทำให้เทียบโมเดลสองตัวหรือทำซ้ำผลไม่ได้
+  - id: "x2"
+    title: "เทียบโมเดลกับ baseline"
+    lang: "python"
+    prompt: |
+      โมเดลที่ได้ accuracy 64% ถือว่าดีไหม?
+    steps:
+      - text: |
+          หา majority baseline — ทายว่า "ซื้อซ้ำ" ทุกแถว (คลาสที่พบมากกว่า) ได้กี่ %
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          baseline_acc = max(y_test.mean(), 1 - y_test.mean())
+          round(baseline_acc, 4)
+      - text: |
+          เทรน LogisticRegression แล้ววัด accuracy บนชุดทดสอบ เทียบกับ baseline
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          from sklearn.metrics import accuracy_score
+
+          baseline_acc = max(y_test.mean(), 1 - y_test.mean())
+          test_acc = accuracy_score(y_test, model.predict(X_test))
+          round(baseline_acc, 4), round(test_acc, 4)
+    pitfall:
+      text: |
+        ดีใจที่ accuracy ได้ 64% โดยไม่เทียบ baseline — ความจริงถ้าทายว่า "ซื้อซ้ำ" ทุกคนก็ได้ ~59% อยู่แล้ว โมเดลดีกว่าแค่ประมาณ 5 จุดเปอร์เซ็นต์ ซึ่งคือมูลค่าจริงที่โมเดลเพิ่มให้
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      แบ่งข้อมูลเป็น train/test สัดส่วน 75/25 แบบ stratify ตาม y เก็บจำนวนแถว train ไว้ในตัวแปร n_train เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=___, random_state=42, stratify=___)
+      n_train = len(X_train)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      n_train = len(X_train)
+    check: |
+      check_value(n_train, _sol["n_train"], name="n_train")
+    hints:
+      - "test_size คือสัดส่วนที่กันไว้ทดสอบ (0.25 = 25%)"
+      - "stratify ต้องส่ง target ที่อยากรักษาสัดส่วน"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตาราง ml_customers.csv มีกี่แถวและกี่คอลัมน์ เก็บไว้ในตัวแปร n_rows, n_cols
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_rows = ___
+      n_cols = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_rows = len(df)
+      n_cols = df.shape[1]
+    check: |
+      check_value(n_rows, _sol["n_rows"], name="n_rows")
+      check_value(n_cols, _sol["n_cols"], name="n_cols")
+    hints:
+      - "`df.shape` คืน (จำนวนแถว, จำนวนคอลัมน์)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      สัดส่วนลูกค้าที่ซื้อซ้ำ (repeated = 1) ปัดเป็นทศนิยม 4 ตำแหน่ง เก็บไว้ในตัวแปร repeat_rate
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      repeat_rate = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      repeat_rate = round(df['repeated'].mean(), 4)
+    check: |
+      check_value(repeat_rate, _sol["repeat_rate"], name="repeat_rate", tol=0.0001)
+    hints:
+      - "ค่าเฉลี่ยของคอลัมน์ 0/1 คือสัดส่วนของ 1"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      แบ่ง train/test (test_size=0.25, random_state=42, stratify=y) แล้วเก็บจำนวนแถวชุด train และ test ไว้ในตัวแปร n_train, n_test
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import train_test_split
+      n_train = ___
+      n_test = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import train_test_split
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      n_train = len(X_train)
+      n_test = len(X_test)
+    check: |
+      check_value(n_train, _sol["n_train"], name="n_train")
+      check_value(n_test, _sol["n_test"], name="n_test")
+    hints:
+      - "ใช้ train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      majority baseline: accuracy บนชุดทดสอบถ้าทายคลาสที่พบมากกว่าทุกแถว ปัดทศนิยม 4 ตำแหน่ง เก็บไว้ในตัวแปร baseline_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      baseline_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      baseline_acc = round(max(y_test.mean(), 1 - y_test.mean()), 4)
+    check: |
+      check_value(baseline_acc, _sol["baseline_acc"], name="baseline_acc", tol=0.0001)
+    hints:
+      - "ทายคลาสที่พบมาก → ถูกเท่ากับสัดส่วนของคลาสนั้น"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      หลัง get_dummies(drop_first=True) จะมี feature ทั้งหมดกี่คอลัมน์ (ไม่รวม customer_id, repeated, first_order_value) เก็บไว้ในตัวแปร n_features
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_features = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      n_features = X.shape[1]
+    check: |
+      check_value(n_features, _sol["n_features"], name="n_features")
+    hints:
+      - "ตัดคอลัมน์ที่ไม่ใช่ feature ออกก่อน แล้ว get_dummies"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เทรน LogisticRegression(max_iter=2000) บน train แล้ววัด accuracy บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      test_acc = round(model.score(X_test, y_test), 4)
+    check: |
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "สร้างโมเดลด้วย LogisticRegression(max_iter=2000) แล้ว .fit(X_train, y_train) จากนั้น .score(X_test, y_test)"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      โมเดลดีกว่า majority baseline กี่จุดเปอร์เซ็นต์ (test_acc − baseline_acc คูณ 100 ปัด 2 ตำแหน่ง) เก็บไว้ในตัวแปร gain_pp
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      gain_pp = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      baseline_acc = max(y_test.mean(), 1 - y_test.mean())
+      gain_pp = round((model.score(X_test, y_test) - baseline_acc) * 100, 2)
+    check: |
+      check_value(gain_pp, _sol["gain_pp"], name="gain_pp", tol=0.05)
+    hints:
+      - "เอา accuracy ของโมเดลลบ baseline แล้วคูณ 100"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ลองเพิ่ม feature "จำนวนออเดอร์ทั้งหมดของลูกค้า" (n_orders นับจาก data/orders.csv) เข้าไปแล้วเทรนใหม่ (แบ่งข้อมูลแบบเดิม) เก็บ accuracy บนชุดทดสอบไว้ในตัวแปร leaky_acc
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+
+      orders = pd.read_csv("data/orders.csv")
+      leaky_acc = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = orders.groupby('customer_id').size().rename('n_orders')
+      df2 = df.merge(n_orders, on='customer_id')
+      X2 = pd.get_dummies(df2.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y2 = df2['repeated']
+      X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.25, random_state=42, stratify=y2)
+      leaky_model = LogisticRegression(max_iter=5000).fit(X2_train, y2_train)
+      leaky_acc = leaky_model.score(X2_test, y2_test)
+    check: |
+      check_value(leaky_acc, _sol["leaky_acc"], name="leaky_acc", tol=0.001)
+    hints:
+      - "นับออเดอร์ด้วย orders.groupby(\"customer_id\").size() แล้ว merge เข้า df ก่อน get_dummies"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ผลจากข้อ e8 ดีจนน่าสงสัยไหม ตอบเป็น True/False โดยถือว่า accuracy > 0.95 คือน่าสงสัยว่ามี leakage เก็บไว้ในตัวแปร is_leaky
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+
+      orders = pd.read_csv("data/orders.csv")
+      is_leaky = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+
+      orders = pd.read_csv("data/orders.csv")
+      n_orders = orders.groupby('customer_id').size().rename('n_orders')
+      df2 = df.merge(n_orders, on='customer_id')
+      X2 = pd.get_dummies(df2.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y2 = df2['repeated']
+      X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.25, random_state=42, stratify=y2)
+      leaky_model = LogisticRegression(max_iter=5000).fit(X2_train, y2_train)
+      leaky_acc = leaky_model.score(X2_test, y2_test)
+      is_leaky = leaky_acc > 0.95
+    check: |
+      check_value(is_leaky, _sol["is_leaky"], name="is_leaky")
+    hints:
+      - "ใช้ผลลัพธ์แบบเดียวกับ e8 แล้วเทียบกับ 0.95"
+quiz:
+  - id: "q1"
+    question: "ในโจทย์ supervised learning 'target' (y) คืออะไร"
+    choices:
+      - text: "ข้อมูลทั้งหมดที่ป้อนเข้าโมเดล"
+        why: "นั่นคือ features (X)"
+      - text: "ค่าที่เราอยากให้โมเดลทำนาย เช่น repeated"
+        correct: true
+        why: "ถูกต้อง — target คือคำตอบที่โมเดลเรียนรู้จะทำนาย"
+      - text: "ชื่อของอัลกอริทึมที่ใช้"
+        why: "อัลกอริทึม/โมเดลไม่ใช่ target"
+      - text: "ผลลัพธ์ที่ได้จาก train_test_split"
+        why: "train_test_split แบ่งข้อมูล ไม่ใช่ตัวกำหนด target"
+  - id: "q2"
+    question: "ทำไมต้องแบ่งข้อมูลเป็น train และ test"
+    choices:
+      - text: "เพื่อให้เทรนเร็วขึ้น"
+        why: "ไม่เกี่ยวกับความเร็ว"
+      - text: "เพราะ scikit-learn บังคับให้แบ่งเสมอ"
+        why: "ไม่ได้บังคับ แต่เป็นหลักปฏิบัติที่จำเป็นเพื่อวัดผลอย่างซื่อสัตย์"
+      - text: "เพื่อวัดว่าโมเดลทำนายข้อมูลใหม่ที่ไม่เคยเห็นได้ดีแค่ไหน"
+        correct: true
+        why: "ถูกต้อง — ผลบนข้อมูลที่เทรนไปแล้วไม่บอกความสามารถจริง"
+      - text: "เพื่อลบข้อมูลที่ผิดปกติออก"
+        why: "การแบ่ง train/test ไม่ได้ลบข้อมูลใดๆ"
+  - id: "q3"
+    question: "baseline ในงาน ML มีไว้ทำไม"
+    choices:
+      - text: "เป็นโมเดลที่แม่นที่สุดเสมอ"
+        why: "ตรงข้าม baseline คือวิธีที่ง่ายที่สุด"
+      - text: "ใช้แทนการแบ่ง train/test"
+        why: "baseline ไม่ได้แทนการแบ่งข้อมูล"
+      - text: "ใช้แปลงข้อความเป็นตัวเลข"
+        why: "นั่นคือขั้นตอน encoding ไม่ใช่ baseline"
+      - text: "เป็นเกณฑ์ขั้นต่ำที่โมเดลจริงต้องชนะ ไม่งั้นโมเดลไม่ได้เพิ่มมูลค่า"
+        correct: true
+        why: "ถูกต้อง — เช่น ทายคลาสส่วนใหญ่ทุกแถว"
+  - id: "q4"
+    question: "data leakage คืออะไร"
+    choices:
+      - text: "ข้อมูลที่ไม่ควรรู้ ณ ตอนทำนายจริงหลุดเข้ามาเป็น feature ทำให้ผลทดสอบดีเกินจริง"
+        correct: true
+        why: "ถูกต้อง — เช่น จำนวนออเดอร์รวม ซึ่งรู้ได้หลังลูกค้าซื้อซ้ำไปแล้ว"
+      - text: "การที่โมเดลจำข้อมูล train ได้ทั้งหมด"
+        why: "นั่นคือ overfitting"
+      - text: "ข้อมูลหายไปตอนโหลดไฟล์"
+        why: "นั่นคือ missing data"
+      - text: "การใช้ random_state ซ้ำหลายครั้ง"
+        why: "random_state ช่วยให้ทำซ้ำได้ ไม่ใช่ leakage"
+summary:
+  - "supervised learning ใช้ features (X) ทำนาย target (y) โดยต้องแบ่ง train/test เพื่อวัดผลกับข้อมูลที่ไม่เคยเห็น"
+  - "ตั้ง random_state และ stratify เพื่อให้ผลทำซ้ำได้และสัดส่วนคลาสไม่เพี้ยน"
+  - "เทียบกับ baseline เสมอ (ในข้อมูลนี้ทายว่าซื้อซ้ำทุกคนก็ได้ ~59%) และระวังผลที่ดีเกินจริง — มักเป็น leakage"
+interview:
+  - id: "i1"
+    q: "อธิบาย data leakage พร้อมยกตัวอย่าง และบอกวิธีสังเกต"
+    a: |
+      leakage คือการที่ข้อมูลจากอนาคตหรือข้อมูลที่ไม่มีตอนทำนายจริงหลุดเข้ามาเป็น feature เช่น ใช้ "จำนวนออเดอร์ทั้งหมดของลูกค้า" ทำนายว่าลูกค้าจะซื้อซ้ำไหม ซึ่งรู้ได้ก็ต่อเมื่อลูกค้าซื้อซ้ำไปแล้ว
+
+      วิธีสังเกต: ผลบนชุดทดสอบดีเกินจริง (เช่น accuracy ใกล้ 100% ในโจทย์ที่ควรยาก) หรือ feature ตัวหนึ่งมีอิทธิพลสูงผิดปกติ — ให้ไล่ถามทีละ feature ว่า "ตอนใช้งานจริงเรารู้ค่านี้ ณ เวลาที่ต้องทำนายไหม"
+  - id: "i2"
+    q: "ทำไมผลลัพธ์ของโมเดลถึงต้องเทียบกับ baseline เสมอ"
+    a: |
+      เพราะตัวเลขอย่าง accuracy 64% ไม่มีความหมายถ้าไม่รู้ว่าวิธีที่ง่ายที่สุดได้เท่าไร ในโจทย์ที่คลาสไม่สมดุล การทายคลาสส่วนใหญ่ก็อาจได้สูงอยู่แล้ว (ในข้อมูลนี้ ~59%) baseline บอกว่าโมเดลเพิ่มมูลค่าจริงเท่าไร และช่วยตัดสินว่าคุ้มกับความซับซ้อนที่เพิ่มขึ้นหรือไม่
+flashcards:
+  - id: "c1"
+    front: "baseline ใน ML คืออะไร"
+    back: "โมเดลที่ง่ายที่สุด (เช่น ทายคลาสส่วนใหญ่) ที่โมเดลจริงต้องชนะเพื่อพิสูจน์ว่ามีประโยชน์"
+  - id: "c2"
+    front: "data leakage คืออะไรในหนึ่งประโยค"
+    back: "ข้อมูลที่ไม่มีให้ ณ ตอนทำนายจริงหลุดเข้ามาเป็น feature ทำให้ผลทดสอบดีเกินจริง"

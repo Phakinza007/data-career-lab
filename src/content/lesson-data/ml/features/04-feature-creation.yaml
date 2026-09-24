@@ -1,0 +1,434 @@
+goals:
+  - "สร้าง feature ใหม่ด้วย log transform, อัตราส่วน, flag และการจัดกลุ่ม"
+  - "ตรวจว่า feature ใหม่ไม่ leak (รู้ได้ ณ เวลาทำนายจริง)"
+  - "ตัดสินใจเก็บ feature ด้วย cross-validation ไม่ใช่ความรู้สึก"
+examples:
+  - id: "x1"
+    title: "log transform แก้ข้อมูลเบ้"
+    lang: "python"
+    prompt: |
+      มูลค่าออเดอร์แรกเบ้ขวามาก — ลอง log
+    steps:
+      - text: |
+          skew ของ first_order_value ดิบ ≈ 3.3 (หางขวายาวมาก)
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          import numpy as np
+          round(df['first_order_value'].skew(), 3)
+      - text: |
+          log1p แล้ว skew ≈ 0 (การกระจายสมมาตรขึ้นมาก)
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          import numpy as np
+          round(np.log1p(df['first_order_value']).skew(), 3)
+    pitfall:
+      text: |
+        ใช้ `np.log` กับคอลัมน์ที่อาจมีค่า 0 — log(0) ได้ −inf ทำให้โมเดลพัง ใช้ `np.log1p` (คำนวณ log(1 + x)) แทน ซึ่งปลอดภัยกับ 0 และเหมาะกับตัวเลขที่ไม่ติดลบ
+  - id: "x2"
+    title: "เพิ่ม feature แล้ววัดด้วย CV"
+    lang: "python"
+    prompt: |
+      feature ใหม่ช่วยโมเดลจริงไหม
+    steps:
+      - text: |
+          สร้างฟังก์ชัน cv_auc ที่ประกอบ pipeline แล้ววัด AUC แบบ 5-fold แล้ววัด baseline
+        code: |
+          import numpy as np
+          import pandas as pd
+          from sklearn.compose import ColumnTransformer
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+          def cv_auc(data, num_cols, cat_cols):
+              pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+              pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+              skf = StratifiedKFold(5, shuffle=True, random_state=42)
+              return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+          round(cv_auc(df, num, cat), 4)
+      - text: |
+          เพิ่ม fast_first หรือ value_per_item + log_value + first_order_value — AUC ไม่ได้ดีขึ้น
+        code: |
+          import numpy as np
+          import pandas as pd
+          from sklearn.compose import ColumnTransformer
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+          def cv_auc(data, num_cols, cat_cols):
+              pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+              pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+              skf = StratifiedKFold(5, shuffle=True, random_state=42)
+              return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+          df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+          df['value_per_item'] = df['first_order_value'] / df['first_n_items']
+          df['log_value'] = np.log1p(df['first_order_value'])
+          round(cv_auc(df, num + ['fast_first'], cat), 4), round(cv_auc(df, num + ['value_per_item', 'log_value', 'first_order_value'], cat), 4)
+    pitfall:
+      text: |
+        เก็บ feature ไว้เพราะ "น่าจะช่วย" โดยไม่วัด — ในตัวอย่างนี้ทั้งสองชุด feature ใหม่ให้ AUC ไม่สูงกว่า baseline (ต่ำกว่าเล็กน้อยด้วยซ้ำ) เพราะสัญญาณหลักมาจากช่องทางสมัครอยู่แล้ว feature ที่ไม่ช่วยเพิ่มความซับซ้อนและความเสี่ยง overfit โดยเปล่าประโยชน์
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      สร้างคอลัมน์ value_per_item = มูลค่าออเดอร์แรกหารจำนวนชิ้น แล้วเก็บค่าเฉลี่ย (ปัด 2 ตำแหน่ง) ไว้ในตัวแปร vpi_mean เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      df['value_per_item'] = df['first_order_value'] / df[___]
+      vpi_mean = round(df['value_per_item'].mean(), 2)
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      df['value_per_item'] = df['first_order_value'] / df['first_n_items']
+      vpi_mean = round(df['value_per_item'].mean(), 2)
+    check: |
+      check_value(vpi_mean, _sol["vpi_mean"], name="vpi_mean", tol=0.01)
+    hints:
+      - "หารด้วยคอลัมน์จำนวนชิ้นในออเดอร์แรก"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      skew ของ first_order_value ดิบ ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร skew_raw
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      skew_raw = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      skew_raw = round(df['first_order_value'].skew(), 3)
+    check: |
+      check_value(skew_raw, _sol["skew_raw"], name="skew_raw", tol=0.001)
+    hints:
+      - "`.skew()`"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      skew หลัง np.log1p ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร skew_log
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      skew_log = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      skew_log = round(np.log1p(df['first_order_value']).skew(), 3)
+    check: |
+      check_value(skew_log, _sol["skew_log"], name="skew_log", tol=0.001)
+    hints:
+      - "ใช้ np.log1p ก่อนหา skew"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      สัดส่วนลูกค้าที่สั่งออเดอร์แรกภายใน 3 วันหลังสมัคร (days_to_first_order <= 3) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร fast_share
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      fast_share = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      fast_share = round((df['days_to_first_order'] <= 3).mean(), 4)
+    check: |
+      check_value(fast_share, _sol["fast_share"], name="fast_share", tol=0.0001)
+    hints:
+      - "ค่าเฉลี่ยของเงื่อนไข True/False คือสัดส่วน"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      มีลูกค้ากี่คนที่มูลค่าออเดอร์แรกเกิน 20,000 บาท เก็บไว้ในตัวแปร n_vip
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      n_vip = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      n_vip = int((df['first_order_value'] > 20000).sum())
+    check: |
+      check_value(n_vip, _sol["n_vip"], name="n_vip")
+    hints:
+      - "นับเงื่อนไขด้วย .sum()"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      อัตราซื้อซ้ำของลูกค้าที่ fast_first = 1 และ = 0 ตามลำดับ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร repeat_fast, repeat_slow
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      repeat_fast = ___
+      repeat_slow = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+      rates = df.groupby('fast_first')['repeated'].mean()
+      repeat_fast = round(rates[1], 4)
+      repeat_slow = round(rates[0], 4)
+    check: |
+      check_value(repeat_fast, _sol["repeat_fast"], name="repeat_fast", tol=0.0001)
+      check_value(repeat_slow, _sol["repeat_slow"], name="repeat_slow", tol=0.0001)
+    hints:
+      - "group by fast_first แล้วหาค่าเฉลี่ยของ repeated"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      อัตราซื้อซ้ำเฉลี่ยแยกตามไตรมาสที่สมัคร (signup_q = (signup_month - 1) // 3 + 1) ปัด 4 ตำแหน่ง เป็น Series เรียงตามไตรมาส เก็บไว้ในตัวแปร result
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      result = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      df['signup_q'] = (df['signup_month'] - 1) // 3 + 1
+      result = df.groupby('signup_q')['repeated'].mean().round(4)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "สร้างคอลัมน์ signup_q ก่อน แล้ว groupby"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่า correlation ระหว่าง value_per_item กับ repeated ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร vpi_corr
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      vpi_corr = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      df['value_per_item'] = df['first_order_value'] / df['first_n_items']
+      vpi_corr = round(df['value_per_item'].corr(df['repeated']), 4)
+    check: |
+      check_value(vpi_corr, _sol["vpi_corr"], name="vpi_corr", tol=0.001)
+    hints:
+      - "`.corr()` ระหว่างสองคอลัมน์"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      CV AUC เฉลี่ย (5-fold stratified pipeline ตามฟังก์ชัน cv_auc ที่ให้ไว้) ของ baseline ที่ใช้ feature เดิมทั้งหมด ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร auc_base
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.compose import ColumnTransformer
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+      def cv_auc(data, num_cols, cat_cols):
+          pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+      auc_base = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.compose import ColumnTransformer
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+      def cv_auc(data, num_cols, cat_cols):
+          pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+      auc_base = round(cv_auc(df, num, cat), 4)
+    check: |
+      check_value(auc_base, _sol["auc_base"], name="auc_base", tol=0.001)
+    hints:
+      - "เรียก cv_auc(df, num, cat)"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เพิ่ม fast_first เข้าไปใน feature ตัวเลข แล้ววัด CV AUC ใหม่ (ปัด 4 ตำแหน่ง) พร้อมผลต่างจาก baseline (auc_with_fast − auc_base ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร auc_with_fast, auc_gain
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.compose import ColumnTransformer
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+      def cv_auc(data, num_cols, cat_cols):
+          pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+      auc_with_fast = ___
+      auc_gain = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.compose import ColumnTransformer
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+      def cv_auc(data, num_cols, cat_cols):
+          pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+      df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+      auc_base = cv_auc(df, num, cat)
+      auc_with_fast = round(cv_auc(df, num + ['fast_first'], cat), 4)
+      auc_gain = round(auc_with_fast - round(auc_base, 4), 4)
+    check: |
+      check_value(auc_with_fast, _sol["auc_with_fast"], name="auc_with_fast", tol=0.001)
+      check_value(auc_gain, _sol["auc_gain"], name="auc_gain", tol=0.001)
+    hints:
+      - "ต้องคำนวณทั้ง baseline และแบบมี fast_first"
+quiz:
+  - id: "q1"
+    question: "ทำไมใช้ np.log1p แทน np.log กับข้อมูลที่ไม่ติดลบ"
+    choices:
+      - text: "log1p เร็วกว่า log เสมอ"
+        why: "ไม่เกี่ยวกับความเร็ว"
+      - text: "log1p คำนวณ log(1 + x) จึงปลอดภัยเมื่อค่าเป็น 0 (log(0) ได้ −inf)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "log1p ให้ผลเหมือน log ทุกประการ"
+        why: "ต่างกันที่ +1"
+      - text: "log1p ใช้ได้กับข้อความ"
+        why: "ใช้กับตัวเลขเท่านั้น"
+  - id: "q2"
+    question: "feature ใหม่ที่สร้างขึ้นต้องมีคุณสมบัติข้อไหนเสมอ"
+    choices:
+      - text: "ต้องมีค่าเป็นเลขจำนวนเต็ม"
+        why: "ไม่จำเป็น"
+      - text: "ต้องมีความสัมพันธ์เชิงเส้นกับ target"
+        why: "ไม่จำเป็น"
+      - text: "ต้องคำนวณได้จากข้อมูลที่มี ณ เวลาที่ต้องทำนายจริง (ไม่ leak)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ต้องมีค่ามากกว่า 0"
+        why: "ไม่จำเป็น"
+  - id: "q3"
+    question: "ในบทนี้เมื่อเพิ่ม fast_first เข้าโมเดล CV AUC เป็นอย่างไร"
+    choices:
+      - text: "ดีขึ้นมากอย่างชัดเจน"
+        why: "ผลจริงไม่ได้ดีขึ้น"
+      - text: "โมเดลพัง"
+        why: "โมเดลทำงานปกติ"
+      - text: "เท่ากันเป๊ะ"
+        why: "ต่างกันเล็กน้อย"
+      - text: "ไม่ดีขึ้น (ต่ำกว่า baseline เล็กน้อย) จึงไม่ควรเก็บไว้เพียงเพราะดูสมเหตุสมผล"
+        correct: true
+        why: "ถูกต้อง — 0.6344 เทียบกับ 0.6361"
+  - id: "q4"
+    question: "จะตัดสินใจเก็บ feature ใหม่หรือไม่ควรใช้อะไรเป็นหลัก"
+    choices:
+      - text: "ผล cross-validation เทียบกับ baseline"
+        correct: true
+        why: "ถูกต้อง — วัดด้วยข้อมูลไม่ใช่ความรู้สึก"
+      - text: "ความรู้สึกว่าน่าจะช่วย"
+        why: "ไม่น่าเชื่อถือ"
+      - text: "จำนวน feature ที่มากที่สุด"
+        why: "feature เยอะไม่ได้แปลว่าดีขึ้น"
+      - text: "ผลบนชุด train เท่านั้น"
+        why: "ผลบน train บอกไม่ได้ว่าใช้กับข้อมูลใหม่ได้"
+summary:
+  - "log1p ลดความเบ้ขวาของ first_order_value (skew 3.33 → ≈0) และปลอดภัยกับค่า 0"
+  - "feature ใหม่ต้องคำนวณได้จากข้อมูล ณ เวลาที่ต้องทำนายจริง"
+  - "เพิ่ม feature แล้ววัดด้วย CV — ในข้อมูลนี้ fast_first หรือ value_per_item ไม่ทำให้ AUC ดีขึ้น (สัญญาณหลักอยู่ที่ช่องทางสมัคร) จึงไม่ควรเก็บ feature ที่ไม่ช่วย"
+interview:
+  - id: "i1"
+    q: "บอกวิธีตัดสินใจว่า feature ที่สร้างขึ้นใหม่ควรเก็บหรือไม่"
+    a: |
+      สร้างเป็นชุดสมมติฐาน (เช่น อัตราส่วน flag การจัดกลุ่ม) แล้วเพิ่มทีละกลุ่มเข้า pipeline เดียวกัน วัดด้วย cross-validation เทียบกับ baseline ที่ไม่มี feature นั้น ดูทั้งค่าเฉลี่ยและความผันผวน (std) ถ้าไม่ดีขึ้นอย่างมีความหมายก็ตัดออก เพราะ feature ที่ไม่ช่วยเพิ่มความซับซ้อนและความเสี่ยง overfit และตรวจด้วยว่า feature นั้นรู้ได้ ณ เวลาทำนายจริง
+  - id: "i2"
+    q: "ยกตัวอย่าง feature ที่ leak และวิธีเลี่ยง"
+    a: |
+      ตัวอย่าง: จำนวนออเดอร์ทั้งหมดของลูกค้า หรือค่าเฉลี่ยของ target ที่คำนวณจากข้อมูลทั้งชุด — ทั้งคู่ใช้ข้อมูลที่ยังไม่มีตอนทำนายจริง วิธีเลี่ยงคือกำหนดจุดเวลาที่ทำนาย (เช่น ณ ออเดอร์แรก) แล้วสร้าง feature จากข้อมูลก่อนหน้านั้นเท่านั้น และคำนวณสถิติที่ใช้ target จาก train เท่านั้น
+flashcards:
+  - id: "c1"
+    front: "ทำไมใช้ log1p กับข้อมูลเบ้ขวา"
+    back: "ลดความเบ้ทำให้การกระจายสมมาตรขึ้น และ log1p ปลอดภัยกับค่า 0"
+  - id: "c2"
+    front: "feature ใหม่ที่ดูสมเหตุสมผลรับประกันว่าโมเดลดีขึ้นหรือไม่"
+    back: "ไม่ — ต้องวัดด้วย cross-validation เทียบกับ baseline (ในข้อมูลนี้ fast_first ไม่ช่วย)"

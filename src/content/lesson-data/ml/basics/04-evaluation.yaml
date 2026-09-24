@@ -1,0 +1,558 @@
+goals:
+  - "อ่าน confusion matrix และคำนวณ precision, recall, F1"
+  - "เข้าใจว่า ROC-AUC วัดการจัดอันดับโดยไม่ขึ้นกับ threshold"
+  - "รู้ทัน accuracy paradox เมื่อคลาสไม่สมดุล"
+examples:
+  - id: "x1"
+    title: "confusion matrix และ precision/recall"
+    lang: "python"
+    prompt: |
+      โมเดลทำนายซื้อซ้ำ — พลาดแบบไหนบ้าง
+    steps:
+      - text: |
+          นับ TN/FP/FN/TP ของโมเดลบนชุดทดสอบ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+          pred = model.predict(X_test)
+          proba = model.predict_proba(X_test)[:, 1]
+          tn, fp, fn, tp = confusion_matrix(y_test, pred).ravel()
+          tn, fp, fn, tp
+      - text: |
+          คำนวณ precision, recall, F1 — recall สูงมาก (โมเดลแทบทายว่า "ซื้อซ้ำ" ให้เกือบทุกคน) แต่ precision ยังพอๆ กับสัดส่วนที่ซื้อซ้ำอยู่แล้ว
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.linear_model import LogisticRegression
+
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+          pred = model.predict(X_test)
+          proba = model.predict_proba(X_test)[:, 1]
+          round(precision_score(y_test, pred), 4), round(recall_score(y_test, pred), 4), round(f1_score(y_test, pred), 4)
+    pitfall:
+      text: |
+        สลับลำดับอาร์กิวเมนต์เป็น `(pred, y_test)` — โค้ดไม่ error แต่ได้ค่าที่ผิดความหมาย (precision ที่สลับ y_true/y_pred จะกลายเป็น recall) ต้องส่ง `y_true` ก่อน `y_pred` เสมอ
+      code: |
+        import pandas as pd
+        from sklearn.model_selection import train_test_split
+
+        df = pd.read_csv("data/ml_customers.csv")
+        X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+        y = df['repeated']
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+        from sklearn.linear_model import LogisticRegression
+
+        model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+        from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+        pred = model.predict(X_test)
+        proba = model.predict_proba(X_test)[:, 1]
+        round(precision_score(pred, y_test), 4), round(recall_score(y_test, pred), 4)
+  - id: "x2"
+    title: "accuracy paradox"
+    lang: "python"
+    prompt: |
+      ทำนายว่าออเดอร์แรกจะถูกยกเลิก — accuracy 94% ดีจริงไหม
+    steps:
+      - text: |
+          ดูสัดส่วนออเดอร์แรกที่ถูกยกเลิก และ accuracy ของการทายว่า "ไม่ยกเลิก" ทุกแถว
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          y = (df['first_status'] == 'cancelled').astype(int)
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          round(y.mean(), 4), round(1 - y_test.mean(), 4)
+      - text: |
+          เทรนโมเดลจริง — accuracy เท่ากับ baseline เป๊ะ แต่ recall = 0 จับออเดอร์ที่ยกเลิกไม่ได้เลย
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          y = (df['first_status'] == 'cancelled').astype(int)
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+          pred = model.predict(X_test)
+          round(accuracy_score(y_test, pred), 4), recall_score(y_test, pred)
+    pitfall:
+      text: |
+        รายงาน "โมเดลแม่น 94%" โดยไม่ดู recall ของคลาสหายาก — ตัวเลขนี้เท่ากับการทายว่าไม่มีออเดอร์ไหนถูกยกเลิกเลย ในงานที่คลาสหายากคือสิ่งที่สนใจจริง (เช่น ตรวจทุจริต ตรวจออเดอร์ที่จะถูกยกเลิก) ต้องดู precision/recall ของคลาสนั้น
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      คำนวณ precision จากค่า confusion matrix เก็บไว้ในตัวแปร precision เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      tn, fp, fn, tp = confusion_matrix(y_test, pred).ravel()
+      precision = tp / (tp + ___)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      tn, fp, fn, tp = confusion_matrix(y_test, pred).ravel()
+      precision = tp / (tp + fp)
+    check: |
+      check_value(precision, _sol["precision"], name="precision", tol=0.001)
+    hints:
+      - "precision ถามว่าในกลุ่มที่ทำนายเป็น 1 ผิดไปกี่คน (FP)"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      นับ TN, FP, FN, TP ของโมเดลบนชุดทดสอบ (ใช้ confusion_matrix(...).ravel()) เก็บไว้ในตัวแปร tn, fp, fn, tp
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      tn = ___
+      fp = ___
+      fn = ___
+      tp = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      tn, fp, fn, tp = confusion_matrix(y_test, pred).ravel()
+    check: |
+      check_value(tn, _sol["tn"], name="tn")
+      check_value(fp, _sol["fp"], name="fp")
+      check_value(fn, _sol["fn"], name="fn")
+      check_value(tp, _sol["tp"], name="tp")
+    hints:
+      - "confusion_matrix ให้ [[TN, FP], [FN, TP]]"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      precision ของโมเดลบนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร precision
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      precision = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      precision = round(precision_score(y_test, pred), 4)
+    check: |
+      check_value(precision, _sol["precision"], name="precision", tol=0.001)
+    hints:
+      - "precision_score(y_true, y_pred)"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      recall ของโมเดลบนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร recall
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      recall = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      recall = round(recall_score(y_test, pred), 4)
+    check: |
+      check_value(recall, _sol["recall"], name="recall", tol=0.001)
+    hints:
+      - "recall_score(y_true, y_pred)"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      F1 ของโมเดลบนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร f1
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      f1 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      f1 = round(f1_score(y_test, pred), 4)
+    check: |
+      check_value(f1, _sol["f1"], name="f1", tol=0.001)
+    hints:
+      - "f1_score(y_true, y_pred)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ROC-AUC ของโมเดลบนชุดทดสอบ (ใช้ความน่าจะเป็น ไม่ใช่คลาส) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร auc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      auc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.linear_model import LogisticRegression
+
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      auc = round(roc_auc_score(y_test, proba), 4)
+    check: |
+      check_value(auc, _sol["auc"], name="auc", tol=0.001)
+    hints:
+      - "roc_auc_score ต้องการ predict_proba ไม่ใช่ predict"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      สัดส่วนลูกค้าที่ออเดอร์แรกถูกยกเลิก (first_status == "cancelled") ทั้งชุดข้อมูล ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร cancel_rate
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      cancel_rate = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      cancel_rate = round(y.mean(), 4)
+    check: |
+      check_value(cancel_rate, _sol["cancel_rate"], name="cancel_rate", tol=0.0001)
+    hints:
+      - "target ในโจทย์นี้คือ y ที่เป็น 1 เมื่อถูกยกเลิก"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      accuracy บนชุดทดสอบถ้าทายว่า "ไม่ถูกยกเลิก" ทุกแถว ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร always0_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      always0_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      always0_acc = round(accuracy_score(y_test, [0] * len(y_test)), 4)
+    check: |
+      check_value(always0_acc, _sol["always0_acc"], name="always0_acc", tol=0.0001)
+    hints:
+      - "ทายเป็น 0 ทุกแถว"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทรน LogisticRegression(max_iter=2000) ปกติกับโจทย์ทำนายการยกเลิก แล้วหา recall ของคลาสยกเลิกบนชุดทดสอบ เก็บไว้ในตัวแปร cancel_recall
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      cancel_recall = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+      cancel_recall = recall_score(y_test, model.predict(X_test))
+    check: |
+      check_value(cancel_recall, _sol["cancel_recall"], name="cancel_recall", tol=0.0001)
+    hints:
+      - "recall_score(y_test, model.predict(X_test))"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทรนใหม่ด้วย class_weight="balanced" แล้วหา recall และ precision ของคลาสยกเลิกบนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร recall_bal, precision_bal
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      recall_bal = ___
+      precision_bal = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import recall_score, precision_score, accuracy_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      y = (df['first_status'] == 'cancelled').astype(int)
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value', 'first_status']), drop_first=True)
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      model = LogisticRegression(max_iter=2000, class_weight='balanced').fit(X_train, y_train)
+      pred = model.predict(X_test)
+      recall_bal = round(recall_score(y_test, pred), 4)
+      precision_bal = round(precision_score(y_test, pred), 4)
+    check: |
+      check_value(recall_bal, _sol["recall_bal"], name="recall_bal", tol=0.001)
+      check_value(precision_bal, _sol["precision_bal"], name="precision_bal", tol=0.001)
+    hints:
+      - "ส่ง class_weight=\"balanced\" ตอนสร้าง LogisticRegression"
+quiz:
+  - id: "q1"
+    question: "precision วัดอะไร"
+    choices:
+      - text: "ในกลุ่มที่เป็นคลาส 1 จริงๆ โมเดลจับได้กี่ %"
+        why: "นั่นคือ recall"
+      - text: "ในกลุ่มที่โมเดลทำนายว่าเป็นคลาส 1 ถูกกี่ %"
+        correct: true
+        why: "ถูกต้อง — TP / (TP + FP)"
+      - text: "สัดส่วนที่ทายถูกทั้งหมด"
+        why: "นั่นคือ accuracy"
+      - text: "ความน่าจะเป็นเฉลี่ยของโมเดล"
+        why: "ไม่ใช่ precision"
+  - id: "q2"
+    question: "recall วัดอะไร"
+    choices:
+      - text: "ในกลุ่มที่ทำนายเป็น 1 ถูกกี่ %"
+        why: "นั่นคือ precision"
+      - text: "จำนวน feature ที่ใช้"
+        why: "ไม่เกี่ยวกับ recall"
+      - text: "ในกลุ่มที่เป็นคลาส 1 จริงๆ โมเดลจับได้กี่ %"
+        correct: true
+        why: "ถูกต้อง — TP / (TP + FN)"
+      - text: "accuracy ของชุด train"
+        why: "ไม่ใช่ recall"
+  - id: "q3"
+    question: "accuracy paradox คืออะไร"
+    choices:
+      - text: "accuracy ยิ่งสูงยิ่งเสมอ overfit"
+        why: "ไม่เกี่ยวกับ overfitting โดยตรง"
+      - text: "accuracy คำนวณไม่ได้เมื่อมีสองคลาส"
+        why: "คำนวณได้ปกติ"
+      - text: "accuracy ใช้ได้กับ regression เท่านั้น"
+        why: "accuracy ใช้กับ classification"
+      - text: "เมื่อคลาสไม่สมดุล โมเดลที่ทายคลาสส่วนใหญ่ทุกแถวก็ได้ accuracy สูงทั้งที่ไม่มีประโยชน์"
+        correct: true
+        why: "ถูกต้อง — เช่น ทาย \"ไม่ยกเลิก\" ทุกออเดอร์ได้ ~94% แต่ recall = 0"
+  - id: "q4"
+    question: "ROC-AUC = 0.5 แปลว่าอะไร"
+    choices:
+      - text: "โมเดลจัดอันดับได้ไม่ดีกว่าการเดาสุ่ม"
+        correct: true
+        why: "ถูกต้อง — 1.0 คือจัดอันดับสมบูรณ์แบบ"
+      - text: "โมเดลทายถูก 50%"
+        why: "AUC ไม่ใช่ accuracy"
+      - text: "threshold ควรเป็น 0.5"
+        why: "AUC ไม่ขึ้นกับ threshold"
+      - text: "โมเดลทายคลาส 1 ครึ่งหนึ่งของข้อมูล"
+        why: "ไม่ใช่ความหมายของ AUC"
+summary:
+  - "confusion matrix นับ TN/FP/FN/TP — precision = TP/(TP+FP), recall = TP/(TP+FN), F1 คือค่าเฉลี่ยแบบ harmonic ของสองตัวนี้"
+  - "ROC-AUC วัดการจัดอันดับ 0.5 = เดาสุ่ม ในข้อมูลนี้โมเดลได้ประมาณ 0.62"
+  - "คลาสหายาก (ออเดอร์ที่ถูกยกเลิก ~6%) ทำให้ accuracy หลอกตา: ทายไม่ยกเลิกทุกแถวได้ ~94% แต่ recall = 0 ควรดู precision/recall และลอง class_weight=\"balanced\""
+interview:
+  - id: "i1"
+    q: "อธิบาย precision กับ recall ให้ผู้บริหารฟังพร้อมตัวอย่างที่ต้องแลกกัน"
+    a: |
+      precision ตอบว่า "คนที่เราส่งโปรโมชันไป ในนั้นมีกี่ % ที่ควรได้จริง" ส่วน recall ตอบว่า "คนที่ควรได้โปรโมชันทั้งหมด เราส่งถึงกี่ %" — ถ้าลดเกณฑ์ให้ส่งกว้างขึ้น recall เพิ่มแต่ส่งพลาดคนไม่ควรได้มากขึ้น (precision ลด) เลือกจุดสมดุลจากต้นทุนของการส่งเกินกับการพลาดลูกค้า
+  - id: "i2"
+    q: "เจอโมเดลที่ accuracy 94% ในโจทย์ที่คลาสเป้าหมายมีแค่ 6% จะตรวจสอบอะไรต่อ"
+    a: |
+      เทียบกับ baseline ที่ทายคลาสส่วนใหญ่ (ซึ่งได้ ~94% อยู่แล้ว) แล้วดู confusion matrix, recall/precision ของคลาสหายาก และ ROC-AUC ถ้า recall ใกล้ 0 แปลว่าโมเดลไม่ได้เรียนรู้อะไรเกี่ยวกับคลาสที่สนใจเลย จากนั้นลองปรับ class_weight หรือ threshold และรายงานตัวชี้วัดที่ตรงกับเป้าหมายทางธุรกิจ
+flashcards:
+  - id: "c1"
+    front: "precision และ recall ต่างกันยังไง"
+    back: "precision = ในที่ทำนายว่า 1 ถูกกี่ %, recall = ในที่เป็น 1 จริงจับได้กี่ %"
+  - id: "c2"
+    front: "accuracy paradox คืออะไร"
+    back: "เมื่อคลาสไม่สมดุล การทายคลาสส่วนใหญ่ทุกแถวก็ได้ accuracy สูงทั้งที่โมเดลไม่มีประโยชน์"

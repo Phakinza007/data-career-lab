@@ -1,5 +1,6 @@
 import { getCollection } from 'astro:content';
-import { getTrack } from './catalog';
+import type { TrackId } from '../tracks';
+import { getModules } from './catalog';
 import { mdInline } from './markdown';
 
 export interface FlashcardItem {
@@ -13,8 +14,8 @@ export interface FlashcardItem {
 }
 
 /** รวม flashcard ของทุกบททั้งสาย ให้ /review ทบทวนแบบ Leitner ได้ */
-export async function getFlashcardPool(track: 'da'): Promise<FlashcardItem[]> {
-  const [modules, data] = await Promise.all([getTrack(track), getCollection('lessonData')]);
+export async function getFlashcardPool(tracks: readonly TrackId[]): Promise<FlashcardItem[]> {
+  const [modules, data] = await Promise.all([getModules(tracks), getCollection('lessonData')]);
   const dataById = new Map(data.map((d) => [d.id, d.data]));
   const items: FlashcardItem[] = [];
   for (const mod of modules) {

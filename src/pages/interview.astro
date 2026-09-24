@@ -1,9 +1,10 @@
 ---
+import { TRACK_IDS } from '../lib/tracks';
 import Base from '../layouts/Base.astro';
 import InterviewBank from '../components/InterviewBank';
 import { getInterviewBank } from '../lib/content/interview';
 
-const groups = await getInterviewBank('da');
+const groups = await getInterviewBank(TRACK_IDS);
 ---
 <Base title="คำถามสัมภาษณ์">
   <h1>คลังคำถามสัมภาษณ์</h1>

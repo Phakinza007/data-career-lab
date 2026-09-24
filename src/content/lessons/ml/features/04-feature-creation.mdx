@@ -1,0 +1,37 @@
+---
+track: ml
+module: features
+order: 4
+title: "สร้าง feature ใหม่"
+minutes: 30
+prereqs: [ml/features/03-pipelines]
+---
+
+## feature engineering คือการสร้างข้อมูลที่โมเดลเรียนรู้ได้ง่ายขึ้น
+
+นอกจากแปลงข้อมูลที่มีอยู่ (encoding, scaling) ยังสร้าง feature ใหม่จากคอลัมน์เดิมได้ เทคนิคที่ใช้บ่อย:
+
+| เทคนิค | ตัวอย่างในข้อมูลลูกค้า |
+| --- | --- |
+| **log transform** ลดความเบ้ขวา | `np.log1p(first_order_value)` — skew จาก 3.33 เหลือ ≈ 0 |
+| **อัตราส่วน** | `value_per_item = first_order_value / first_n_items` |
+| **flag (0/1)** จากเงื่อนไข | `fast_first = days_to_first_order <= 3` |
+| **จัดกลุ่ม (binning)** | `pd.cut(first_order_value, [0, 1000, 5000, 20000, 1e9])` |
+| **ส่วนของวันที่** | ไตรมาสที่สมัคร `(signup_month - 1) // 3 + 1` |
+
+```python
+df['log_value'] = np.log1p(df['first_order_value'])          # ใช้ log1p เผื่อค่าเป็น 0
+df['value_per_item'] = df['first_order_value'] / df['first_n_items']
+df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+```
+
+## feature ใหม่ต้องรู้ได้ตอนทำนายจริง
+
+ทุก feature ต้องคำนวณได้จากข้อมูลที่มี **ณ เวลาที่ต้องทำนาย** เท่านั้น (จำ leakage จากบทแรก) เช่น `value_per_item` คำนวณจากออเดอร์แรกได้จึงใช้ได้
+แต่ "จำนวนออเดอร์ทั้งหมด" ไม่ได้
+
+## วัดด้วย cross-validation ไม่ใช่ความรู้สึก
+
+feature ที่ "ดูสมเหตุสมผล" ไม่ได้แปลว่าช่วยโมเดล ในข้อมูลนี้ลองเพิ่ม `fast_first` หรือ `value_per_item` + `log_value` เข้า pipeline แล้ววัด CV AUC —
+ค่าเฉลี่ยไม่ได้ดีขึ้นเลย (0.636 → 0.634 / 0.635) เพราะสัญญาณหลักของข้อมูลนี้อยู่ที่ช่องทางสมัครอยู่แล้ว
+ดังนั้นควรเพิ่มทีละกลุ่ม วัดด้วย CV แล้วเก็บเฉพาะที่ช่วยจริง — feature เยอะขึ้นไม่ได้แปลว่าดีขึ้น

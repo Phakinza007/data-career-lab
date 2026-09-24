@@ -1,0 +1,44 @@
+---
+track: ml
+module: basics
+order: 2
+title: "Linear regression และ metric ของ regression"
+minutes: 30
+prereqs: [ml/basics/01-ml-workflow]
+---
+
+## regression คือการทำนายตัวเลข
+
+เมื่อ target เป็นตัวเลขต่อเนื่อง (เช่น มูลค่าออเดอร์แรกเป็นบาท) เรียกว่าโจทย์ **regression** — โมเดลเริ่มต้นที่ควรรู้จักที่สุดคือ
+`LinearRegression` ซึ่งหาสมการเส้นตรง `ทำนาย = intercept + w1·x1 + w2·x2 + …`
+
+```python
+from sklearn.linear_model import LinearRegression
+
+model = LinearRegression().fit(X_train, y_train)
+pred = model.predict(X_test)
+```
+
+ตัวอย่างในบทนี้ใช้ `first_order_value` เป็น target (ไม่ stratify เพราะไม่ใช่คลาส) และ feature ชุดเดิมจากบทที่แล้ว
+
+## metric ที่ใช้วัด
+
+| metric | ความหมาย |
+| --- | --- |
+| **MAE** (`mean_absolute_error`) | ค่าคลาดเคลื่อนเฉลี่ย เป็นหน่วยเดียวกับ target (บาท) อ่านง่ายที่สุด |
+| **RMSE** (`mean_squared_error(...) ** 0.5`) | เหมือน MAE แต่ลงโทษความผิดพลาดใหญ่หนักกว่า |
+| **R²** (`r2_score`) | สัดส่วนความแปรปรวนที่โมเดลอธิบายได้ (0 = ไม่ดีกว่าทายค่าเฉลี่ย, 1 = สมบูรณ์แบบ) |
+
+## baseline ของ regression: ทายค่าเฉลี่ย
+
+โมเดลที่ทายค่าเฉลี่ยของ target ในชุด train ทุกแถวคือ baseline (ได้ R² ≈ 0) — โมเดลจริงต้องมี MAE ต่ำกว่านี้ถึงจะมีประโยชน์
+
+## อ่านค่า coefficient
+
+`model.coef_` บอกว่าเมื่อ feature นั้นเพิ่มขึ้น 1 หน่วย โดย feature อื่นคงที่ ค่าทำนายเปลี่ยนไปเท่าไร ส่วน `model.intercept_` คือค่าทำนายเมื่อทุก feature เป็น 0
+coefficient อธิบาย **ความสัมพันธ์ในข้อมูล** ไม่ได้พิสูจน์ว่าเป็นเหตุเป็นผล (จำบทสหสัมพันธ์กับเหตุผลในสายสถิติ)
+
+## target ที่เบ้ขวา: ลอง log
+
+มูลค่าออเดอร์เบ้ขวามาก (skew ≈ 3.3) การทำนาย `np.log1p(y)` แล้วแปลงกลับด้วย `np.expm1` มักช่วยให้โมเดลเส้นตรงเข้ากับข้อมูลได้ดีขึ้น
+แต่ต้องระวังว่า R² ที่ได้อยู่บนสเกล log ไม่ใช่สเกลบาท จึงเทียบกับ R² เดิมตรงๆ ไม่ได้

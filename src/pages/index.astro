@@ -3,29 +3,30 @@ import Base from '../layouts/Base.astro';
 import ContinueButton from '../components/ContinueButton';
 import ModuleProgress from '../components/ModuleProgress';
 import { getTrack } from '../lib/content/catalog';
+import { TRACKS } from '../lib/tracks';
 import { url } from '../lib/url';
 
-const daLessons = (await getTrack('da')).flatMap((m) => m.lessons);
+const trackLessons = await Promise.all(TRACKS.map(async (t) => (await getTrack(t.id)).flatMap((m) => m.lessons)));
+const allLessons = trackLessons.flat();
 
-const tracks = [
-  { title: 'Data Analyst', blurb: 'SQL, pandas, สถิติ, visualization และ business metrics — จบด้วยโปรเจกต์ portfolio', href: url('/da/') },
-  { title: 'Machine Learning', blurb: 'scikit-learn, การวัดผลโมเดล, feature engineering, tree/boosting และ deep learning เบื้องต้น', href: null },
-  { title: 'AI Engineer', blurb: 'LLM API, embeddings และ RAG, agents, evals และการ deploy', href: null },
+const cards = [
+  ...TRACKS.map((t, i) => ({ title: t.title, blurb: t.lead, lessons: trackLessons[i], href: trackLessons[i].length > 0 ? url(`/${t.id}/`) : null })),
+  { title: 'AI Engineer', blurb: 'LLM API, embeddings และ RAG, agents, evals และการ deploy', lessons: [], href: null },
 ];
 ---
 <Base title="หน้าแรก">
   <section class="hero">
     <h1>Data Career Lab</h1>
     <p class="lead">เรียนสาย Data ทีละขั้น — อ่าน ดูตัวอย่าง แล้วลงมือเขียนโค้ดจริงในเบราว์เซอร์</p>
-    <ContinueButton client:only="react" lessons={daLessons} />
+    <ContinueButton client:only="react" lessons={allLessons} />
   </section>
   <section class="track-grid">
-    {tracks.map((t, i) => (
+    {cards.map((t, i) => (
       <article class:list={['card', 'track-card', { soon: !t.href }]}>
         <p class="step">สายที่ {i + 1}</p>
         <h2>{t.title}</h2>
         <p>{t.blurb}</p>
-        {t.href && <ModuleProgress client:only="react" lessons={daLessons} />}
+        {t.href && <ModuleProgress client:only="react" lessons={t.lessons} />}
         {t.href ? <a class="button primary" href={t.href}>เข้าเรียน</a> : <span class="badge">เร็วๆ นี้</span>}
       </article>
     ))}

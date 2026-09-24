@@ -1,5 +1,6 @@
 import { getCollection } from 'astro:content';
-import { getTrack } from './catalog';
+import type { TrackId } from '../tracks';
+import { getModules } from './catalog';
 import { taskView, type TaskView } from './views';
 
 export interface DrillItem {
@@ -14,9 +15,9 @@ export interface DrillItem {
 }
 
 /** รวมทุกแบบฝึก (รวม faded) ของทุกบท + ชุดฝึกท้าย module ทั้งสาย ให้ /practice สุ่มได้ */
-export async function getDrillPool(track: 'da') {
+export async function getDrillPool(tracks: readonly TrackId[]) {
   const [modules, data, practice] = await Promise.all([
-    getTrack(track),
+    getModules(tracks),
     getCollection('lessonData'),
     getCollection('practice'),
   ]);

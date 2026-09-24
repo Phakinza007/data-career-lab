@@ -1,9 +1,10 @@
 import { getCollection } from 'astro:content';
 import { url } from '../url';
+import type { TrackId } from '../tracks';
 import type { ModuleRef } from './refs';
 
 /** รวม module + บท + id แบบฝึก ของหนึ่งสาย — ใช้สร้างทุกหน้าและส่งให้ island ที่แสดงความคืบหน้า */
-export async function getTrack(track: 'da'): Promise<ModuleRef[]> {
+export async function getTrack(track: TrackId): Promise<ModuleRef[]> {
   const [modules, lessons, data, practice] = await Promise.all([
     getCollection('modules'),
     getCollection('lessons'),
@@ -44,4 +45,9 @@ export async function getTrack(track: 'da'): Promise<ModuleRef[]> {
         }),
       };
     });
+}
+
+/** module ของหลายสายรวมกัน (id ของ module ไม่ซ้ำข้ามสาย เพราะขึ้นต้นด้วยชื่อสาย) */
+export async function getModules(tracks: readonly TrackId[]): Promise<ModuleRef[]> {
+  return (await Promise.all(tracks.map((t) => getTrack(t)))).flat();
 }

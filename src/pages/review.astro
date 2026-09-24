@@ -1,10 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
 import Flashcards from '../components/Flashcards';
-import { getTrack } from '../lib/content/catalog';
+import { getModules } from '../lib/content/catalog';
+import { TRACK_IDS } from '../lib/tracks';
 import { getFlashcardPool } from '../lib/content/flashcards';
 
-const [cards, modules] = await Promise.all([getFlashcardPool('da'), getTrack('da')]);
+const [cards, modules] = await Promise.all([getFlashcardPool(TRACK_IDS), getModules(TRACK_IDS)]);
 ---
 <Base title="ทบทวน">
   <h1>ทบทวนคำศัพท์</h1>

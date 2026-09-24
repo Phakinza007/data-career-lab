@@ -1,0 +1,45 @@
+---
+track: ml
+module: features
+order: 2
+title: "Scaling และ missing values"
+minutes: 30
+prereqs: [ml/features/01-encoding]
+---
+
+## scaling: ปรับตัวเลขให้อยู่สเกลใกล้กัน
+
+feature ต่างๆ มีสเกลต่างกันมาก (`first_discount_pct` 0–20, `days_since_first_order` 3–728) โมเดลบางแบบไวต่อสเกล — โดยเฉพาะที่ใช้ **ระยะทาง**
+(KNN, SVM) หรือ **regularization/gradient** (logistic regression, neural network) ส่วน decision tree ไม่สนใจสเกล
+
+`StandardScaler` ปรับให้แต่ละคอลัมน์มี mean 0 และ std 1: `z = (x − mean) / std`
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler().fit(X_train[num])   # เรียนรู้ mean/std จาก train เท่านั้น
+X_train_s = scaler.transform(X_train[num])
+X_test_s = scaler.transform(X_test[num])      # ใช้ mean/std เดิมจาก train
+```
+
+**กฎสำคัญ:** `fit` บน train เท่านั้น แล้ว `transform` ทั้ง train และ test — ถ้า fit บนข้อมูลทั้งชุด ค่า mean/std จะมีข้อมูล test ปนอยู่ (leakage แบบละเอียด)
+ผลคือ train จะมี mean = 0 พอดี ส่วน test จะเบี่ยงเล็กน้อย ซึ่งเป็นเรื่องปกติและถูกต้อง
+
+## scaling ช่วยเสมอไหม? ไม่เสมอไป
+
+scaling เปลี่ยน "ใครมีอิทธิพลต่อระยะทาง" — ตัวอย่างในบทนี้ KNN ที่ไม่ scale ถูกครอบงำด้วย `days_since_first_order` (ค่าเป็นร้อย) ซึ่งบังเอิญเป็น feature ที่มีประโยชน์
+พอ scale แล้วทุก feature (รวม feature 0/1 ที่มีแต่สัญญาณรบกวน) มีน้ำหนักเท่ากัน ผลกลับแย่ลงเล็กน้อย — ต้องวัดด้วยข้อมูลจริงเสมอ ไม่ใช่เชื่อกฎลอยๆ
+
+## missing values
+
+โมเดลส่วนใหญ่ใน scikit-learn (เช่น LogisticRegression) **error** ถ้าเจอ NaN จึงต้องจัดการก่อน วิธีพื้นฐานคือเติมค่า (impute) ด้วย `SimpleImputer`:
+
+```python
+from sklearn.impute import SimpleImputer
+
+imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+imputer.transform(X_test[['days_to_first_order']])
+```
+
+- `median` ทนต่อค่าสุดโต่งกว่า `mean` — เหมาะกับข้อมูลเบ้
+- เช่นเดียวกับ scaler: **fit บน train เท่านั้น** แล้วเติมค่าให้ทั้ง train และ test ด้วยค่าจาก train

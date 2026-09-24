@@ -1,5 +1,6 @@
 import { getCollection } from 'astro:content';
-import { getTrack } from './catalog';
+import type { TrackId } from '../tracks';
+import { getModules } from './catalog';
 import { md, mdInline } from './markdown';
 
 export interface InterviewQA {
@@ -16,8 +17,8 @@ export interface InterviewGroup {
 }
 
 /** รวมคำถามสัมภาษณ์ท้ายทุกบท จัดกลุ่มตาม module ให้ /interview กรอง/ค้นหาได้ */
-export async function getInterviewBank(track: 'da'): Promise<InterviewGroup[]> {
-  const [modules, data] = await Promise.all([getTrack(track), getCollection('lessonData')]);
+export async function getInterviewBank(tracks: readonly TrackId[]): Promise<InterviewGroup[]> {
+  const [modules, data] = await Promise.all([getModules(tracks), getCollection('lessonData')]);
   const dataById = new Map(data.map((d) => [d.id, d.data]));
   const groups: InterviewGroup[] = [];
   for (const mod of modules) {

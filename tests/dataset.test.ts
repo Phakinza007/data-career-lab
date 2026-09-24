@@ -79,3 +79,17 @@ it('customers_raw มีข้อมูลสกปรกครบตามท�
   expect(cols.some((c) => /^\d{2}\/\d{2}\/\d{4}$/.test(c[3]))).toBe(true);
   expect(cols.some((c) => /^\d{4}\/\d{2}\/\d{2}$/.test(c[3]))).toBe(true);
 });
+
+it('ml_customers.csv สอดคล้องกับตารางหลัก (สร้างจาก scripts/generate_ml_dataset.py)', () => {
+  const lines = readFileSync('public/data/ml_customers.csv', 'utf8').trim().split('\n');
+  const header = lines[0].split(',');
+  const rows = lines.slice(1).map((l) => l.split(','));
+  expect(header).toEqual([
+    'customer_id', 'city', 'channel', 'signup_month', 'days_to_first_order', 'first_payment_method', 'first_status',
+    'first_discount_pct', 'first_n_items', 'first_has_electronics', 'first_order_value', 'days_since_first_order', 'repeated',
+  ]);
+  expect(rows).toHaveLength(one('SELECT COUNT(DISTINCT customer_id) FROM orders'));
+  const repeated = rows.filter((r) => r[12] === '1').length;
+  expect(repeated).toBe(one('SELECT COUNT(*) FROM (SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) >= 2)'));
+  expect(new Set(rows.map((r) => r[0])).size).toBe(rows.length);
+});

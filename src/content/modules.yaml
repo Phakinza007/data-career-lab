@@ -42,3 +42,34 @@
   title: Capstone
   description: โปรเจกต์ portfolio แบบ end-to-end
   intro: true
+- id: ml/basics
+  track: ml
+  slug: basics
+  order: 1
+  title: พื้นฐาน ML และ scikit-learn
+  description: workflow ของ ML, regression, classification, การวัดผลโมเดล และการแยก overfitting ด้วย cross-validation
+- id: ml/features
+  track: ml
+  slug: features
+  order: 2
+  title: Feature engineering
+  description: แปลงข้อมูลดิบให้โมเดลกินได้ — encoding, scaling, missing values, pipeline และการสร้าง feature ใหม่
+- id: ml/trees
+  track: ml
+  slug: trees
+  order: 3
+  title: Tree และ boosting
+  description: decision tree, random forest, gradient boosting, การจูน hyperparameter และ feature importance
+- id: ml/dl
+  track: ml
+  slug: dl
+  order: 4
+  title: Deep learning เบื้องต้น
+  description: neural network แบบ MLP, ฟังก์ชัน activation, การเทรนด้วย gradient descent และข้อควรระวัง
+- id: ml/capstone
+  track: ml
+  slug: capstone
+  order: 5
+  title: ML Capstone
+  description: โปรเจกต์ ML แบบ end-to-end พร้อม notebook
+  intro: true

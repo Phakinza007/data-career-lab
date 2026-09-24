@@ -1,0 +1,513 @@
+goals:
+  - "ใช้ LinearRegression ทำนาย target ที่เป็นตัวเลข"
+  - "วัดผลด้วย MAE, RMSE และ R² เทียบกับ baseline ค่าเฉลี่ย"
+  - "อ่านค่า coefficient อย่างระวัง และรู้จักการแปลง log กับ target ที่เบ้"
+examples:
+  - id: "x1"
+    title: "เทียบโมเดลกับ baseline ด้วย MAE"
+    lang: "python"
+    prompt: |
+      ทำนายมูลค่าออเดอร์แรกของลูกค้า แล้ววัดว่าดีกว่าทายค่าเฉลี่ยแค่ไหน
+    steps:
+      - text: |
+          baseline: ทายค่าเฉลี่ยของชุด train ทุกแถว แล้ววัด MAE บนชุดทดสอบ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LinearRegression
+          from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['first_order_value']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+          import numpy as np
+
+          baseline_pred = np.full(len(y_test), y_train.mean())
+          round(mean_absolute_error(y_test, baseline_pred), 2)
+      - text: |
+          เทรน LinearRegression แล้ววัด MAE และ R² — MAE ลดลงจากเดิมมาก แต่ R² ยังแค่ ~0.30
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LinearRegression
+          from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['first_order_value']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+          model = LinearRegression().fit(X_train, y_train)
+          pred = model.predict(X_test)
+          round(mean_absolute_error(y_test, pred), 2), round(r2_score(y_test, pred), 4)
+    pitfall:
+      text: |
+        ดู R² ตัวเลขเดียวแล้วสรุปว่า "ดี" หรือ "แย่" — R² ≈ 0.30 บอกแค่ว่าอธิบายความแปรปรวนได้ ~30% ต้องดู MAE เป็นบาทควบคู่ด้วย (คลาดเคลื่อนเฉลี่ย ~3,800 บาทเทียบกับมูลค่าออเดอร์เฉลี่ย ~5,300 บาท ยังคลาดเคลื่อนเยอะ)
+  - id: "x2"
+    title: "อ่านค่า coefficient"
+    lang: "python"
+    prompt: |
+      feature ไหนมีผลต่อมูลค่าออเดอร์แรกมากที่สุดตามโมเดล
+    steps:
+      - text: |
+          เรียง coefficient ตามขนาด (ค่าสัมบูรณ์) — first_has_electronics (มีสินค้า Electronics ในออเดอร์) มีผลมากที่สุด
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LinearRegression
+          from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['first_order_value']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+          model = LinearRegression().fit(X_train, y_train)
+          pred = model.predict(X_test)
+          import pandas as pd
+
+          coefs = pd.Series(model.coef_, index=X.columns)
+          coefs.sort_values(key=abs, ascending=False).head(3).round(1)
+      - text: |
+          intercept คือค่าทำนายเมื่อทุก feature เป็น 0
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.linear_model import LinearRegression
+          from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['first_order_value']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+          model = LinearRegression().fit(X_train, y_train)
+          pred = model.predict(X_test)
+          round(model.intercept_, 2)
+    pitfall:
+      text: |
+        ตีความ coefficient เป็นเหตุและผล เช่น "ใส่สินค้า Electronics เข้าออเดอร์ทำให้มูลค่าเพิ่ม ~7,600 บาท" — coefficient บอกแค่ความสัมพันธ์ในข้อมูลเมื่อ feature อื่นคงที่ (ที่จริงสินค้า Electronics แพงจึงทำให้มูลค่าสูงอยู่แล้ว) ไม่ใช่ผลของการแทรกแซง
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      วัด MAE ของโมเดลบนชุดทดสอบ เก็บไว้ในตัวแปร model_mae เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      model_mae = mean_absolute_error(y_test, ___)
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      model_mae = mean_absolute_error(y_test, pred)
+    check: |
+      check_value(model_mae, _sol["model_mae"], name="model_mae", tol=0.01)
+    hints:
+      - "เทียบค่าจริง (y_test) กับค่าที่โมเดลทำนาย (pred)"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MAE ของ baseline (ทายค่าเฉลี่ยของ y_train ทุกแถว) บนชุดทดสอบ ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร baseline_mae
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      baseline_mae = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      import numpy as np
+
+      baseline_pred = np.full(len(y_test), y_train.mean())
+      baseline_mae = round(mean_absolute_error(y_test, baseline_pred), 2)
+    check: |
+      check_value(baseline_mae, _sol["baseline_mae"], name="baseline_mae", tol=0.01)
+    hints:
+      - "สร้างอาร์เรย์ค่าเฉลี่ยความยาวเท่า y_test ด้วย np.full"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MAE ของ LinearRegression บนชุดทดสอบ ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร model_mae
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      model_mae = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      model_mae = round(mean_absolute_error(y_test, pred), 2)
+    check: |
+      check_value(model_mae, _sol["model_mae"], name="model_mae", tol=0.01)
+    hints:
+      - "ใช้ mean_absolute_error(y_test, pred)"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      RMSE ของโมเดลบนชุดทดสอบ ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร rmse
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      rmse = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      rmse = round(mean_squared_error(y_test, pred) ** 0.5, 2)
+    check: |
+      check_value(rmse, _sol["rmse"], name="rmse", tol=0.01)
+    hints:
+      - "RMSE = รากที่สองของ mean_squared_error"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      R² ของโมเดลบนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร r2
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      r2 = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      r2 = round(r2_score(y_test, pred), 4)
+    check: |
+      check_value(r2, _sol["r2"], name="r2", tol=0.001)
+    hints:
+      - "ใช้ r2_score(y_test, pred)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      intercept ของโมเดล ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร intercept
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      intercept = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      intercept = round(model.intercept_, 2)
+    check: |
+      check_value(intercept, _sol["intercept"], name="intercept", tol=0.01)
+    hints:
+      - "อยู่ที่ model.intercept_"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      coefficient ของ feature first_n_items (ปัด 1 ตำแหน่ง) เก็บไว้ในตัวแปร coef_n_items
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      coef_n_items = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      coef_n_items = round(model.coef_[list(X.columns).index('first_n_items')], 1)
+    check: |
+      check_value(coef_n_items, _sol["coef_n_items"], name="coef_n_items", tol=0.1)
+    hints:
+      - "หาตำแหน่งของ first_n_items ใน X.columns แล้วดึง model.coef_ ตำแหน่งนั้น"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      มูลค่าที่โมเดลทำนายสำหรับลูกค้าแถวแรกของชุดทดสอบ ปัด 2 ตำแหน่ง เก็บไว้ในตัวแปร first_pred
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      first_pred = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      first_pred = round(model.predict(X_test.iloc[[0]])[0], 2)
+    check: |
+      check_value(first_pred, _sol["first_pred"], name="first_pred", tol=0.01)
+    hints:
+      - "predict รับตาราง 2 มิติ ใช้ X_test.iloc[[0]] (วงเล็บสองชั้น)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      โมเดลลด MAE จาก baseline กี่เปอร์เซ็นต์ (baseline_mae − model_mae) / baseline_mae × 100 ปัด 1 ตำแหน่ง เก็บไว้ในตัวแปร improvement_pct
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      improvement_pct = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      model = LinearRegression().fit(X_train, y_train)
+      pred = model.predict(X_test)
+      import numpy as np
+
+      baseline_mae = mean_absolute_error(y_test, np.full(len(y_test), y_train.mean()))
+      model_mae = mean_absolute_error(y_test, pred)
+      improvement_pct = round((baseline_mae - model_mae) / baseline_mae * 100, 1)
+    check: |
+      check_value(improvement_pct, _sol["improvement_pct"], name="improvement_pct", tol=0.1)
+    hints:
+      - "คำนวณทั้ง MAE ของ baseline และของโมเดลก่อน"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ลองเทรนบน log1p ของ target (np.log1p(y_train)) แล้ววัด R² บนสเกล log (เทียบกับ np.log1p(y_test)) และ MAE ที่แปลงกลับเป็นบาทด้วย np.expm1 (ปัดทั้งคู่: r2_log 4 ตำแหน่ง, mae_back 2 ตำแหน่ง) เก็บไว้ในตัวแปร r2_log, mae_back
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      r2_log = ___
+      mae_back = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+      from sklearn.linear_model import LinearRegression
+      from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['first_order_value']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+      import numpy as np
+
+      log_model = LinearRegression().fit(X_train, np.log1p(y_train))
+      pred_log = log_model.predict(X_test)
+      r2_log = round(r2_score(np.log1p(y_test), pred_log), 4)
+      mae_back = round(mean_absolute_error(y_test, np.expm1(pred_log)), 2)
+    check: |
+      check_value(r2_log, _sol["r2_log"], name="r2_log", tol=0.001)
+      check_value(mae_back, _sol["mae_back"], name="mae_back", tol=0.05)
+    hints:
+      - "เทรนกับ np.log1p(y_train) และแปลงคำทำนายกลับด้วย np.expm1 ก่อนคำนวณ MAE"
+quiz:
+  - id: "q1"
+    question: "MAE บอกอะไร"
+    choices:
+      - text: "สัดส่วนที่ทำนายถูก"
+        why: "นั่นคือ accuracy ของโจทย์ classification"
+      - text: "ค่าคลาดเคลื่อนเฉลี่ยของการทำนาย ในหน่วยเดียวกับ target"
+        correct: true
+        why: "ถูกต้อง — MAE เป็นบาทเมื่อ target เป็นบาท อ่านง่ายที่สุด"
+      - text: "จำนวน feature ที่โมเดลใช้"
+        why: "ไม่เกี่ยวกับ MAE"
+      - text: "ความแปรปรวนของ target"
+        why: "MAE ไม่ใช่ความแปรปรวน"
+  - id: "q2"
+    question: "โมเดลที่ทายค่าเฉลี่ยของ y_train ทุกแถว ควรได้ R² ประมาณเท่าไรบนชุดทดสอบ"
+    choices:
+      - text: "ประมาณ 1"
+        why: "R² = 1 คือทำนายสมบูรณ์แบบ"
+      - text: "ประมาณ 0.5 เสมอ"
+        why: "ไม่มีเหตุผลให้เป็น 0.5"
+      - text: "ประมาณ 0 (ไม่ดีกว่าการทายค่าเฉลี่ย)"
+        correct: true
+        why: "ถูกต้อง — R² = 0 หมายถึงเท่ากับ baseline ค่าเฉลี่ย (อาจติดลบเล็กน้อยได้ตามความต่างของชุดข้อมูล)"
+      - text: "ประมาณ −1 เสมอ"
+        why: "ไม่ใช่"
+  - id: "q3"
+    question: "ทำไม RMSE มักมากกว่าหรือเท่ากับ MAE เสมอ"
+    choices:
+      - text: "เพราะ RMSE คิดเป็นเปอร์เซ็นต์"
+        why: "RMSE เป็นหน่วยเดียวกับ target"
+      - text: "เพราะ RMSE ใช้กับข้อมูล train เท่านั้น"
+        why: "ใช้กับข้อมูลชุดใดก็ได้"
+      - text: "ไม่จริง RMSE น้อยกว่า MAE เสมอ"
+        why: "ตรงข้าม"
+      - text: "เพราะ RMSE ยกกำลังสองก่อนเฉลี่ย จึงให้น้ำหนักความผิดพลาดใหญ่มากกว่า"
+        correct: true
+        why: "ถูกต้อง — ยิ่งมีค่าคลาดเคลื่อนสูงๆ ไม่กี่ตัว RMSE ยิ่งห่างจาก MAE"
+  - id: "q4"
+    question: "ข้อไหนตีความ coefficient ของ linear regression ได้ถูกต้อง"
+    choices:
+      - text: "การเปลี่ยนของค่าทำนายเมื่อ feature นั้นเพิ่ม 1 หน่วย โดย feature อื่นคงที่ (เป็นความสัมพันธ์ ไม่ใช่เหตุผล)"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "feature ที่ coefficient สูงคือสาเหตุของ target"
+        why: "coefficient บอกความสัมพันธ์ ไม่ได้พิสูจน์สาเหตุ"
+      - text: "coefficient คือ accuracy ของ feature นั้น"
+        why: "ไม่เกี่ยวกับ accuracy"
+      - text: "coefficient ทุกตัวต้องเป็นบวก"
+        why: "เป็นลบได้"
+summary:
+  - "regression ทำนายตัวเลข: เทียบ MAE/RMSE/R² กับ baseline ที่ทายค่าเฉลี่ยเสมอ"
+  - "ในข้อมูลนี้ LinearRegression ลด MAE ลงมากจาก baseline แต่ R² ยังแค่ ~0.30 — ทำนายมูลค่าออเดอร์แรกได้แค่พอสมควร"
+  - "coefficient อธิบายความสัมพันธ์ ไม่ใช่เหตุและผล และ R² บนสเกล log เทียบกับสเกลเดิมตรงๆ ไม่ได้"
+interview:
+  - id: "i1"
+    q: "อธิบายผลของโมเดล regression ให้ผู้บริหารที่ไม่รู้ ML ฟัง (ใช้ MAE และ R² )"
+    a: |
+      ใช้ MAE เล่าเป็นหน่วยที่คนเข้าใจ: "โมเดลทำนายมูลค่าออเดอร์แรกคลาดเคลื่อนเฉลี่ย ~3,800 บาท ดีกว่าการทายค่าเฉลี่ยที่คลาดเคลื่อน ~5,000 บาท" แล้วใช้ R² เสริมว่าอธิบายความผันผวนของมูลค่าได้ราว 30% ที่เหลือเป็นปัจจัยที่ยังไม่มีในข้อมูล จากนั้นบอกข้อจำกัดชัดเจนว่าโมเดลยังไม่แม่นพอจะใช้ตัดสินใจรายบุคคล
+  - id: "i2"
+    q: "ทำไมบางครั้งควรทำนาย log ของ target แทนค่าตรงๆ"
+    a: |
+      เมื่อ target เบ้ขวามาก (ค่าสูงมากไม่กี่ตัวดึงเส้นถดถอย) การแปลง log ทำให้การกระจายสมมาตรขึ้น โมเดลเส้นตรงเข้ากับข้อมูลได้ดีขึ้น แต่ต้องแปลงคำทำนายกลับก่อนรายงาน และระวังว่า metric บนสเกล log ไม่เท่ากับสเกลเดิม จึงควรเทียบผลบนสเกลบาทเสมอ
+flashcards:
+  - id: "c1"
+    front: "baseline ของโจทย์ regression คืออะไร"
+    back: "ทายค่าเฉลี่ยของ target ในชุด train ทุกแถว (ได้ R² ≈ 0)"
+  - id: "c2"
+    front: "MAE ต่างจาก RMSE ยังไง"
+    back: "MAE เฉลี่ยค่าคลาดเคลื่อนตรงๆ ส่วน RMSE ยกกำลังสองก่อน จึงลงโทษความผิดพลาดใหญ่หนักกว่า"

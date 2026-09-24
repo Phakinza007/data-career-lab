@@ -1,0 +1,680 @@
+goals:
+  - "รวมขั้นตอนเตรียมข้อมูลกับโมเดลด้วย Pipeline และ ColumnTransformer"
+  - "วัดผลทั้ง pipeline ด้วย cross-validation โดยไม่มี leakage"
+  - "ส่งข้อมูลดิบเข้า pipeline ที่เทรนแล้วเพื่อทำนายได้เลย"
+examples:
+  - id: "x1"
+    title: "สร้างและเทรน Pipeline"
+    lang: "python"
+    prompt: |
+      รวม scale + one-hot + LogisticRegression ไว้ในวัตถุเดียว
+    steps:
+      - text: |
+          fit pipeline บน train แล้ววัด accuracy และ AUC บนชุดทดสอบ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.compose import ColumnTransformer
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score
+
+          pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          pipe.fit(X_train, y_train)
+          round(pipe.score(X_test, y_test), 4), round(roc_auc_score(y_test, pipe.predict_proba(X_test)[:, 1]), 4)
+      - text: |
+          ดูจำนวน feature หลังแปลง: 6 ตัวเลข + one-hot ของ 4 คอลัมน์หมวด = 25 คอลัมน์
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.compose import ColumnTransformer
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score
+
+          pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          pipe.fit(X_train, y_train)
+          len(pipe.named_steps['pre'].get_feature_names_out())
+    pitfall:
+      text: |
+        scale/impute ข้อมูลทั้งชุดด้วยมือก่อนแบ่ง train/test แล้วค่อยเทรน — ตัวแปลงเรียนรู้จากข้อมูล test ไปแล้ว (leakage) ใส่ทุกขั้นตอนไว้ใน Pipeline เพื่อให้ fit บน train เท่านั้นโดยอัตโนมัติ
+  - id: "x2"
+    title: "cross-validation ของทั้ง pipeline"
+    lang: "python"
+    prompt: |
+      วัดผลที่เชื่อถือได้โดยไม่รั่วจากการเตรียมข้อมูล
+    steps:
+      - text: |
+          5-fold stratified CV วัด ROC-AUC ของทั้ง pipeline — ค่าเฉลี่ยประมาณ 0.64 มี std ประมาณ 0.02
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.compose import ColumnTransformer
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score
+
+          pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          X_all = df[num + cat]
+          scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='roc_auc')
+          scores.round(4), round(scores.mean(), 4), round(scores.std(), 4)
+      - text: |
+          เทียบกับ accuracy แบบ CV เดียวกัน
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.compose import ColumnTransformer
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score
+
+          pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          X_all = df[num + cat]
+          acc = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='accuracy')
+          round(acc.mean(), 4)
+    pitfall:
+      text: |
+        ใส่ข้อมูลที่ scale ไปแล้วทั้งชุดเข้า cross_val_score — แต่ละ fold ทดสอบด้วยข้อมูลที่ mean/std เคยเห็นแล้ว ผลจึงดีกว่าความจริงเล็กน้อย ส่ง pipeline ทั้งก้อนเข้า CV แทน เพราะแต่ละ fold จะ fit ตัวแปลงใหม่บนส่วน train ของ fold นั้น
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      สร้าง ColumnTransformer ที่ one-hot คอลัมน์หมวดหมู่ แล้วนับจำนวน feature หลัง fit บน train เก็บไว้ในตัวแปร n_features เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), ___)])
+      pre.fit(X_train)
+      n_features = len(pre.get_feature_names_out())
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pre.fit(X_train)
+      n_features = len(pre.get_feature_names_out())
+    check: |
+      check_value(n_features, _sol["n_features"], name="n_features")
+    hints:
+      - "ส่งรายชื่อคอลัมน์หมวดหมู่ (cat) ให้ OneHotEncoder"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      หลัง fit pipeline บน train มี feature หลังแปลงกี่คอลัมน์ เก็บไว้ในตัวแปร n_features_out
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      n_features_out = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      pipe.fit(X_train, y_train)
+      n_features_out = len(pipe.named_steps['pre'].get_feature_names_out())
+    check: |
+      check_value(n_features_out, _sol["n_features_out"], name="n_features_out")
+    hints:
+      - "`get_feature_names_out()` ของขั้น pre"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      accuracy ของ pipeline บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      pipe.fit(X_train, y_train)
+      test_acc = round(pipe.score(X_test, y_test), 4)
+    check: |
+      check_value(test_acc, _sol["test_acc"], name="test_acc", tol=0.001)
+    hints:
+      - "fit แล้ว .score(X_test, y_test)"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ROC-AUC ของ pipeline บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_auc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      test_auc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      pipe.fit(X_train, y_train)
+      test_auc = round(roc_auc_score(y_test, pipe.predict_proba(X_test)[:, 1]), 4)
+    check: |
+      check_value(test_auc, _sol["test_auc"], name="test_auc", tol=0.001)
+    hints:
+      - "ใช้ predict_proba ของ pipeline"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      pipeline นี้มีกี่ขั้นตอน (steps) เก็บไว้ในตัวแปร n_steps
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      n_steps = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      n_steps = len(pipe.steps)
+    check: |
+      check_value(n_steps, _sol["n_steps"], name="n_steps")
+    hints:
+      - "`pipe.steps` เป็น list ของ (ชื่อ, ตัวแปลง/โมเดล)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย ROC-AUC ของ 5-fold StratifiedKFold(shuffle=True, random_state=42) ทั้ง pipeline (ใช้ df[num + cat] และ df["repeated"]) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร cv_auc_mean
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      cv_auc_mean = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='roc_auc')
+      cv_auc_mean = round(scores.mean(), 4)
+    check: |
+      check_value(cv_auc_mean, _sol["cv_auc_mean"], name="cv_auc_mean", tol=0.001)
+    hints:
+      - "ส่ง pipe เข้า cross_val_score ตรงๆ"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ส่วนเบี่ยงเบนมาตรฐานของคะแนน AUC ทั้ง 5 fold จากข้อ e5 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร cv_auc_std
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      cv_auc_std = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='roc_auc')
+      cv_auc_std = round(scores.std(), 4)
+    check: |
+      check_value(cv_auc_std, _sol["cv_auc_std"], name="cv_auc_std", tol=0.001)
+    hints:
+      - "ใช้ .std() ของ array คะแนน"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย accuracy ของ CV เดียวกัน ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร cv_acc_mean
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      cv_acc_mean = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='accuracy')
+      cv_acc_mean = round(scores.mean(), 4)
+    check: |
+      check_value(cv_acc_mean, _sol["cv_acc_mean"], name="cv_acc_mean", tol=0.001)
+    hints:
+      - "เปลี่ยน scoring เป็น accuracy"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      fit pipeline บน train แล้วทำนายความน่าจะเป็นที่จะซื้อซ้ำของลูกค้าใหม่ 2 คน (ข้อมูลดิบจากฟังก์ชัน new_customer ที่ให้ไว้): ช่องทาง promo และช่องทาง organic (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร proba_promo, proba_organic
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      import pandas as pd
+
+      def new_customer(channel, city='Bangkok'):
+          return pd.DataFrame([{'signup_month': 6, 'days_to_first_order': 2, 'first_discount_pct': 0, 'first_n_items': 1, 'first_has_electronics': 0, 'days_since_first_order': 300, 'city': city, 'channel': channel, 'first_payment_method': 'cod', 'first_status': 'completed'}])
+      proba_promo = ___
+      proba_organic = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      import pandas as pd
+
+      def new_customer(channel, city='Bangkok'):
+          return pd.DataFrame([{'signup_month': 6, 'days_to_first_order': 2, 'first_discount_pct': 0, 'first_n_items': 1, 'first_has_electronics': 0, 'days_since_first_order': 300, 'city': city, 'channel': channel, 'first_payment_method': 'cod', 'first_status': 'completed'}])
+      pipe.fit(X_train, y_train)
+      proba_promo = round(pipe.predict_proba(new_customer('promo'))[0, 1], 4)
+      proba_organic = round(pipe.predict_proba(new_customer('organic'))[0, 1], 4)
+    check: |
+      check_value(proba_promo, _sol["proba_promo"], name="proba_promo", tol=0.001)
+      check_value(proba_organic, _sol["proba_organic"], name="proba_organic", tol=0.001)
+    hints:
+      - "ส่งข้อมูลดิบ (ยังไม่ one-hot) เข้า pipe.predict_proba ได้เลย"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ลูกค้าจากเมืองที่ไม่มีในข้อมูลเทรน (city="Mars", ช่องทาง organic) ยังทำนายได้ไหม — เก็บความน่าจะเป็นที่ได้ (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร proba_unknown_city
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      import pandas as pd
+
+      def new_customer(channel, city='Bangkok'):
+          return pd.DataFrame([{'signup_month': 6, 'days_to_first_order': 2, 'first_discount_pct': 0, 'first_n_items': 1, 'first_has_electronics': 0, 'days_since_first_order': 300, 'city': city, 'channel': channel, 'first_payment_method': 'cod', 'first_status': 'completed'}])
+      proba_unknown_city = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      import pandas as pd
+
+      def new_customer(channel, city='Bangkok'):
+          return pd.DataFrame([{'signup_month': 6, 'days_to_first_order': 2, 'first_discount_pct': 0, 'first_n_items': 1, 'first_has_electronics': 0, 'days_since_first_order': 300, 'city': city, 'channel': channel, 'first_payment_method': 'cod', 'first_status': 'completed'}])
+      pipe.fit(X_train, y_train)
+      proba_unknown_city = round(pipe.predict_proba(new_customer('organic', city='Mars'))[0, 1], 4)
+    check: |
+      check_value(proba_unknown_city, _sol["proba_unknown_city"], name="proba_unknown_city", tol=0.001)
+    hints:
+      - "handle_unknown=\"ignore\" ใน OneHotEncoder ทำให้เมืองใหม่ไม่ error"
+quiz:
+  - id: "q1"
+    question: "ข้อดีหลักของ Pipeline คืออะไร"
+    choices:
+      - text: "ทำให้โมเดลแม่นกว่าเสมอ"
+        why: "ไม่รับประกันความแม่น"
+      - text: "รวมขั้นตอนเตรียมข้อมูลและโมเดลเป็นก้อนเดียว fit บน train เท่านั้นโดยอัตโนมัติ ลดโอกาส leakage"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ทำให้ไม่ต้องแบ่ง train/test"
+        why: "ยังต้องแบ่งและวัดผลเหมือนเดิม"
+      - text: "ใช้ได้เฉพาะกับ logistic regression"
+        why: "ใช้กับโมเดลใดก็ได้"
+  - id: "q2"
+    question: "ColumnTransformer ใช้ทำอะไร"
+    choices:
+      - text: "เปลี่ยนชื่อคอลัมน์"
+        why: "ไม่ใช่หน้าที่หลัก"
+      - text: "ลบคอลัมน์ที่ซ้ำ"
+        why: "ไม่ใช่หน้าที่หลัก"
+      - text: "ใช้ตัวแปลงต่างกันกับคอลัมน์แต่ละกลุ่ม เช่น scale ตัวเลข และ one-hot ตัวหมวด"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เทรนโมเดล"
+        why: "ColumnTransformer แปลงข้อมูล ไม่ได้เทรนโมเดล"
+  - id: "q3"
+    question: "ส่ง Pipeline เข้า cross_val_score ต่างจากส่งข้อมูลที่ scale ไปแล้วอย่างไร"
+    choices:
+      - text: "ไม่ต่างกัน"
+        why: "ต่างกันในเรื่อง leakage"
+      - text: "Pipeline ช้ากว่าเสมอจึงไม่ควรใช้"
+        why: "ความเร็วไม่ใช่เกณฑ์ตัดสิน"
+      - text: "cross_val_score ใช้กับ Pipeline ไม่ได้"
+        why: "ใช้ได้ตรงๆ"
+      - text: "แต่ละ fold จะ fit ตัวแปลงใหม่บนส่วน train ของ fold นั้น จึงไม่มี leakage จากการเตรียมข้อมูล"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ทำไม pipeline ในบทนี้ทำนายลูกค้าจากเมืองใหม่ได้โดยไม่ error"
+    choices:
+      - text: "เพราะ OneHotEncoder ตั้ง handle_unknown=\"ignore\" หมวดใหม่จึงกลายเป็นแถวที่เป็น 0 ทั้งหมด"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ pipeline เดาชื่อเมืองเอง"
+        why: "ไม่ได้เดา"
+      - text: "เพราะ LogisticRegression ไม่สนใจคอลัมน์ city"
+        why: "โมเดลใช้ผลของ one-hot แต่หมวดใหม่เป็น 0"
+      - text: "ไม่จริง จะ error เสมอ"
+        why: "ไม่ error เพราะตั้ง handle_unknown=\"ignore\""
+summary:
+  - "Pipeline + ColumnTransformer รวม scale/one-hot/โมเดลเป็นก้อนเดียวและ fit ตัวแปลงบน train เท่านั้น"
+  - "ส่ง pipeline ทั้งก้อนเข้า cross_val_score เพื่อไม่ให้การเตรียมข้อมูลรั่วข้าม fold (ในข้อมูลนี้ AUC เฉลี่ย ~0.64, std ~0.02)"
+  - "handle_unknown=\"ignore\" ทำให้ pipeline รับหมวดใหม่ (เช่น เมืองที่ไม่เคยเห็น) ตอนใช้งานจริงได้โดยไม่ error"
+interview:
+  - id: "i1"
+    q: "อธิบายว่า Pipeline ช่วยป้องกัน data leakage อย่างไร"
+    a: |
+      Pipeline ห่อขั้นตอนเตรียมข้อมูลและโมเดลไว้ด้วยกัน ตอน fit จะเรียนรู้ตัวแปลง (mean/std ของ scaler, หมวดของ encoder) จากข้อมูล train เท่านั้น และตอน predict/transform จะใช้ค่าที่เรียนรู้ไว้แล้วกับข้อมูลใหม่ เมื่อใช้ร่วมกับ cross-validation แต่ละ fold จะ fit ตัวแปลงใหม่บนส่วน train ของ fold นั้น ข้อมูลทดสอบจึงไม่มีผลต่อการเตรียมข้อมูลเลย
+  - id: "i2"
+    q: "ถ้าต้องส่งโมเดลไปใช้งานจริง ทำไมควรส่งเป็น pipeline ทั้งก้อน"
+    a: |
+      เพราะข้อมูลดิบที่เข้ามาต้องผ่านการแปลงเหมือนตอนเทรนทุกขั้นตอน ถ้าแยกตัวแปลงกับโมเดลออกจากกัน เสี่ยงที่จะใช้ตัวแปลงคนละชุดหรือลืมขั้นตอน pipeline เดียวช่วยให้ทำนายจากข้อมูลดิบได้ตรงกับตอนเทรนเสมอ และเวอร์ชันของตัวแปลงกับโมเดลอยู่ด้วยกัน
+flashcards:
+  - id: "c1"
+    front: "ColumnTransformer ทำอะไร"
+    back: "ใช้ตัวแปลงต่างชนิดกับคอลัมน์แต่ละกลุ่ม (เช่น scale ตัวเลข one-hot ตัวหมวด) แล้วรวมผลเป็นตารางเดียว"
+  - id: "c2"
+    front: "ทำไมส่ง pipeline เข้า cross_val_score จึงปลอดภัยกว่า"
+    back: "แต่ละ fold fit ตัวแปลงใหม่บน train ของ fold นั้นเท่านั้น จึงไม่มี leakage จากการเตรียมข้อมูล"

@@ -1,0 +1,52 @@
+---
+track: ml
+module: basics
+order: 1
+title: "workflow ของ ML และ baseline"
+minutes: 25
+prereqs: [da/pandas/07-cleaning-and-dates]
+---
+
+## ML แบบ supervised คืออะไร
+
+โมเดลเรียนรู้จากตัวอย่างที่ "รู้คำตอบแล้ว" เพื่อทำนายกรณีใหม่ — ข้อมูลแบ่งเป็นสองส่วน:
+
+- **features (X)** — ข้อมูลที่ใช้ทำนาย เช่น ช่องทางสมัคร เมือง มูลค่าออเดอร์แรก
+- **target (y)** — สิ่งที่อยากทำนาย เช่น `repeated` (ลูกค้าคนนี้จะกลับมาซื้อซ้ำไหม 1/0)
+
+ตลอดสาย ML ใช้ตาราง `data/ml_customers.csv` — หนึ่งแถวต่อลูกค้าที่เคยสั่งซื้อ (2,839 คน) โดย feature ทุกตัวรู้ได้ ณ ตอนที่ลูกค้า
+สั่งออเดอร์แรก ส่วน `repeated` คือ 1 ถ้าต่อมาลูกค้ามีออเดอร์รวมตั้งแต่ 2 ครั้งขึ้นไป
+
+```python
+import pandas as pd
+
+df = pd.read_csv("data/ml_customers.csv")
+X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+y = df['repeated']
+```
+
+`get_dummies` แปลงคอลัมน์ข้อความ (เมือง ช่องทาง ฯลฯ) เป็นตัวเลข 0/1 เพื่อให้โมเดลใช้ได้ (บท Feature engineering จะลงรายละเอียด)
+
+## แบ่ง train/test
+
+โมเดลที่ดีต้องทำนายข้อมูล **ที่ไม่เคยเห็น** ได้ จึงกันข้อมูลส่วนหนึ่งไว้ทดสอบ ห้ามเอาไปเทรน:
+
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+```
+
+- `random_state=42` — ให้สุ่มแบบเดิมทุกครั้ง ผลลัพธ์ถึงทำซ้ำได้
+- `stratify=y` — รักษาสัดส่วน 0/1 ของ target ให้เท่ากันทั้งชุด train และ test
+
+## baseline: ต้องชนะอะไรถึงเรียกว่า "ดี"
+
+ก่อนดูความแม่นยำของโมเดล ให้ถามก่อนว่า **ถ้าทายแบบโง่ที่สุดจะได้เท่าไร** — เช่นทายคลาสที่พบบ่อยที่สุดทุกแถว
+(majority baseline) ถ้าโมเดลไม่ชนะ baseline แปลว่ายังไม่มีประโยชน์ ตัวเลข accuracy ลอยๆ (เช่น 64%) บอกอะไรไม่ได้
+
+## data leakage
+
+**Leakage** คือข้อมูลที่ "ไม่ควรรู้ ณ ตอนทำนายจริง" หลุดเข้ามาเป็น feature เช่น จำนวนออเดอร์ทั้งหมดของลูกค้า
+(ซึ่งรู้ได้ก็ต่อเมื่อลูกค้าซื้อซ้ำไปแล้ว) ผลบนชุดทดสอบจะสวยเกินจริง (เกือบ 100%) แต่ใช้งานจริงไม่ได้เลย —
+ตัวเลขที่ดีเกินไปมักเป็นสัญญาณให้สงสัย leakage ก่อนดีใจ

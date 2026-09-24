@@ -1,0 +1,494 @@
+goals:
+  - "ระบุ overfitting ได้จากช่องว่างระหว่างคะแนน train กับ test"
+  - "ใช้ k-fold cross-validation (พร้อม shuffle) วัดผลอย่างเชื่อถือได้"
+  - "เลือก hyperparameter ด้วย CV ไม่ใช่ด้วยชุด test"
+examples:
+  - id: "x1"
+    title: "ความลึกของ tree กับ overfitting"
+    lang: "python"
+    prompt: |
+      ต้นไม้ตัดสินใจลึกแค่ไหนถึงจะดี
+    steps:
+      - text: |
+          เทียบ accuracy ของ train กับ test ที่ความลึกต่างๆ — ยิ่งลึก train ยิ่งสูงแต่ test ยิ่งแย่
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          rows = []
+          for depth in (1, 3, 10, None):
+              tree = DecisionTreeClassifier(max_depth=depth, random_state=42).fit(X_train, y_train)
+              rows.append((depth, round(tree.score(X_train, y_train), 4), round(tree.score(X_test, y_test), 4)))
+          rows
+      - text: |
+          ไม่จำกัดความลึก: train ~1.0 แต่ test ต่ำกว่า baseline (~0.59) — จำข้อมูลแทนที่จะเรียนรู้
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.tree import DecisionTreeClassifier
+          tree = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+          round(tree.score(X_train, y_train), 4), round(tree.score(X_test, y_test), 4), round(max(y_test.mean(), 1 - y_test.mean()), 4)
+    pitfall:
+      text: |
+        ลองหลายค่า max_depth แล้วเลือกตัวที่ได้ accuracy สูงสุดบนชุด test — ชุด test ถูกใช้ตัดสินใจไปแล้ว ผลที่รายงานจึงดีเกินจริง (test leakage) ควรเลือกด้วย cross-validation บนชุด train แล้วแตะ test ครั้งเดียวตอนท้าย
+  - id: "x2"
+    title: "cross-validation ที่ถูกวิธี"
+    lang: "python"
+    prompt: |
+      วัดผลให้เชื่อถือได้ไม่ขึ้นกับการแบ่งข้อมูลครั้งเดียว
+    steps:
+      - text: |
+          5-fold CV แบบ shuffle ของ LogisticRegression — ได้ 5 คะแนนที่ไม่ต่างกันมาก
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import KFold, cross_val_score
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.linear_model import LogisticRegression
+
+          kf = KFold(n_splits=5, shuffle=True, random_state=42)
+          scores = cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=kf)
+          scores.round(4), round(scores.mean(), 4)
+      - text: |
+          เทียบ tree ความลึก 3 กับ 10 ด้วย CV — tree ที่ลึกกว่าได้คะแนนต่ำกว่า
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+          y = df['repeated']
+          from sklearn.model_selection import KFold, cross_val_score
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.linear_model import LogisticRegression
+
+          kf = KFold(n_splits=5, shuffle=True, random_state=42)
+          for depth in (3, 10):
+              s = cross_val_score(DecisionTreeClassifier(max_depth=depth, random_state=42), X, y, cv=kf)
+              print(depth, round(s.mean(), 4))
+    pitfall:
+      text: |
+        ใช้ `cv=5` เฉยๆ กับข้อมูลที่เรียงตามเวลา (ที่นี่แถวเรียงตามวันสมัครลูกค้า) — โค้ดไม่ error แต่แต่ละ fold เป็นช่วงเวลาต่างกัน คะแนน AUC จึงแกว่งมาก (จาก ~0.27 ถึง ~0.86) เชื่อถือไม่ได้ ต้อง shuffle
+      code: |
+        import pandas as pd
+
+        df = pd.read_csv("data/ml_customers.csv")
+        X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+        y = df['repeated']
+        from sklearn.model_selection import KFold, cross_val_score
+        from sklearn.tree import DecisionTreeClassifier
+        from sklearn.linear_model import LogisticRegression
+
+        kf = KFold(n_splits=5, shuffle=True, random_state=42)
+        unshuffled = cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=5, scoring='roc_auc')
+        unshuffled.round(3)
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      หาค่าเฉลี่ยของ 5-fold CV accuracy ของ LogisticRegression เก็บไว้ในตัวแปร cv_mean เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      scores = cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=___)
+      cv_mean = scores.mean()
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      scores = cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=kf)
+      cv_mean = scores.mean()
+    check: |
+      check_value(cv_mean, _sol["cv_mean"], name="cv_mean", tol=0.001)
+    hints:
+      - "ส่งตัวแบ่ง fold ที่ตั้งค่า shuffle ไว้แล้ว"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      DecisionTreeClassifier(random_state=42) ที่ไม่จำกัดความลึก: accuracy บนชุด train ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร full_train_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full_train_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      full_train_acc = round(tree.score(X_train, y_train), 4)
+    check: |
+      check_value(full_train_acc, _sol["full_train_acc"], name="full_train_acc", tol=0.001)
+    hints:
+      - "ไม่ใส่ max_depth"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นไม้ตัวเดิม: accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร full_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      full_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      full_test_acc = round(tree.score(X_test, y_test), 4)
+    check: |
+      check_value(full_test_acc, _sol["full_test_acc"], name="full_test_acc", tol=0.001)
+    hints:
+      - "ใช้ score บน X_test, y_test"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ช่องว่าง overfitting = train accuracy − test accuracy ของต้นไม้ที่ไม่จำกัดความลึก ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร gap_full
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      gap_full = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
+      gap_full = round(tree.score(X_train, y_train) - tree.score(X_test, y_test), 4)
+    check: |
+      check_value(gap_full, _sol["gap_full"], name="gap_full", tol=0.001)
+    hints:
+      - "ลบสอง score ที่ได้จาก e1 และ e2"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      DecisionTreeClassifier(max_depth=3, random_state=42): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร depth3_test_acc
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      depth3_test_acc = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.tree import DecisionTreeClassifier
+      tree = DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train)
+      depth3_test_acc = round(tree.score(X_test, y_test), 4)
+    check: |
+      check_value(depth3_test_acc, _sol["depth3_test_acc"], name="depth3_test_acc", tol=0.001)
+    hints:
+      - "ใส่ max_depth=3"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย 5-fold CV accuracy (KFold shuffle, random_state=42, ใช้ X, y ทั้งชุด) ของ DecisionTreeClassifier(max_depth=3, random_state=42) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร depth3_cv_mean
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      depth3_cv_mean = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      depth3_cv_mean = round(cross_val_score(DecisionTreeClassifier(max_depth=3, random_state=42), X, y, cv=kf).mean(), 4)
+    check: |
+      check_value(depth3_cv_mean, _sol["depth3_cv_mean"], name="depth3_cv_mean", tol=0.001)
+    hints:
+      - "cross_val_score(model, X, y, cv=kf).mean()"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย CV accuracy ของต้นไม้ max_depth=10 (ตั้งค่าเดียวกับ e5) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร depth10_cv_mean
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      depth10_cv_mean = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      depth10_cv_mean = round(cross_val_score(DecisionTreeClassifier(max_depth=10, random_state=42), X, y, cv=kf).mean(), 4)
+    check: |
+      check_value(depth10_cv_mean, _sol["depth10_cv_mean"], name="depth10_cv_mean", tol=0.001)
+    hints:
+      - "เหมือน e5 แต่ max_depth=10"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ลอง max_depth ตั้งแต่ 1 ถึง 10 ด้วย CV แบบเดียวกัน แล้วหา depth ที่ให้ค่าเฉลี่ย CV สูงสุด (ถ้าเท่ากันเลือก depth ที่น้อยกว่า) เก็บไว้ในตัวแปร best_depth
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      best_depth = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      import pandas as pd
+
+      cv_by_depth = pd.Series({d: cross_val_score(DecisionTreeClassifier(max_depth=d, random_state=42), X, y, cv=kf).mean() for d in range(1, 11)})
+      best_depth = int(cv_by_depth.idxmax())
+    check: |
+      check_value(best_depth, _sol["best_depth"], name="best_depth")
+    hints:
+      - "เก็บค่าเฉลี่ยของแต่ละ depth ใน pandas Series แล้ว idxmax() (คืนตัวแรกที่เจอเมื่อเท่ากัน)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย 5-fold CV accuracy ของ LogisticRegression(max_iter=2000) (KFold shuffle เดิม) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร logreg_cv_mean
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      logreg_cv_mean = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      logreg_cv_mean = round(cross_val_score(LogisticRegression(max_iter=2000), X, y, cv=kf).mean(), 4)
+    check: |
+      check_value(logreg_cv_mean, _sol["logreg_cv_mean"], name="logreg_cv_mean", tol=0.001)
+    hints:
+      - "เหมือนตัวอย่าง x2"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทียบ std ของคะแนน ROC-AUC 5-fold ของ LogisticRegression ระหว่าง cv=5 แบบไม่ shuffle กับ StratifiedKFold(5, shuffle=True, random_state=42): แบบไม่ shuffle มี std สูงกว่าไหม (True/False) เก็บไว้ในตัวแปร unshuffled_is_noisier
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      unshuffled_is_noisier = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      X = pd.get_dummies(df.drop(columns=['customer_id', 'repeated', 'first_order_value']), drop_first=True)
+      y = df['repeated']
+      from sklearn.model_selection import KFold, cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      from sklearn.linear_model import LogisticRegression
+
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      from sklearn.model_selection import StratifiedKFold
+
+      model = LogisticRegression(max_iter=2000)
+      unshuffled = cross_val_score(model, X, y, cv=5, scoring='roc_auc')
+      shuffled = cross_val_score(model, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=42), scoring='roc_auc')
+      unshuffled_is_noisier = bool(unshuffled.std() > shuffled.std())
+    check: |
+      check_value(unshuffled_is_noisier, _sol["unshuffled_is_noisier"], name="unshuffled_is_noisier")
+    hints:
+      - "ใช้ scoring=\"roc_auc\" ทั้งสองแบบแล้วเทียบ .std()"
+quiz:
+  - id: "q1"
+    question: "สัญญาณของ overfitting คือข้อไหน"
+    choices:
+      - text: "คะแนนบน train และ test ต่ำพอๆ กัน"
+        why: "นั่นคือสัญญาณของ underfitting"
+      - text: "คะแนนบน train สูงมากแต่บน test ต่ำกว่ามาก (ช่องว่างกว้าง)"
+        correct: true
+        why: "ถูกต้อง — เช่น tree ไม่จำกัดความลึก train ~1.0 แต่ test ต่ำกว่า baseline"
+      - text: "คะแนนบน test สูงกว่า train เสมอ"
+        why: "ไม่ใช่สัญญาณ overfitting"
+      - text: "โมเดลรันช้า"
+        why: "ความเร็วไม่เกี่ยวกับ overfitting"
+  - id: "q2"
+    question: "ข้อดีของ k-fold cross-validation เมื่อเทียบกับการแบ่ง train/test ครั้งเดียว"
+    choices:
+      - text: "ไม่ต้องใช้ข้อมูลเลย"
+        why: "ยังใช้ข้อมูลทั้งหมดในการวัดผล"
+      - text: "ทำให้โมเดลแม่นขึ้นเสมอ"
+        why: "CV วัดผลให้ซื่อสัตย์ ไม่ได้ทำให้โมเดลแม่นขึ้นโดยตรง"
+      - text: "ได้ค่าเฉลี่ยและความผันผวนของคะแนนจากหลายการแบ่ง เชื่อถือได้มากกว่า"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ใช้ได้กับ regression เท่านั้น"
+        why: "ใช้ได้ทั้ง regression และ classification"
+  - id: "q3"
+    question: "ทำไมต้องใส่ shuffle=True ให้ KFold กับข้อมูลที่แถวเรียงตามเวลา"
+    choices:
+      - text: "เพราะ shuffle ทำให้โมเดลเร็วขึ้น"
+        why: "ไม่เกี่ยวกับความเร็ว"
+      - text: "เพราะ KFold ทำงานไม่ได้ถ้าไม่ shuffle"
+        why: "ทำงานได้ แต่ผลอาจไม่น่าเชื่อถือ"
+      - text: "เพราะ shuffle เพิ่มจำนวนแถว"
+        why: "shuffle ไม่เพิ่มจำนวนแถว"
+      - text: "เพราะ fold ที่ไม่สลับจะเป็นคนละช่วงเวลา หน้าตาต่างกันมาก คะแนนแต่ละ fold จึงแกว่งและเชื่อถือไม่ได้"
+        correct: true
+        why: "ถูกต้อง — ตัวอย่างในบท: AUC ต่อ fold ตั้งแต่ ~0.27 ถึง ~0.86"
+  - id: "q4"
+    question: "ถ้า max_depth หลายค่าให้คะแนน CV เท่ากัน ควรเลือกอย่างไร"
+    choices:
+      - text: "เลือกตัวที่ง่ายกว่า (depth น้อยกว่า) เพราะเสี่ยง overfit น้อยกว่าและตีความง่ายกว่า"
+        correct: true
+        why: "ถูกต้อง — หลัก \"ง่ายที่สุดที่ยังดีพอ\""
+      - text: "เลือกตัวลึกที่สุด"
+        why: "ไม่มีเหตุผลรองรับเมื่อคะแนนเท่ากัน"
+      - text: "เลือกสุ่ม"
+        why: "ควรมีหลักการ ไม่ใช่สุ่ม"
+      - text: "รันใหม่จนกว่าจะต่างกัน"
+        why: "ไม่ใช่วิธีที่ถูกต้อง"
+summary:
+  - "overfitting = train สูง test ต่ำ (tree ไม่จำกัดความลึก train ~1.0 test ~0.55) — จำกัดความซับซ้อนเพื่อลดช่องว่าง"
+  - "ใช้ KFold(shuffle=True, random_state=...) กับข้อมูลที่แถวเรียงตามเวลา ไม่งั้นคะแนนแต่ละ fold แกว่งรุนแรง"
+  - "เลือก hyperparameter ด้วยค่าเฉลี่ย CV ถ้าเท่ากันเลือกโมเดลที่ง่ายกว่า (ในข้อมูลนี้ tree ตื้นๆ ชนะ tree ลึก)"
+interview:
+  - id: "i1"
+    q: "อธิบายว่าทำไมการเลือกโมเดลจากคะแนนบนชุด test หลายรอบจึงเป็นปัญหา"
+    a: |
+      เพราะทุกครั้งที่เลือกจากผลบนชุด test ข้อมูลชุดนั้นถูกใช้ตัดสินใจไปแล้ว คะแนนสุดท้ายจึงดีเกินจริงและไม่ใช่ตัวแทนของข้อมูลใหม่ (test leakage) วิธีที่ถูกคือเลือกโมเดล/hyperparameter ด้วย cross-validation บนชุด train แล้วใช้ชุด test วัดผลรอบสุดท้ายเพียงครั้งเดียว
+  - id: "i2"
+    q: "เจอโมเดลที่ train accuracy 99% แต่ test 55% จะทำอย่างไร"
+    a: |
+      วินิจฉัยว่าเป็น overfitting แล้วลดความซับซ้อนของโมเดล (เช่น จำกัด max_depth, เพิ่ม regularization), เพิ่มข้อมูล หรือลดจำนวน feature จากนั้นวัดซ้ำด้วย cross-validation และเทียบกับ baseline ว่าโมเดลที่ง่ายขึ้นยังชนะ baseline หรือไม่
+flashcards:
+  - id: "c1"
+    front: "overfitting คืออะไร"
+    back: "โมเดลจำข้อมูล train (รวมสัญญาณรบกวน) จนคะแนน train สูงแต่ใช้กับข้อมูลใหม่ได้แย่"
+  - id: "c2"
+    front: "ทำไม KFold ควร shuffle"
+    back: "ถ้าแถวเรียงตามเวลา fold ที่ไม่สลับจะต่างกันมาก ทำให้คะแนนแกว่งและเชื่อถือไม่ได้"

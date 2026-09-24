@@ -1,0 +1,46 @@
+---
+track: ml
+module: basics
+order: 5
+title: "Overfitting และ cross-validation"
+minutes: 35
+prereqs: [ml/basics/04-evaluation]
+---
+
+## overfitting คืออะไร
+
+โมเดลที่ซับซ้อนเกินไปอาจ "จำ" ข้อมูล train (รวมถึงสัญญาณรบกวน) จนได้คะแนนสูงมากบน train แต่แย่บนข้อมูลใหม่ — เรียกว่า **overfitting**
+สัญญาณคือ **ช่องว่างระหว่างคะแนน train กับ test ที่กว้าง**
+
+decision tree ที่ไม่จำกัดความลึก (`max_depth=None`) เป็นตัวอย่างชัดที่สุด: แตกกิ่งจนทายข้อมูล train ถูกเกือบ 100%
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier(max_depth=None, random_state=42).fit(X_train, y_train)
+tree.score(X_train, y_train), tree.score(X_test, y_test)
+```
+
+การจำกัดความซับซ้อน (เช่น `max_depth`) ลด overfitting — แต่ถ้าจำกัดมากเกินไปจะกลายเป็น **underfitting** (โมเดลง่ายเกินจนจับแบบแผนไม่ได้)
+
+## ทำไมต้อง cross-validation
+
+การแบ่ง train/test ครั้งเดียวให้ตัวเลขที่ขึ้นกับว่าบังเอิญแบ่งแบบไหน และถ้าเลือกโมเดลจากผลบนชุด test หลายรอบ ชุด test ก็ "รั่ว" เข้ามาเป็นส่วนของการตัดสินใจ
+**k-fold cross-validation** แบ่งข้อมูลเป็น k ส่วน สลับกันเป็นชุดทดสอบทีละส่วน แล้วเฉลี่ยผล — ได้ทั้งค่าเฉลี่ยและความผันผวน (std) ของคะแนน
+
+```python
+from sklearn.model_selection import KFold, cross_val_score
+
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(model, X, y, cv=kf)
+scores.mean(), scores.std()
+```
+
+## ระวัง: ต้อง shuffle
+
+ถ้าแถวข้อมูลเรียงตามเวลา (ที่นี่เรียงตาม customer_id ซึ่งไล่ตามวันสมัคร) การแบ่ง fold แบบไม่สลับ (`cv=5` เฉยๆ) จะได้ fold ที่หน้าตาต่างกันมาก
+คะแนนแต่ละ fold จึงแกว่งรุนแรงและเชื่อถือไม่ได้ — ใช้ `KFold(shuffle=True, random_state=...)` หรือ `StratifiedKFold(shuffle=True, ...)` เสมอ (ยกเว้นงาน time series จริงที่ต้องใช้วิธีเฉพาะ)
+
+## เลือก hyperparameter ด้วย CV
+
+ลองหลายค่า (เช่น `max_depth` 1–10) แล้วเลือกจากค่าเฉลี่ย CV ไม่ใช่จากชุด test — ถ้าหลายค่าให้คะแนนเท่ากัน ให้เลือกโมเดลที่ **ง่ายกว่า** (depth น้อยกว่า)

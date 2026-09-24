@@ -2,12 +2,18 @@
 import ModuleProgress from '../../components/ModuleProgress';
 import Base from '../../layouts/Base.astro';
 import { getTrack } from '../../lib/content/catalog';
+import { TRACK_IDS, trackInfo, type TrackId } from '../../lib/tracks';
 
-const modules = await getTrack('da');
+export function getStaticPaths() {
+  return TRACK_IDS.map((track) => ({ params: { track } }));
+}
+const track = Astro.params.track as TrackId;
+const info = trackInfo(track);
+const modules = await getTrack(track);
 ---
-<Base title="Data Analyst">
-  <h1>สาย Data Analyst</h1>
-  <p class="lead">เริ่มจาก SQL และ pandas ต่อด้วยสถิติ visualization และ business metrics แล้วจบด้วยโปรเจกต์ portfolio</p>
+<Base title={info.title}>
+  <h1>สาย {info.title}</h1>
+  <p class="lead">{info.lead}</p>
   <ol class="module-list">
     {modules.map((m) => (
       <li class="card module-card">

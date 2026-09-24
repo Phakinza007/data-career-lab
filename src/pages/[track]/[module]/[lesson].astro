@@ -7,6 +7,7 @@ import { getTrack } from '../../../lib/content/catalog';
 import { md, mdInline } from '../../../lib/content/markdown';
 import type { LessonRef, ModuleRef } from '../../../lib/content/refs';
 import type { LessonData } from '../../../lib/content/schema';
+import { TRACK_IDS, trackInfo, type TrackId } from '../../../lib/tracks';
 import { url } from '../../../lib/url';
 import Exercise from '../../../components/Exercise';
 import Quiz from '../../../components/Quiz';
@@ -15,21 +16,26 @@ import { exampleView, quizView, taskView } from '../../../lib/content/views';
 import { LEVELS, LEVEL_LABELS } from '../../../lib/kinds';
 
 export async function getStaticPaths() {
-  const modules = await getTrack('da');
   const entries = await getCollection('lessons');
   const data = await getCollection('lessonData');
-  const flat = modules.flatMap((mod) => mod.lessons.map((ref) => ({ mod, ref })));
-  return flat.map(({ mod, ref }, i) => ({
-    params: { module: mod.slug, lesson: ref.slug },
-    props: {
-      mod,
-      ref,
-      entry: entries.find((e) => e.id === ref.id)!,
-      data: data.find((d) => d.id === ref.id)!.data,
-      prev: flat[i - 1]?.ref ?? null,
-      next: flat[i + 1]?.ref ?? null,
-    },
-  }));
+  const paths = await Promise.all(
+    TRACK_IDS.map(async (track) => {
+      const modules = await getTrack(track);
+      const flat = modules.flatMap((mod) => mod.lessons.map((ref) => ({ mod, ref })));
+      return flat.map(({ mod, ref }, i) => ({
+        params: { track, module: mod.slug, lesson: ref.slug },
+        props: {
+          mod,
+          ref,
+          entry: entries.find((e) => e.id === ref.id)!,
+          data: data.find((d) => d.id === ref.id)!.data,
+          prev: flat[i - 1]?.ref ?? null,
+          next: flat[i + 1]?.ref ?? null,
+        },
+      }));
+    }),
+  );
+  return paths.flat();
 }
 
 interface Props {
@@ -41,6 +47,8 @@ interface Props {
   next: LessonRef | null;
 }
 const { mod, ref, entry, data, prev, next } = Astro.props;
+const track = Astro.params.track as TrackId;
+const info = trackInfo(track);
 const { Content } = await render(entry);
 const examples = data.examples.map((e) => exampleView(ref.id, e));
 const faded = data.faded.map((t) => taskView(ref.id, t, 'faded'));
@@ -54,7 +62,7 @@ const quiz = data.quiz.map((q) => quizView(ref.id, q));
       <LessonNav client:only="react" lessons={mod.lessons} currentId={ref.id} />
     </aside>
     <article class="lesson">
-      <p class="crumb"><a href={url('/da/')}>Data Analyst</a> › <a href={mod.url}>{mod.title}</a></p>
+      <p class="crumb"><a href={url(`/${track}/`)}>{info.title}</a> › <a href={mod.url}>{mod.title}</a></p>
       <h1>{entry.data.title}</h1>
       <p class="muted">ประมาณ {entry.data.minutes} นาที</p>
 

@@ -6,20 +6,27 @@ import { getTrack } from '../../../lib/content/catalog';
 import type { ModuleRef } from '../../../lib/content/refs';
 import type { PracticeSet } from '../../../lib/content/schema';
 import { taskView } from '../../../lib/content/views';
+import { TRACK_IDS, trackInfo, type TrackId } from '../../../lib/tracks';
 import { url } from '../../../lib/url';
 
 export async function getStaticPaths() {
-  const modules = await getTrack('da');
   const sets = await getCollection('practice');
-  return modules
-    .filter((m) => m.practiceUrl)
-    .map((m) => ({ params: { module: m.slug }, props: { mod: m, set: sets.find((s) => s.id === m.id)!.data } }));
+  const all = await Promise.all(
+    TRACK_IDS.map(async (track) =>
+      (await getTrack(track))
+        .filter((m) => m.practiceUrl)
+        .map((m) => ({ params: { track, module: m.slug }, props: { mod: m, set: sets.find((s) => s.id === m.id)!.data } })),
+    ),
+  );
+  return all.flat();
 }
 const { mod, set } = Astro.props as { mod: ModuleRef; set: PracticeSet };
+const track = Astro.params.track as TrackId;
+const info = trackInfo(track);
 const tasks = set.exercises.map((t) => taskView(`${mod.id}/practice`, t, 'exercise'));
 ---
 <Base title={`ชุดฝึก: ${mod.title}`}>
-  <p class="crumb"><a href={url('/da/')}>Data Analyst</a> › <a href={mod.url}>{mod.title}</a></p>
+  <p class="crumb"><a href={url(`/${track}/`)}>{info.title}</a> › <a href={mod.url}>{mod.title}</a></p>
   <h1>{set.title}</h1>
   <p class="lead">โจทย์คละหัวข้อทั้ง module โดยไม่บอกว่าต้องใช้เทคนิคไหน ให้เลือกวิธีเองเหมือนตอนทำงานจริง</p>
   {tasks.map((t) => <Exercise client:visible task={t} />)}

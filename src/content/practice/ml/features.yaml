@@ -1,0 +1,413 @@
+title: "ชุดฝึกท้าย module: Feature engineering"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คอลัมน์ city มีกี่หมวด และ pd.get_dummies(df["city"], drop_first=True) ได้กี่คอลัมน์ เก็บไว้ในตัวแปร n_cities, n_dummy_drop
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_cities = df['city'].nunique()
+      n_dummy_drop = pd.get_dummies(df['city'], drop_first=True).shape[1]
+    check: |
+      check_value(n_cities, _sol["n_cities"], name="n_cities")
+      check_value(n_dummy_drop, _sol["n_dummy_drop"], name="n_dummy_drop")
+    hints:
+      - "ทบทวนบทที่ 1 (encoding)"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      เมืองที่มีลูกค้ามากที่สุด (string) เก็บไว้ในตัวแปร top_city
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      top_city = df['city'].value_counts().idxmax()
+    check: |
+      check_value(top_city, _sol["top_city"], name="top_city")
+    hints:
+      - "value_counts + idxmax"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      หมวดทั้งหมดของ first_payment_method ตามที่ OrdinalEncoder รู้จัก (list เรียงตามตัวอักษร) เก็บไว้ในตัวแปร payment_cats
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OrdinalEncoder
+
+      payment_cats = list(OrdinalEncoder().fit(df[['first_payment_method']]).categories_[0])
+    check: |
+      check_value(payment_cats, _sol["payment_cats"], name="payment_cats")
+    hints:
+      - "ทบทวนบทที่ 1"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      fit OneHotEncoder(handle_unknown="ignore") บนลูกค้าที่ไม่ใช่ Hat Yai แล้ว transform ลูกค้า Hat Yai: เก็บผลรวมของค่าทั้งหมดหลัง transform ไว้ในตัวแปร unseen_sum
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+      unseen_sum = float(encoder.transform(hatyai[['city']]).toarray().sum())
+    check: |
+      check_value(unseen_sum, _sol["unseen_sum"], name="unseen_sum", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 1"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      mean และ std (scale_) ของ days_to_first_order ที่ StandardScaler เรียนรู้จากชุด train ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร train_mean, train_scale
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      train_mean = round(scaler.mean_[1], 3)
+      train_scale = round(scaler.scale_[1], 3)
+    check: |
+      check_value(train_mean, _sol["train_mean"], name="train_mean", tol=0.001)
+      check_value(train_scale, _sol["train_scale"], name="train_scale", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 2 (scaling)"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      หลังจำลอง NaN (customer_id หาร 10 ลงตัว → days_to_first_order เป็น NaN) มีกี่แถวที่หาย และมัธยฐานที่ SimpleImputer เรียนรู้จาก train คือเท่าไร เก็บไว้ในตัวแปร n_missing, train_median
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      n_missing = int(df['days_to_first_order'].isna().sum())
+      imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+      train_median = imputer.statistics_[0]
+    check: |
+      check_value(n_missing, _sol["n_missing"], name="n_missing")
+      check_value(train_median, _sol["train_median"], name="train_median", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 2 (missing values)"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      KNN (n_neighbors=15) บน feature ตัวเลข 6 ตัว: accuracy บนชุดทดสอบเมื่อไม่ scale และเมื่อ scale (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร knn_acc_unscaled, knn_acc_scaled
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.neighbors import KNeighborsClassifier
+      from sklearn.preprocessing import StandardScaler
+      knn = KNeighborsClassifier(n_neighbors=15).fit(X_train[num], y_train)
+      knn_acc_unscaled = round(knn.score(X_test[num], y_test), 4)
+      scaler = StandardScaler().fit(X_train[num])
+      knn_s = KNeighborsClassifier(n_neighbors=15).fit(scaler.transform(X_train[num]), y_train)
+      knn_acc_scaled = round(knn_s.score(scaler.transform(X_test[num]), y_test), 4)
+    check: |
+      check_value(knn_acc_unscaled, _sol["knn_acc_unscaled"], name="knn_acc_unscaled", tol=0.001)
+      check_value(knn_acc_scaled, _sol["knn_acc_scaled"], name="knn_acc_scaled", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 2"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit pipeline (StandardScaler + OneHotEncoder + LogisticRegression) บน train: จำนวน feature หลังแปลง และ ROC-AUC บนชุดทดสอบ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร n_features_out, test_auc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      pipe.fit(X_train, y_train)
+      n_features_out = len(pipe.named_steps['pre'].get_feature_names_out())
+      test_auc = round(roc_auc_score(y_test, pipe.predict_proba(X_test)[:, 1]), 4)
+    check: |
+      check_value(n_features_out, _sol["n_features_out"], name="n_features_out")
+      check_value(test_auc, _sol["test_auc"], name="test_auc", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 3 (pipeline)"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ยและ std ของ ROC-AUC จาก 5-fold StratifiedKFold(shuffle=True, random_state=42) ทั้ง pipeline (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร cv_auc_mean, cv_auc_std
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='roc_auc')
+      cv_auc_mean = round(scores.mean(), 4)
+      cv_auc_std = round(scores.std(), 4)
+    check: |
+      check_value(cv_auc_mean, _sol["cv_auc_mean"], name="cv_auc_mean", tol=0.001)
+      check_value(cv_auc_std, _sol["cv_auc_std"], name="cv_auc_std", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 3"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit pipeline บน train แล้วทำนายความน่าจะเป็นที่จะซื้อซ้ำของลูกค้าใหม่ที่มาจากช่องทาง promo และ organic (ฟังก์ชัน new_customer ที่ให้ไว้ ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร proba_promo, proba_organic
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      import pandas as pd
+
+      def new_customer(channel, city='Bangkok'):
+          return pd.DataFrame([{'signup_month': 6, 'days_to_first_order': 2, 'first_discount_pct': 0, 'first_n_items': 1, 'first_has_electronics': 0, 'days_since_first_order': 300, 'city': city, 'channel': channel, 'first_payment_method': 'cod', 'first_status': 'completed'}])
+      pipe.fit(X_train, y_train)
+      proba_promo = round(pipe.predict_proba(new_customer('promo'))[0, 1], 4)
+      proba_organic = round(pipe.predict_proba(new_customer('organic'))[0, 1], 4)
+    check: |
+      check_value(proba_promo, _sol["proba_promo"], name="proba_promo", tol=0.001)
+      check_value(proba_organic, _sol["proba_organic"], name="proba_organic", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 3"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      skew ของ first_order_value ก่อนและหลัง np.log1p ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร skew_raw, skew_log
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      skew_raw = round(df['first_order_value'].skew(), 3)
+      skew_log = round(np.log1p(df['first_order_value']).skew(), 3)
+    check: |
+      check_value(skew_raw, _sol["skew_raw"], name="skew_raw", tol=0.001)
+      check_value(skew_log, _sol["skew_log"], name="skew_log", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 4 (feature creation)"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      อัตราซื้อซ้ำของลูกค้าที่ fast_first (days_to_first_order <= 3) เป็น 1 และ 0 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร repeat_fast, repeat_slow
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+      rates = df.groupby('fast_first')['repeated'].mean()
+      repeat_fast = round(rates[1], 4)
+      repeat_slow = round(rates[0], 4)
+    check: |
+      check_value(repeat_fast, _sol["repeat_fast"], name="repeat_fast", tol=0.0001)
+      check_value(repeat_slow, _sol["repeat_slow"], name="repeat_slow", tol=0.0001)
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      อัตราซื้อซ้ำเฉลี่ยแยกตามไตรมาสที่สมัคร (signup_q = (signup_month - 1) // 3 + 1) ปัด 4 ตำแหน่ง เป็น Series เก็บไว้ในตัวแปร result
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      import numpy as np
+      df['signup_q'] = (df['signup_month'] - 1) // 3 + 1
+      result = df.groupby('signup_q')['repeated'].mean().round(4)
+    check: |
+      check_series(result, _sol["result"])
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      CV AUC เฉลี่ยของ baseline (ใช้ฟังก์ชัน cv_auc ที่ให้ไว้) และเมื่อเพิ่ม fast_first เข้า feature ตัวเลข (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร auc_base, auc_with_fast
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.compose import ColumnTransformer
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+
+
+      def cv_auc(data, num_cols, cat_cols):
+          pre = ColumnTransformer([('num', StandardScaler(), num_cols), ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)])
+          pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+          skf = StratifiedKFold(5, shuffle=True, random_state=42)
+          return cross_val_score(pipe, data[num_cols + cat_cols], data['repeated'], cv=skf, scoring='roc_auc').mean()
+      df['fast_first'] = (df['days_to_first_order'] <= 3).astype(int)
+      auc_base = round(cv_auc(df, num, cat), 4)
+      auc_with_fast = round(cv_auc(df, num + ['fast_first'], cat), 4)
+    check: |
+      check_value(auc_base, _sol["auc_base"], name="auc_base", tol=0.001)
+      check_value(auc_with_fast, _sol["auc_with_fast"], name="auc_with_fast", tol=0.001)
+    hints:
+      - "ทบทวนบทที่ 4"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      target encoding: อัตราซื้อซ้ำของ promo จากชุด train เท่านั้น และผลต่างเมื่อคำนวณจากข้อมูลทั้งชุด (full − train) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร te_train_promo, te_gap
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      train_df = pd.concat([X_train, y_train], axis=1)
+      full_promo = df.groupby('channel')['repeated'].mean()['promo']
+      te_train_promo = round(train_df.groupby('channel')['repeated'].mean()['promo'], 4)
+      te_gap = round(full_promo - train_df.groupby('channel')['repeated'].mean()['promo'], 4)
+    check: |
+      check_value(te_train_promo, _sol["te_train_promo"], name="te_train_promo", tol=0.0001)
+      check_value(te_gap, _sol["te_gap"], name="te_gap", tol=0.0001)
+    hints:
+      - "ทบทวนบทที่ 1 (target encoding leakage)"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ค่าเฉลี่ย accuracy จาก 5-fold CV เดียวกันของทั้ง pipeline และจำนวนขั้นตอนของ pipeline (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร cv_acc_mean, n_steps
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.preprocessing import OneHotEncoder, StandardScaler
+      from sklearn.linear_model import LogisticRegression
+      from sklearn.metrics import roc_auc_score
+
+      pre = ColumnTransformer([('num', StandardScaler(), num), ('cat', OneHotEncoder(handle_unknown='ignore'), cat)])
+      pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+      from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+      skf = StratifiedKFold(5, shuffle=True, random_state=42)
+      X_all = df[num + cat]
+      scores = cross_val_score(pipe, X_all, df['repeated'], cv=skf, scoring='accuracy')
+      cv_acc_mean = round(scores.mean(), 4)
+      n_steps = len(pipe.steps)
+    check: |
+      check_value(cv_acc_mean, _sol["cv_acc_mean"], name="cv_acc_mean", tol=0.001)
+      check_value(n_steps, _sol["n_steps"], name="n_steps")
+    hints:
+      - "ทบทวนบทที่ 3"

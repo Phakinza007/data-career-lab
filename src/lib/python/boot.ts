@@ -12,7 +12,7 @@ function base64ToBytes(base64: string): Uint8Array {
 
 export const PYODIDE_VERSION = '314.0.7';
 export const PYODIDE_CDN = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
-export const PY_PACKAGES = ['pandas', 'matplotlib', 'scipy', 'micropip'];
+export const PY_PACKAGES = ['pandas', 'matplotlib', 'scipy', 'scikit-learn', 'micropip'];
 const HOME = '/home/pyodide';
 
 export interface PyodideLike {

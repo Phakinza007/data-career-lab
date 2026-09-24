@@ -3,16 +3,19 @@ import LessonNav from '../../../components/LessonNav';
 import Base from '../../../layouts/Base.astro';
 import { getTrack } from '../../../lib/content/catalog';
 import type { ModuleRef } from '../../../lib/content/refs';
+import { TRACK_IDS, trackInfo, type TrackId } from '../../../lib/tracks';
 import { url } from '../../../lib/url';
 
 export async function getStaticPaths() {
-  const modules = await getTrack('da');
-  return modules.map((m) => ({ params: { module: m.slug }, props: { mod: m } }));
+  const all = await Promise.all(TRACK_IDS.map(async (track) => (await getTrack(track)).map((m) => ({ params: { track, module: m.slug }, props: { mod: m } }))));
+  return all.flat();
 }
 const { mod } = Astro.props as { mod: ModuleRef };
+const track = Astro.params.track as TrackId;
+const info = trackInfo(track);
 ---
 <Base title={mod.title}>
-  <p class="crumb"><a href={url('/da/')}>Data Analyst</a> › Module {mod.order}</p>
+  <p class="crumb"><a href={url(`/${track}/`)}>{info.title}</a> › Module {mod.order}</p>
   <h1>{mod.title}</h1>
   <p class="lead">{mod.description}</p>
   {mod.lessons.length === 0 ? (

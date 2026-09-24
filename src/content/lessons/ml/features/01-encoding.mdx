@@ -1,0 +1,43 @@
+---
+track: ml
+module: features
+order: 1
+title: "Encoding ข้อมูลหมวดหมู่"
+minutes: 30
+prereqs: [ml/basics/05-overfitting-cv]
+---
+
+## โมเดลกินได้แต่ตัวเลข
+
+คอลัมน์ข้อความอย่าง `city`, `channel`, `first_payment_method` ต้องแปลงเป็นตัวเลขก่อนเข้าโมเดล วิธีที่ใช้บ่อยที่สุดคือ **one-hot encoding**:
+สร้างคอลัมน์ 0/1 หนึ่งคอลัมน์ต่อหนึ่งหมวด
+
+```python
+pd.get_dummies(df['city'])                    # 8 เมือง → 8 คอลัมน์
+pd.get_dummies(df['city'], drop_first=True)   # ทิ้งหมวดแรกไป → 7 คอลัมน์
+```
+
+`drop_first=True` ตัดคอลัมน์ที่คำนวณได้จากคอลัมน์อื่น (ถ้า 7 เมืองเป็น 0 หมดก็ต้องเป็นเมืองที่ 8) ช่วยลดความซ้ำซ้อนโดยเฉพาะกับโมเดลเส้นตรง
+
+## get_dummies vs OneHotEncoder
+
+`pd.get_dummies` สะดวกสำหรับสำรวจ แต่ **จำหมวดจากข้อมูลที่ส่งเข้าไปเท่านั้น** — ถ้าแปลง train กับ test แยกกัน คอลัมน์อาจไม่ตรงกัน (เช่น เมืองที่ไม่มีใน test)
+`OneHotEncoder` ของ scikit-learn ต้อง `.fit` บนข้อมูล train แล้ว `.transform` ทั้ง train และ test จึงได้คอลัมน์ชุดเดียวกันเสมอ
+และตั้ง `handle_unknown='ignore'` เพื่อให้หมวดใหม่ที่ไม่เคยเห็นตอนเทรนกลายเป็นแถวที่เป็น 0 ทั้งหมด แทนที่จะ error
+
+```python
+from sklearn.preprocessing import OneHotEncoder
+
+encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+encoder.transform(new_rows[['city']])
+```
+
+## ordinal encoding: ระวังลำดับปลอม
+
+`OrdinalEncoder` แปลงหมวดเป็น 0, 1, 2, … เหมาะกับข้อมูลที่ **มีลำดับจริง** (เช่น น้อย/กลาง/มาก) ถ้าใช้กับข้อมูลที่ไม่มีลำดับ (เช่น วิธีชำระเงิน) โมเดลเส้นตรงจะเข้าใจว่า
+`promptpay (3)` "มากกว่า" `cod (1)` ซึ่งไม่มีความหมาย — ใช้ one-hot แทน
+
+## target encoding: ระวัง leakage
+
+การแทนหมวดด้วยค่าเฉลี่ยของ target ในหมวดนั้น (เช่น อัตราซื้อซ้ำเฉลี่ยของแต่ละช่องทาง) อาจมีประโยชน์ แต่ **ต้องคำนวณจากชุด train เท่านั้น**
+ถ้าคำนวณจากข้อมูลทั้งชุด ค่าเฉลี่ยจะมี target ของแถว test ปนอยู่ — เป็น leakage ที่ทำให้ผลทดสอบดีเกินจริง

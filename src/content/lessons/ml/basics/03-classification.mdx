@@ -1,0 +1,42 @@
+---
+track: ml
+module: basics
+order: 3
+title: "Logistic regression และ classification"
+minutes: 30
+prereqs: [ml/basics/02-regression]
+---
+
+## classification คือการทำนายคลาส
+
+เมื่อ target เป็นคลาส (0/1 เช่น ซื้อซ้ำ/ไม่ซื้อซ้ำ) เรียกว่าโจทย์ **classification** — `LogisticRegression` เป็นโมเดลเริ่มต้นที่ใช้บ่อย
+(ชื่อมี "regression" แต่ใช้ทำนายคลาส) โมเดลคำนวณ **ความน่าจะเป็น** ของคลาส 1 ก่อน แล้วค่อยตัดสินเป็น 0/1
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression(max_iter=2000).fit(X_train, y_train)
+model.predict(X_test)              # คลาสที่ทำนาย (0/1)
+model.predict_proba(X_test)[:, 1]  # ความน่าจะเป็นของคลาส 1
+model.score(X_test, y_test)        # accuracy
+```
+
+## predict กับ predict_proba
+
+`predict` เป็นแค่ 0/1 — ซ่อนความมั่นใจของโมเดลไว้ ส่วน `predict_proba` ให้ความน่าจะเป็นจริง ซึ่งนำไปจัดอันดับลูกค้าหรือปรับเกณฑ์ได้
+
+## threshold: เกณฑ์ตัดสินใจ
+
+`predict` ใช้เกณฑ์ 0.5 เป็นค่าเริ่มต้น (ความน่าจะเป็น ≥ 0.5 → คลาส 1) แต่ 0.5 ไม่ใช่กฎตายตัว:
+
+```python
+proba = model.predict_proba(X_test)[:, 1]
+pred_strict = (proba >= 0.7).astype(int)
+```
+
+ยิ่งตั้งเกณฑ์สูง จำนวนที่ทำนายเป็นคลาส 1 ยิ่งน้อยลง — เลือกเกณฑ์ตามต้นทุนของความผิดพลาดแต่ละแบบในงานจริง (บทถัดไปจะเรื่อง precision/recall)
+
+## อ่าน coefficient เป็น odds ratio
+
+coefficient ของ logistic regression อยู่ในหน่วย log-odds — ยกด้วย `exp` จะได้ **odds ratio**: ค่ามากกว่า 1 แปลว่า feature นั้นเพิ่มโอกาส (odds) ของคลาส 1
+น้อยกว่า 1 แปลว่าลดโอกาส เช่น `channel_promo` มี coefficient ≈ −2.19 → odds ratio ≈ 0.11 (ลูกค้าจากช่องทาง promo มี odds ซื้อซ้ำเหลือราว 11% ของช่องทางอ้างอิง เมื่อปัจจัยอื่นคงที่)

@@ -1,0 +1,559 @@
+goals:
+  - "ใช้ StandardScaler โดย fit บน train เท่านั้น และรู้ว่าโมเดลแบบไหนไวต่อสเกล"
+  - "ไม่เชื่อว่า scaling ช่วยเสมอไป — วัดผลก่อนตัดสินใจ"
+  - "เติม missing values ด้วย SimpleImputer โดยใช้ค่าจาก train"
+examples:
+  - id: "x1"
+    title: "StandardScaler ที่ fit บน train"
+    lang: "python"
+    prompt: |
+      ปรับสเกล feature ตัวเลขโดยไม่ให้ข้อมูล test ปนเข้ามา
+    steps:
+      - text: |
+          fit scaler บน train — ดู mean และ std ของ days_to_first_order ที่เรียนรู้ได้
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.preprocessing import StandardScaler
+
+          scaler = StandardScaler().fit(X_train[num])
+          round(scaler.mean_[1], 3), round(scaler.scale_[1], 3)
+      - text: |
+          transform แล้ว train มี mean = 0 พอดี แต่ test เบี่ยงเล็กน้อย (ปกติ เพราะใช้ mean/std จาก train)
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.preprocessing import StandardScaler
+
+          scaler = StandardScaler().fit(X_train[num])
+          Z_train = scaler.transform(X_train[num])
+          Z_test = scaler.transform(X_test[num])
+          round(Z_train.mean(axis=0)[1], 6), round(Z_test.mean(axis=0)[1], 4)
+    pitfall:
+      text: |
+        fit scaler บนข้อมูลทั้งชุดก่อนแบ่ง train/test — โค้ดรันได้ปกติ แต่ mean/std ที่ได้มีข้อมูล test ปนอยู่ (ตัวอย่างนี้ mean ของ days_to_first_order เป็น 6.95 แทนที่จะเป็น 7.073 จาก train) จึงเป็น leakage เล็กๆ ที่สะสมได้เมื่อมีหลายขั้นตอน
+      code: |
+        import pandas as pd
+        from sklearn.model_selection import train_test_split
+
+        df = pd.read_csv("data/ml_customers.csv")
+        num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+        cat = ['city', 'channel', 'first_payment_method', 'first_status']
+        y = df['repeated']
+        X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+        from sklearn.preprocessing import StandardScaler
+
+        leaky = StandardScaler().fit(df[num])
+        round(leaky.mean_[1], 3)
+  - id: "x2"
+    title: "scaling กับ KNN"
+    lang: "python"
+    prompt: |
+      KNN ใช้ระยะทาง — scale แล้วดีขึ้นไหม
+    steps:
+      - text: |
+          KNN (k=15) บน feature ตัวเลขทั้ง 6 ตัวโดยไม่ scale
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.neighbors import KNeighborsClassifier
+          from sklearn.preprocessing import StandardScaler
+          knn = KNeighborsClassifier(n_neighbors=15).fit(X_train[num], y_train)
+          round(knn.score(X_test[num], y_test), 4)
+      - text: |
+          scale ก่อน — accuracy ลดลงเล็กน้อย เพราะ feature ที่ไม่มีสัญญาณมีน้ำหนักเท่ากับ feature ที่มีสัญญาณ
+        code: |
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.neighbors import KNeighborsClassifier
+          from sklearn.preprocessing import StandardScaler
+          scaler = StandardScaler().fit(X_train[num])
+          knn = KNeighborsClassifier(n_neighbors=15).fit(scaler.transform(X_train[num]), y_train)
+          round(knn.score(scaler.transform(X_test[num]), y_test), 4)
+    pitfall:
+      text: |
+        เชื่อว่า "scale แล้วดีขึ้นเสมอ" โดยไม่วัด — scaling ไม่ได้ทำให้โมเดลแม่นขึ้นโดยอัตโนมัติ มันแค่เปลี่ยนว่า feature ไหนมีอิทธิพลต่อระยะทาง (ในตัวอย่างนี้ผลแย่ลงเล็กน้อย) ต้องเทียบผลด้วยข้อมูลทดสอบหรือ CV
+  - id: "x3"
+    title: "เติมค่าที่หายไปด้วย SimpleImputer"
+    lang: "python"
+    prompt: |
+      บางแถวไม่มีค่า days_to_first_order — เติมยังไงให้ไม่รั่ว
+    steps:
+      - text: |
+          จำลองข้อมูลหาย: ตั้ง days_to_first_order เป็น NaN ให้ลูกค้า customer_id ที่หาร 10 ลงตัว
+        code: |
+          import numpy as np
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          int(df['days_to_first_order'].isna().sum())
+      - text: |
+          fit imputer (median) บน train แล้วเติมค่าให้ชุดทดสอบด้วยค่าเดียวกัน
+        code: |
+          import numpy as np
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+
+          df = pd.read_csv("data/ml_customers.csv")
+          num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+          cat = ['city', 'channel', 'first_payment_method', 'first_status']
+          df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+          y = df['repeated']
+          X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+          from sklearn.impute import SimpleImputer
+          imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+          filled = imputer.transform(X_test[['days_to_first_order']])
+          imputer.statistics_[0], int(X_test['days_to_first_order'].isna().sum()), int(np.isnan(filled).sum())
+    pitfall:
+      text: |
+        ส่งข้อมูลที่ยังมี NaN เข้า LogisticRegression ตรงๆ — จะเกิด ValueError: Input contains NaN ต้องเติมค่า (หรือใช้โมเดลที่รับ NaN ได้) ก่อนเสมอ และเติมด้วยค่าที่คำนวณจาก train เท่านั้น
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit SimpleImputer แบบ median บน train แล้วเก็บค่ากลางที่เรียนรู้ไว้ในตัวแปร train_median เติม `___` ให้ครบ
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      imputer = SimpleImputer(strategy=___).fit(X_train[['days_to_first_order']])
+      train_median = imputer.statistics_[0]
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+      train_median = imputer.statistics_[0]
+    check: |
+      check_value(train_median, _sol["train_median"], name="train_median", tol=0.001)
+    hints:
+      - "strategy='median' เติมด้วยค่ามัธยฐาน"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      mean ของ days_to_first_order ที่ StandardScaler เรียนรู้จาก train ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร train_mean
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      train_mean = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      train_mean = round(scaler.mean_[1], 3)
+    check: |
+      check_value(train_mean, _sol["train_mean"], name="train_mean", tol=0.001)
+    hints:
+      - "scaler.mean_ เรียงตามคอลัมน์ใน num ตัวที่ 1 คือ days_to_first_order"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ส่วนเบี่ยงเบนมาตรฐาน (scale_) ของ days_to_first_order ที่เรียนรู้จาก train ปัด 3 ตำแหน่ง เก็บไว้ในตัวแปร train_scale
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      train_scale = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      train_scale = round(scaler.scale_[1], 3)
+    check: |
+      check_value(train_scale, _sol["train_scale"], name="train_scale", tol=0.001)
+    hints:
+      - "scaler.scale_"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      หลัง scale ชุดทดสอบด้วย scaler จาก train: mean ของ days_to_first_order ในชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร test_mean_scaled
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      test_mean_scaled = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.preprocessing import StandardScaler
+
+      scaler = StandardScaler().fit(X_train[num])
+      test_mean_scaled = round(scaler.transform(X_test[num]).mean(axis=0)[1], 4)
+    check: |
+      check_value(test_mean_scaled, _sol["test_mean_scaled"], name="test_mean_scaled", tol=0.0005)
+    hints:
+      - "transform ชุดทดสอบด้วย scaler เดิม แล้วหา mean ของคอลัมน์ที่ 1"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      หลังตั้ง NaN ตามที่จำลองไว้ มีแถว days_to_first_order ที่หายกี่แถว เก็บไว้ในตัวแปร n_missing
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      n_missing = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      n_missing = int(df['days_to_first_order'].isna().sum())
+    check: |
+      check_value(n_missing, _sol["n_missing"], name="n_missing")
+    hints:
+      - "`.isna().sum()`"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่ามัธยฐานของ days_to_first_order ที่ SimpleImputer(strategy="median") เรียนรู้จากชุด train เก็บไว้ในตัวแปร train_median
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      train_median = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+      train_median = imputer.statistics_[0]
+    check: |
+      check_value(train_median, _sol["train_median"], name="train_median", tol=0.001)
+    hints:
+      - "statistics_ เก็บค่าที่ใช้เติม"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ในชุดทดสอบมี days_to_first_order ที่หายกี่แถว เก็บไว้ในตัวแปร n_test_missing
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      n_test_missing = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      n_test_missing = int(X_test['days_to_first_order'].isna().sum())
+    check: |
+      check_value(n_test_missing, _sol["n_test_missing"], name="n_test_missing")
+    hints:
+      - "นับ NaN ของ X_test"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      KNN (n_neighbors=15) บน feature ตัวเลข 6 ตัวโดยไม่ scale (ใช้ข้อมูล FEATS ที่ยังไม่มี NaN): accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร knn_acc_unscaled
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.neighbors import KNeighborsClassifier
+      from sklearn.preprocessing import StandardScaler
+      knn_acc_unscaled = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.neighbors import KNeighborsClassifier
+      from sklearn.preprocessing import StandardScaler
+      knn = KNeighborsClassifier(n_neighbors=15).fit(X_train[num], y_train)
+      knn_acc_unscaled = round(knn.score(X_test[num], y_test), 4)
+    check: |
+      check_value(knn_acc_unscaled, _sol["knn_acc_unscaled"], name="knn_acc_unscaled", tol=0.001)
+    hints:
+      - "เหมือนตัวอย่าง x2 ขั้นแรก"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      KNN แบบเดียวกันแต่ scale ด้วย StandardScaler ที่ fit บน train ก่อน: accuracy บนชุดทดสอบ ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร knn_acc_scaled
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.neighbors import KNeighborsClassifier
+      from sklearn.preprocessing import StandardScaler
+      knn_acc_scaled = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.neighbors import KNeighborsClassifier
+      from sklearn.preprocessing import StandardScaler
+      scaler = StandardScaler().fit(X_train[num])
+      knn = KNeighborsClassifier(n_neighbors=15).fit(scaler.transform(X_train[num]), y_train)
+      knn_acc_scaled = round(knn.score(scaler.transform(X_test[num]), y_test), 4)
+    check: |
+      check_value(knn_acc_scaled, _sol["knn_acc_scaled"], name="knn_acc_scaled", tol=0.001)
+    hints:
+      - "fit scaler บน train แล้ว transform ทั้ง train และ test"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เติมค่าที่หายในชุดทดสอบด้วยค่ามัธยฐานจาก train แล้วหาค่าเฉลี่ยของ days_to_first_order ในชุดทดสอบหลังเติม ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร filled_test_mean
+    starter: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      filled_test_mean = ___
+    solution: |
+      import numpy as np
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      df.loc[df['customer_id'] % 10 == 0, 'days_to_first_order'] = np.nan
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      from sklearn.impute import SimpleImputer
+      imputer = SimpleImputer(strategy='median').fit(X_train[['days_to_first_order']])
+      filled = imputer.transform(X_test[['days_to_first_order']])
+      filled_test_mean = round(float(filled.mean()), 4)
+    check: |
+      check_value(filled_test_mean, _sol["filled_test_mean"], name="filled_test_mean", tol=0.001)
+    hints:
+      - "transform ชุดทดสอบด้วย imputer ที่ fit บน train"
+quiz:
+  - id: "q1"
+    question: "ทำไมต้อง fit StandardScaler บนชุด train เท่านั้น"
+    choices:
+      - text: "เพราะ scaler ไม่ทำงานกับชุด test"
+        why: "ทำงานได้ด้วย transform"
+      - text: "เพื่อไม่ให้ข้อมูล test ปนเข้ามาใน mean/std ที่ใช้ปรับสเกล (ป้องกัน leakage)"
+        correct: true
+        why: "ถูกต้อง — แล้ว transform ทั้ง train และ test ด้วยค่าเดียวกัน"
+      - text: "เพื่อให้ test มี mean = 0 พอดี"
+        why: "ผลตรงกันข้าม: test จะเบี่ยงจาก 0 เล็กน้อย ซึ่งปกติ"
+      - text: "เพราะเร็วกว่า"
+        why: "ไม่ใช่เหตุผลหลัก"
+  - id: "q2"
+    question: "โมเดลแบบไหนได้ประโยชน์จากการ scale มากที่สุด"
+    choices:
+      - text: "decision tree เท่านั้น"
+        why: "tree ไม่ไวต่อสเกล"
+      - text: "ทุกโมเดลเท่ากัน"
+        why: "ต่างกัน tree ไม่ไวต่อสเกล"
+      - text: "โมเดลที่ใช้ระยะทางหรือ regularization/gradient เช่น KNN, logistic regression, neural network"
+        correct: true
+        why: "ถูกต้อง — decision tree ไม่สนสเกล"
+      - text: "ไม่มีโมเดลไหนได้ประโยชน์"
+        why: "มีโมเดลหลายแบบที่ไวต่อสเกล"
+  - id: "q3"
+    question: "ในบทนี้ KNN ที่ scale แล้วได้ accuracy สูงกว่าแบบไม่ scale หรือไม่"
+    choices:
+      - text: "ใช่ scale แล้วดีขึ้นเสมอ"
+        why: "ผลจริงในข้อมูลนี้ตรงกันข้าม"
+      - text: "เท่ากันเป๊ะ"
+        why: "ค่าต่างกันเล็กน้อย"
+      - text: "วัดไม่ได้"
+        why: "วัดได้ด้วย score บนชุดทดสอบ"
+      - text: "ไม่ — ได้ต่ำกว่าเล็กน้อย scaling ไม่ได้ช่วยเสมอไป"
+        correct: true
+        why: "ถูกต้อง — accuracy ~0.58 เทียบกับ ~0.60 เมื่อไม่ scale"
+  - id: "q4"
+    question: "เมื่อข้อมูลเบ้ขวา ควรเติมค่าที่หายด้วยอะไร"
+    choices:
+      - text: "ค่ามัธยฐาน (median) เพราะทนต่อค่าสุดโต่งกว่า mean"
+        correct: true
+        why: "ถูกต้อง — และต้องคำนวณจาก train เท่านั้น"
+      - text: "ค่าสูงสุดเสมอ"
+        why: "ไม่มีเหตุผลรองรับ"
+      - text: "0 เสมอ"
+        why: "0 อาจไม่สมเหตุสมผลกับข้อมูลจริง"
+      - text: "ลบทุกแถวที่มี NaN เสมอ"
+        why: "อาจทิ้งข้อมูลจำนวนมาก ไม่ใช่ทางเลือกเดียว"
+summary:
+  - "StandardScaler และ SimpleImputer ต้อง fit บน train เท่านั้น แล้ว transform ทั้ง train และ test"
+  - "scaling เปลี่ยนว่า feature ไหนมีอิทธิพลต่อระยะทาง — ในข้อมูลนี้ KNN ที่ scale แล้วได้ accuracy ต่ำกว่า จึงต้องวัดเสมอ"
+  - "โมเดลส่วนใหญ่ error เมื่อมี NaN; เติมด้วย median จะทนค่าสุดโต่งกว่า mean"
+interview:
+  - id: "i1"
+    q: "อธิบายว่าทำไมการ fit scaler บนข้อมูลทั้งชุดก่อนแบ่ง train/test จึงเป็น leakage"
+    a: |
+      เพราะ mean/std ที่ใช้ปรับสเกลถูกคำนวณจากข้อมูลที่รวมชุด test — ข้อมูล test จึงมีผลต่อการแปลง feature ที่โมเดลเห็นตอนเทรน ทำให้ผลทดสอบดีเกินจริงเล็กน้อยและไม่ตรงกับสถานการณ์จริงที่ข้อมูลใหม่ยังไม่เคยมีอยู่ตอนเทรน วิธีที่ถูกคือ fit บน train แล้ว transform test ด้วยค่าเดิม (หรือใส่ไว้ใน Pipeline)
+  - id: "i2"
+    q: "ถ้าข้อมูลมี missing 5% ควรเลือกวิธีจัดการอย่างไร"
+    a: |
+      ดูก่อนว่าหายแบบสุ่มหรือมีแบบแผน (เช่น หายเฉพาะกลุ่มลูกค้าบางกลุ่ม) แล้วเลือกจากลบแถว เติม median/mean/ค่าคงที่ หรือเพิ่มคอลัมน์ flag ว่าค่านี้เคยหาย และวัดผลด้วย cross-validation โดยต้องคำนวณค่าที่เติมจาก train เท่านั้น
+flashcards:
+  - id: "c1"
+    front: "scaler ต้อง fit บนข้อมูลชุดไหน"
+    back: "ชุด train เท่านั้น แล้ว transform ทั้ง train และ test ด้วยค่าเดียวกัน"
+  - id: "c2"
+    front: "scaling ช่วยโมเดลทุกแบบเสมอหรือไม่"
+    back: "ไม่ — ช่วยโมเดลที่ไวต่อสเกล (ระยะทาง/gradient) แต่ผลจริงต้องวัด และ tree ไม่สนใจสเกล"

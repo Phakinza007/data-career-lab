@@ -1,0 +1,390 @@
+goals:
+  - "แปลงข้อมูลหมวดหมู่เป็นตัวเลขด้วย one-hot และเลือกใช้ ordinal เมื่อมีลำดับจริงเท่านั้น"
+  - "ใช้ OneHotEncoder ที่ fit บน train เพื่อให้คอลัมน์ตรงกันและรับหมวดใหม่ได้"
+  - "รู้ว่า target encoding ต้องคำนวณจาก train เท่านั้น"
+examples:
+  - id: "x1"
+    title: "one-hot ด้วย get_dummies"
+    lang: "python"
+    prompt: |
+      แปลงคอลัมน์เมืองให้โมเดลใช้ได้
+    steps:
+      - text: |
+          เมืองมี 8 หมวด → get_dummies ได้ 8 คอลัมน์
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          df['city'].nunique(), pd.get_dummies(df['city']).shape[1]
+      - text: |
+          drop_first=True ตัดคอลัมน์ที่ซ้ำซ้อนออก เหลือ 7
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          pd.get_dummies(df['city'], drop_first=True).shape[1]
+    pitfall:
+      text: |
+        แปลง train กับ test ด้วย `get_dummies` แยกกัน — ถ้าหมวดหนึ่งไม่มีในชุดใดชุดหนึ่ง คอลัมน์จะไม่ตรงกัน (ตัวอย่างนี้ train มี 7 คอลัมน์แต่ชุดที่มีแต่ Hat Yai มีแค่ 1) แล้วโมเดลจะ error หรือได้ผลผิดตอน predict ควรใช้ OneHotEncoder ที่ fit บน train แล้ว transform ทั้งสองชุด
+      code: |
+        import pandas as pd
+
+        df = pd.read_csv("data/ml_customers.csv")
+        train = df[df['city'] != 'Hat Yai']
+        hatyai = df[df['city'] == 'Hat Yai']
+        pd.get_dummies(train['city']).shape[1], pd.get_dummies(hatyai['city']).shape[1]
+  - id: "x2"
+    title: "OneHotEncoder กับหมวดที่ไม่เคยเห็น"
+    lang: "python"
+    prompt: |
+      ลูกค้าจากเมืองที่ไม่มีในข้อมูลเทรนจะเป็นอย่างไร
+    steps:
+      - text: |
+          fit encoder บนข้อมูลที่ไม่มี Hat Yai — ได้ 7 หมวด
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          from sklearn.preprocessing import OneHotEncoder
+
+          train = df[df['city'] != 'Hat Yai']
+          hatyai = df[df['city'] == 'Hat Yai']
+          encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+          len(encoder.categories_[0])
+      - text: |
+          transform ลูกค้า Hat Yai (194 คน) — ทุกแถวเป็น 0 หมดแทนที่จะ error
+        code: |
+          import pandas as pd
+
+          df = pd.read_csv("data/ml_customers.csv")
+          from sklearn.preprocessing import OneHotEncoder
+
+          train = df[df['city'] != 'Hat Yai']
+          hatyai = df[df['city'] == 'Hat Yai']
+          encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+          encoded = encoder.transform(hatyai[['city']]).toarray()
+          len(hatyai), encoded.sum()
+    pitfall:
+      text: |
+        ไม่ตั้ง `handle_unknown='ignore'` แล้วเจอหมวดใหม่ตอนใช้งานจริง — OneHotEncoder จะ error ทันที (ValueError: Found unknown categories) ทำให้ระบบล่มทั้งที่แค่มีลูกค้าจากเมืองใหม่หนึ่งคน
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      fit OneHotEncoder บนข้อมูล train แล้วนับจำนวนหมวดที่รู้จัก เก็บไว้ในตัวแปร n_cats เติม `___` ให้ครบ
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      encoder = OneHotEncoder(handle_unknown=___).fit(train[['city']])
+      n_cats = len(encoder.categories_[0])
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+      n_cats = len(encoder.categories_[0])
+    check: |
+      check_value(n_cats, _sol["n_cats"], name="n_cats")
+    hints:
+      - "handle_unknown='ignore' ทำให้หมวดใหม่กลายเป็นแถวที่เป็น 0 ทั้งหมด"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คอลัมน์ city มีกี่หมวด เก็บไว้ในตัวแปร n_cities
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_cities = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_cities = df['city'].nunique()
+    check: |
+      check_value(n_cities, _sol["n_cities"], name="n_cities")
+    hints:
+      - "`.nunique()` นับจำนวนค่าที่ไม่ซ้ำ"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      pd.get_dummies(df["city"]) ได้กี่คอลัมน์ เก็บไว้ในตัวแปร n_dummy_cols
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_dummy_cols = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_dummy_cols = pd.get_dummies(df['city']).shape[1]
+    check: |
+      check_value(n_dummy_cols, _sol["n_dummy_cols"], name="n_dummy_cols")
+    hints:
+      - "`.shape[1]` คือจำนวนคอลัมน์"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ถ้าใส่ drop_first=True จะได้กี่คอลัมน์ เก็บไว้ในตัวแปร n_dummy_drop
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_dummy_drop = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      n_dummy_drop = pd.get_dummies(df['city'], drop_first=True).shape[1]
+    check: |
+      check_value(n_dummy_drop, _sol["n_dummy_drop"], name="n_dummy_drop")
+    hints:
+      - "เพิ่มพารามิเตอร์ drop_first=True"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      เมืองที่มีลูกค้ามากที่สุด (ชื่อเมืองเป็น string) เก็บไว้ในตัวแปร top_city
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      top_city = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      top_city = df['city'].value_counts().idxmax()
+    check: |
+      check_value(top_city, _sol["top_city"], name="top_city")
+    hints:
+      - "value_counts() เรียงมากไปน้อย ใช้ .idxmax()"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      fit OneHotEncoder(handle_unknown="ignore") บนลูกค้าที่ไม่ใช่ Hat Yai แล้ว transform ลูกค้า Hat Yai: เก็บจำนวนลูกค้า Hat Yai และผลรวมของค่าทั้งหมดหลัง transform ไว้ในตัวแปร n_hatyai, unseen_sum
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      n_hatyai = ___
+      unseen_sum = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      encoder = OneHotEncoder(handle_unknown='ignore').fit(train[['city']])
+      n_hatyai = len(hatyai)
+      unseen_sum = float(encoder.transform(hatyai[['city']]).toarray().sum())
+    check: |
+      check_value(n_hatyai, _sol["n_hatyai"], name="n_hatyai")
+      check_value(unseen_sum, _sol["unseen_sum"], name="unseen_sum")
+    hints:
+      - "transform ได้ sparse matrix ใช้ .toarray() ก่อนรวมค่า"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      แปลง train (ไม่มี Hat Yai) กับชุดที่มีแต่ Hat Yai ด้วย pd.get_dummies แยกกัน แล้วเก็บจำนวนคอลัมน์ของแต่ละชุดไว้ในตัวแปร train_cols, hatyai_cols
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      train_cols = ___
+      hatyai_cols = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OneHotEncoder
+
+      train = df[df['city'] != 'Hat Yai']
+      hatyai = df[df['city'] == 'Hat Yai']
+      train_cols = pd.get_dummies(train['city']).shape[1]
+      hatyai_cols = pd.get_dummies(hatyai['city']).shape[1]
+    check: |
+      check_value(train_cols, _sol["train_cols"], name="train_cols")
+      check_value(hatyai_cols, _sol["hatyai_cols"], name="hatyai_cols")
+    hints:
+      - "แปลงคอลัมน์ city ของแต่ละชุดแยกกัน"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      หมวดทั้งหมดของ first_payment_method ตามที่ OrdinalEncoder รู้จัก (เรียงตามตัวอักษร เก็บเป็น list) เก็บไว้ในตัวแปร payment_cats
+    starter: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      payment_cats = ___
+    solution: |
+      import pandas as pd
+
+      df = pd.read_csv("data/ml_customers.csv")
+      from sklearn.preprocessing import OrdinalEncoder
+
+      payment_cats = list(OrdinalEncoder().fit(df[['first_payment_method']]).categories_[0])
+    check: |
+      check_value(payment_cats, _sol["payment_cats"], name="payment_cats")
+    hints:
+      - "categories_ เป็น list ของอาร์เรย์ ใช้ตัวที่ 0"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      target encoding แบบถูกวิธี: อัตราซื้อซ้ำเฉลี่ยของช่องทาง promo คำนวณจากชุด train เท่านั้น ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร te_train_promo
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      train_df = pd.concat([X_train, y_train], axis=1)
+      te_train_promo = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      train_df = pd.concat([X_train, y_train], axis=1)
+      te_train_promo = round(train_df.groupby('channel')['repeated'].mean()['promo'], 4)
+    check: |
+      check_value(te_train_promo, _sol["te_train_promo"], name="te_train_promo", tol=0.0001)
+    hints:
+      - "train_df รวม X_train กับ y_train ไว้แล้ว"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ถ้าคำนวณอัตราซื้อซ้ำของ promo จากข้อมูลทั้งชุด (รวมแถว test) แล้วลบด้วยค่าจากชุด train เพียงอย่างเดียว ผลต่างเท่าไร (ปัด 4 ตำแหน่ง) — นี่คือส่วนที่ target ของแถว test รั่วเข้ามา เก็บไว้ในตัวแปร te_gap
+    starter: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      train_df = pd.concat([X_train, y_train], axis=1)
+      te_gap = ___
+    solution: |
+      import pandas as pd
+      from sklearn.model_selection import train_test_split
+
+      df = pd.read_csv("data/ml_customers.csv")
+      num = ['signup_month', 'days_to_first_order', 'first_discount_pct', 'first_n_items', 'first_has_electronics', 'days_since_first_order']
+      cat = ['city', 'channel', 'first_payment_method', 'first_status']
+      y = df['repeated']
+      X_train, X_test, y_train, y_test = train_test_split(df[num + cat], y, test_size=0.25, random_state=42, stratify=y)
+      train_df = pd.concat([X_train, y_train], axis=1)
+      full_promo = df.groupby('channel')['repeated'].mean()['promo']
+      train_promo = train_df.groupby('channel')['repeated'].mean()['promo']
+      te_gap = round(full_promo - train_promo, 4)
+    check: |
+      check_value(te_gap, _sol["te_gap"], name="te_gap", tol=0.0001)
+    hints:
+      - "คำนวณค่าเฉลี่ยของ promo จาก df ทั้งชุดและจาก train_df แล้วลบกัน"
+quiz:
+  - id: "q1"
+    question: "ทำไมต้องแปลงคอลัมน์หมวดหมู่เป็นตัวเลขก่อนเข้าโมเดลส่วนใหญ่ใน scikit-learn"
+    choices:
+      - text: "เพราะข้อความทำให้โมเดลช้า"
+        why: "ประเด็นหลักไม่ใช่ความเร็ว แต่โมเดลรับข้อความไม่ได้"
+      - text: "เพราะโมเดลคำนวณด้วยตัวเลข ไม่รับข้อความตรงๆ"
+        correct: true
+        why: "ถูกต้อง — จึงต้องมี encoding เช่น one-hot"
+      - text: "เพราะตัวเลขแม่นกว่าข้อความเสมอ"
+        why: "ไม่เกี่ยวกับความแม่น"
+      - text: "ไม่จำเป็น scikit-learn แปลงให้เองเสมอ"
+        why: "ไม่แปลงให้อัตโนมัติ"
+  - id: "q2"
+    question: "drop_first=True ใน get_dummies มีไว้ทำไม"
+    choices:
+      - text: "ทำให้โมเดลแม่นขึ้นเสมอ"
+        why: "ไม่รับประกันความแม่น"
+      - text: "ลบแถวแรกของข้อมูล"
+        why: "ไม่ได้ลบแถว ตัดคอลัมน์ของหมวดแรก"
+      - text: "ตัดคอลัมน์ที่คำนวณได้จากคอลัมน์อื่นออก ลดความซ้ำซ้อน"
+        correct: true
+        why: "ถูกต้อง — ถ้าทุกคอลัมน์ที่เหลือเป็น 0 ก็คือหมวดที่ถูกตัดออก"
+      - text: "เรียงหมวดตามตัวอักษร"
+        why: "ไม่เกี่ยวกับการเรียง"
+  - id: "q3"
+    question: "handle_unknown=\"ignore\" ของ OneHotEncoder ทำอะไร"
+    choices:
+      - text: "ลบหมวดที่พบน้อยออก"
+        why: "ไม่ได้ลบหมวดใด"
+      - text: "สุ่มหมวดให้แทน"
+        why: "ไม่สุ่ม"
+      - text: "ทำให้ fit ไม่ต้องใช้ข้อมูล"
+        why: "ยังต้อง fit"
+      - text: "หมวดที่ไม่เคยเห็นตอน fit จะกลายเป็นแถวที่เป็น 0 ทั้งหมด แทนที่จะ error"
+        correct: true
+        why: "ถูกต้อง — ในบทนี้ลูกค้า Hat Yai ถูกแปลงเป็นแถวศูนย์"
+  - id: "q4"
+    question: "ทำไมไม่ควรใช้ OrdinalEncoder กับวิธีชำระเงิน (cod, promptpay, …)"
+    choices:
+      - text: "เพราะจะสร้างลำดับปลอมที่โมเดลเส้นตรงอาจตีความเป็นมาก-น้อย ทั้งที่ข้อมูลไม่มีลำดับ"
+        correct: true
+        why: "ถูกต้อง — ควรใช้ one-hot กับข้อมูลที่ไม่มีลำดับ"
+      - text: "เพราะ OrdinalEncoder ใช้กับข้อความไม่ได้"
+        why: "ใช้กับข้อความได้"
+      - text: "เพราะจะทำให้ข้อมูลหาย"
+        why: "ข้อมูลไม่หาย"
+      - text: "เพราะช้ากว่า one-hot มาก"
+        why: "ไม่เกี่ยวกับความเร็ว"
+summary:
+  - "one-hot: หนึ่งหมวดต่อหนึ่งคอลัมน์ 0/1 (drop_first ตัดคอลัมน์ซ้ำซ้อน) — OrdinalEncoder ใช้เฉพาะข้อมูลที่มีลำดับจริง"
+  - "fit encoder บน train แล้ว transform ทั้ง train/test และตั้ง handle_unknown=\"ignore\" เพื่อรับหมวดใหม่โดยไม่ error"
+  - "target encoding ต้องคำนวณจาก train เท่านั้น — ถ้าใช้ข้อมูลทั้งชุด ค่าเฉลี่ยของ promo เพี้ยนไปจากค่าที่ควรเป็น (ตัวอย่างในบทต่างกัน ~0.004) เพราะ target ของ test รั่วเข้ามา"
+interview:
+  - id: "i1"
+    q: "one-hot กับ ordinal encoding ต่างกันยังไง และเลือกใช้เมื่อไร"
+    a: |
+      one-hot สร้างคอลัมน์ 0/1 ต่อหนึ่งหมวด ไม่สร้างลำดับ จึงเหมาะกับข้อมูลที่ไม่มีลำดับ (เมือง ช่องทาง วิธีชำระเงิน) ส่วน ordinal แปลงเป็นเลข 0,1,2 ตามลำดับหมวด เหมาะเมื่อหมวดมีลำดับจริงและระยะห่างพอสมเหตุสมผล (เช่น ระดับความพึงพอใจ) ถ้าใช้ ordinal กับข้อมูลที่ไม่มีลำดับ โมเดลเส้นตรงอาจตีความเป็นมาก-น้อยที่ไม่มีอยู่จริง
+  - id: "i2"
+    q: "เจอคอลัมน์ที่มีหมวดเป็นพันๆ ค่า (high cardinality) เช่น รหัสสินค้า จะจัดการอย่างไร"
+    a: |
+      one-hot ตรงๆ จะสร้างคอลัมน์มหาศาลและกระจัดกระจาย ทางเลือกได้แก่ รวมหมวดที่พบน้อยเป็น "อื่นๆ", ใช้ target encoding (คำนวณจาก train เท่านั้น หรือทำแบบ cross-fitted เพื่อกัน leakage), ใช้ embedding หรือโมเดลที่รับหมวดได้โดยตรง และเลือกวิธีด้วย cross-validation
+flashcards:
+  - id: "c1"
+    front: "เหตุผลที่ต้อง fit OneHotEncoder บน train เท่านั้น"
+    back: "เพื่อให้ชุดคอลัมน์เหมือนกันทั้ง train/test และไม่ให้ข้อมูล test มีผลต่อการเรียนรู้หมวด"
+  - id: "c2"
+    front: "target encoding ทำให้เกิด leakage เมื่อไร"
+    back: "เมื่อคำนวณค่าเฉลี่ยของ target จากข้อมูลทั้งชุดรวมแถว test — target ของแถว test รั่วเข้าไปใน feature"

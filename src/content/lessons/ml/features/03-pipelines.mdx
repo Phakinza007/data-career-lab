@@ -1,0 +1,51 @@
+---
+track: ml
+module: features
+order: 3
+title: "Pipeline และ ColumnTransformer"
+minutes: 30
+prereqs: [ml/features/02-scaling-missing]
+---
+
+## ปัญหาของการทำทีละขั้นด้วยมือ
+
+ตอนนี้มีหลายขั้นตอน: scale ตัวเลข, one-hot ตัวหมวด, แล้วค่อยเทรนโมเดล — ถ้าทำแยกด้วยมือ ต้องจำว่าขั้นไหน fit บนอะไร
+และพลาดง่าย (เช่น fit scaler ทั้งชุดก่อนแบ่ง หรือใช้ตัวแปลงคนละชุดกับตอนเทรน) **Pipeline** รวมทุกขั้นตอนเป็นวัตถุเดียว
+
+## ColumnTransformer: ทำคนละอย่างกับแต่ละกลุ่มคอลัมน์
+
+```python
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+pre = ColumnTransformer([
+    ('num', StandardScaler(), num),                              # ตัวเลข → scale
+    ('cat', OneHotEncoder(handle_unknown='ignore'), cat),        # หมวดหมู่ → one-hot
+])
+pipe = Pipeline([('pre', pre), ('model', LogisticRegression(max_iter=2000))])
+
+pipe.fit(X_train, y_train)          # fit ตัวแปลงบน train แล้วเทรนโมเดล ในคำสั่งเดียว
+pipe.predict_proba(X_new)           # ส่งข้อมูลดิบเข้าไปได้เลย
+```
+
+ตอน `fit` มันจะ fit ตัวแปลงบน train เท่านั้น และตอน `predict` จะใช้ตัวแปลงเดิมกับข้อมูลใหม่โดยอัตโนมัติ — ไม่มีทางลืมหรือ fit ผิดชุด
+
+## cross-validation ทั้ง pipeline
+
+ส่ง pipeline เข้า `cross_val_score` ได้ตรงๆ — ในแต่ละ fold มันจะ fit ตัวแปลงใหม่บนส่วน train ของ fold นั้นเท่านั้น จึงไม่มี leakage จากการเตรียมข้อมูล
+(ถ้า scale ทั้งชุดก่อนแล้วค่อย CV ข้อมูลของ fold ทดสอบจะปนอยู่ใน mean/std แล้ว)
+
+```python
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+skf = StratifiedKFold(5, shuffle=True, random_state=42)
+cross_val_score(pipe, X_all, y, cv=skf, scoring='roc_auc')
+```
+
+## ได้อะไรอีก
+
+- ใช้กับข้อมูลใหม่ที่มีหมวดไม่เคยเห็นได้ (จาก `handle_unknown='ignore'`) โดยไม่ error
+- ส่งออก/นำไปใช้งานจริงเป็นก้อนเดียว ไม่ต้องพกตัวแปลงหลายตัว
+- `pipe.named_steps['pre'].get_feature_names_out()` ดูชื่อ feature หลังแปลง
