@@ -1,0 +1,582 @@
+goals:
+  - "สร้างเวกเตอร์ TF-IDF ของเอกสารและคำถาม และคำนวณ cosine similarity ทั้งด้วยมือและด้วย sklearn"
+  - "จัดอันดับเอกสารด้วยความคล้ายและอ่านผล (top-k, อันดับของเฉลย, MRR)"
+  - "เข้าใจว่า embeddings แก้ปัญหา paraphrase อย่างไร และเห็นข้อจำกัดของ TF-IDF จากข้อมูลจริง"
+examples:
+  - id: "x1"
+    title: "TF-IDF และ cosine"
+    lang: "python"
+    prompt: |
+      สร้างเวกเตอร์ของเอกสารและคำถาม แล้ววัดความคล้าย
+    steps:
+      - text: |
+          เมทริกซ์เอกสารมี 24 แถว × 301 คำ และคำถามแรกมีค่าไม่เป็นศูนย์แค่ 2 คำ
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.decomposition import TruncatedSVD
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+          Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+          sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+          terms = vec.get_feature_names_out()
+          D.shape, [t for t, v in zip(terms, Q[0].toarray().ravel()) if v > 0]
+      - text: |
+          cosine ด้วยมือ a·b ÷ (‖a‖‖b‖) ระหว่างคำถามแรกกับ d01 เท่ากับ cosine_similarity: 0.1787
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.decomposition import TruncatedSVD
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+          Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+          sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+          a = Q[0].toarray().ravel()
+          b = D[0].toarray().ravel()
+          round(float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b))), 4), round(float(sims[0][0]), 4)
+    pitfall:
+      text: |
+        fit_transform ทั้งคลังเอกสารและคำถามรวมกัน หรือ fit ใหม่กับคำถามแต่ละข้อ — คลังคำ/IDF จะต่างจากที่ใช้กับเอกสาร ต้อง fit ครั้งเดียวกับเอกสาร แล้ว transform คำถามด้วย vectorizer ตัวเดิม
+  - id: "x2"
+    title: "เมื่อคำไม่ตรงกัน"
+    lang: "python"
+    prompt: |
+      ดูคำถามที่ใช้คำต่างจากเอกสาร
+    steps:
+      - text: |
+          "broken" ไม่อยู่ในคลังคำ แต่ "damaged" อยู่
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.decomposition import TruncatedSVD
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+          Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+          sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+          'broken' in vec.vocabulary_, 'damaged' in vec.vocabulary_
+      - text: |
+          คำถามที่ 11 ("parcel arrived broken") ได้ d13 อันดับ 1 ส่วนเฉลย d08 อยู่อันดับ 4
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.decomposition import TruncatedSVD
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+          Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+          sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+          order = np.argsort(-sims[10], kind='stable')
+          [docs['doc_id'][j] for j in order[:4]]
+    pitfall:
+      text: |
+        คิดว่า retrieval ผิดพลาดเพราะ 'โค้ดมีบั๊ก' ทั้งที่จริงคือคำถามไม่ใช้คำเดียวกับเอกสาร (paraphrase) — TF-IDF จับไม่ได้ ต้องใช้ embeddings, ขยายคำถาม (query expansion) หรือ rerank
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      คำนวณ cosine similarity ระหว่างเวกเตอร์ a และ b ด้วยมือ เก็บไว้ในตัวแปร cos เติม `___` ให้ครบ
+    starter: |
+      import numpy as np
+
+      a = np.array([1.0, 2.0, 0.0])
+      b = np.array([2.0, 4.0, 0.0])
+      cos = float(a @ b / (np.linalg.norm(a) * np.linalg.___(b)))
+    solution: |
+      import numpy as np
+
+      a = np.array([1.0, 2.0, 0.0])
+      b = np.array([2.0, 4.0, 0.0])
+      cos = float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b)))
+    check: |
+      check_value(cos, _sol["cos"], name="cos", tol=1e-09)
+    hints:
+      - "ความยาวเวกเตอร์คือ np.linalg.norm"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      TfidfVectorizer(stop_words="english") ที่ fit บน docs["text"]: จำนวนคำในคลังคำ (n_terms) และจำนวนเอกสาร (n_docs) เก็บไว้ในตัวแปรตามชื่อ
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+      n_terms = ___
+      n_docs = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      n_docs, n_terms = D.shape
+    check: |
+      check_value(n_terms, _sol["n_terms"], name="n_terms")
+      check_value(n_docs, _sol["n_docs"], name="n_docs")
+    hints:
+      - "D.shape คือ (เอกสาร, คำ)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำว่า "broken" และ "damaged" อยู่ในคลังคำ (vec.vocabulary_) หรือไม่ เก็บ True/False ไว้ใน has_broken, has_damaged
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      has_broken = ___
+      has_damaged = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      has_broken = 'broken' in vec.vocabulary_
+      has_damaged = 'damaged' in vec.vocabulary_
+    check: |
+      check_value(has_broken, _sol["has_broken"], name="has_broken")
+      check_value(has_damaged, _sol["has_damaged"], name="has_damaged")
+    hints:
+      - "'คำ' in vec.vocabulary_"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำถามแรก (Q[0]) มีค่าไม่เป็นศูนย์ที่คำใดบ้าง (list ของคำ เรียงตามลำดับในคลังคำ) เก็บไว้ในตัวแปร q01_terms
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      q01_terms = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      terms = vec.get_feature_names_out()
+      q01_terms = [t for t, v in zip(terms, Q[0].toarray().ravel()) if v > 0]
+    check: |
+      check_value(q01_terms, _sol["q01_terms"], name="q01_terms")
+    hints:
+      - "zip(terms, Q[0].toarray().ravel())"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำนวณ cosine similarity ด้วยมือ (a @ b ÷ (‖a‖‖b‖)) ระหว่างคำถามแรกกับเอกสาร d01 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร cos_q01_d01
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      cos_q01_d01 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      a = Q[0].toarray().ravel()
+      b = D[0].toarray().ravel()
+      cos_q01_d01 = round(float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b))), 4)
+    check: |
+      check_value(cos_q01_d01, _sol["cos_q01_d01"], name="cos_q01_d01", tol=0.001)
+    hints:
+      - "toarray().ravel() แล้ว np.linalg.norm"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      คำถามที่ 11 (index 10): doc_id ของ 3 เอกสารที่คล้ายที่สุด (มากไปน้อย) เก็บเป็น list ไว้ใน top3_q11 และอันดับ (เริ่มที่ 1) ของเอกสารเฉลย gold_doc_id ไว้ใน gold_rank_q11
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      top3_q11 = ___
+      gold_rank_q11 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      order = np.argsort(-sims[10], kind='stable')
+      ranked = [docs['doc_id'][j] for j in order]
+      top3_q11 = ranked[:3]
+      gold_rank_q11 = ranked.index(qs['gold_doc_id'][10]) + 1
+    check: |
+      check_value(top3_q11, _sol["top3_q11"], name="top3_q11")
+      check_value(gold_rank_q11, _sol["gold_rank_q11"], name="gold_rank_q11")
+    hints:
+      - "np.argsort(-sims[10], kind=\"stable\") แล้วหา index ของเฉลย"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ค่า IDF ของคำ "refund" และ "order" (vec.idf_ อ้างตำแหน่งจาก vec.vocabulary_) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร idf_refund, idf_order
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      idf_refund = ___
+      idf_order = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      idf_refund = round(float(vec.idf_[vec.vocabulary_['refund']]), 4)
+      idf_order = round(float(vec.idf_[vec.vocabulary_['order']]), 4)
+    check: |
+      check_value(idf_refund, _sol["idf_refund"], name="idf_refund", tol=0.001)
+      check_value(idf_order, _sol["idf_order"], name="idf_order", tol=0.001)
+    hints:
+      - "vec.idf_[vec.vocabulary_[คำ]]"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      คู่เอกสารที่คล้ายกันที่สุด (ไม่นับเทียบกับตัวเอง): คำนวณ cosine_similarity(D) แล้วใส่ 0 ที่เส้นทแยง เก็บ "doc_id แรก+doc_id หลัง" (แถวมาก่อนคอลัมน์ ตามลำดับที่ argmax คืน) ไว้ใน most_similar_pair และค่า (ปัด 4 ตำแหน่ง) ไว้ใน pair_score
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      most_similar_pair = ___
+      pair_score = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      dd = cosine_similarity(D)
+      np.fill_diagonal(dd, 0)
+      i, j = np.unravel_index(dd.argmax(), dd.shape)
+      most_similar_pair = docs['doc_id'][i] + '+' + docs['doc_id'][j]
+      pair_score = round(float(dd[i, j]), 4)
+    check: |
+      check_value(most_similar_pair, _sol["most_similar_pair"], name="most_similar_pair")
+      check_value(pair_score, _sol["pair_score"], name="pair_score", tol=0.001)
+    hints:
+      - "np.fill_diagonal(dd, 0) แล้ว np.unravel_index(dd.argmax(), dd.shape)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ประเมิน retrieval ด้วย sims: อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของทุกคำถาม แล้วเก็บ hit@1, hit@3 และ MRR (ค่าเฉลี่ยของ 1 ÷ อันดับ) ปัด 4 ตำแหน่ง ไว้ใน hit1, hit3, mrr
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      hit1 = ___
+      hit3 = ___
+      mrr = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      ranks = []
+      for i, gold in enumerate(qs['gold_doc_id']):
+          order = np.argsort(-sims[i], kind='stable')
+          ranked = list(docs['doc_id'].values[order])
+          ranks.append(ranked.index(gold) + 1)
+      ranks = np.array(ranks)
+      hit1 = round(float((ranks == 1).mean()), 4)
+      hit3 = round(float((ranks <= 3).mean()), 4)
+      mrr = round(float((1 / ranks).mean()), 4)
+    check: |
+      check_value(hit1, _sol["hit1"], name="hit1", tol=0.001)
+      check_value(hit3, _sol["hit3"], name="hit3", tol=0.001)
+      check_value(mrr, _sol["mrr"], name="mrr", tol=0.001)
+    hints:
+      - "หาอันดับของเฉลยในรายการที่เรียงตามความคล้าย"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ทำ LSA: TruncatedSVD(10, random_state=42) fit บน D แล้ว transform ทั้ง D และ Q เป็นเวกเตอร์หนาแน่น จัดอันดับด้วย cosine_similarity แล้วเก็บ hit@1 และ hit@3 ของ LSA (ปัด 4 ตำแหน่ง) ไว้ใน lsa_hit1, lsa_hit3 และ True/False ว่า hit@1 ของ LSA สูงกว่าของ TF-IDF (คำนวณจาก sims) หรือไม่ ไว้ใน lsa_beats_tfidf
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      lsa_hit1 = ___
+      lsa_hit3 = ___
+      lsa_beats_tfidf = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.decomposition import TruncatedSVD
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])       # เมทริกซ์เอกสาร × คำ (sparse)
+      Q = vec.transform(qs['question'])         # คำถามที่แปลงด้วยคลังคำเดียวกัน
+      sims = cosine_similarity(Q, D)            # คำถาม × เอกสาร
+      def hit_rates(s):
+          ranks = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-s[i], kind='stable')
+              ranks.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          ranks = np.array(ranks)
+          return float((ranks == 1).mean()), float((ranks <= 3).mean())
+
+
+      svd = TruncatedSVD(10, random_state=42).fit(D)
+      sims_lsa = cosine_similarity(svd.transform(Q), svd.transform(D))
+      l1, l3 = hit_rates(sims_lsa)
+      t1, t3 = hit_rates(sims)
+      lsa_hit1 = round(l1, 4)
+      lsa_hit3 = round(l3, 4)
+      lsa_beats_tfidf = bool(l1 > t1)
+    check: |
+      check_value(lsa_hit1, _sol["lsa_hit1"], name="lsa_hit1", tol=0.001)
+      check_value(lsa_hit3, _sol["lsa_hit3"], name="lsa_hit3", tol=0.001)
+      check_value(lsa_beats_tfidf, _sol["lsa_beats_tfidf"], name="lsa_beats_tfidf")
+    hints:
+      - "เขียนฟังก์ชันคำนวณ hit rate จาก sims ที่ใช้ซ้ำได้"
+quiz:
+  - id: "q1"
+    question: "cosine similarity วัดอะไร"
+    choices:
+      - text: "ระยะทางตรงระหว่างจุด"
+        why: "นั่นคือ Euclidean"
+      - text: "มุมระหว่างเวกเตอร์ — ทิศทางเดียวกันมากแค่ไหน โดยไม่ขึ้นกับความยาวข้อความ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "จำนวนคำที่เหมือนกัน"
+        why: "ไม่ใช่โดยตรง"
+      - text: "ความยาวของเอกสาร"
+        why: "ไม่ใช่"
+  - id: "q2"
+    question: "ทำไมคำถาม \"parcel arrived broken\" จึงหาเอกสาร d08 (ใช้คำว่า damaged) ไม่เจอด้วย TF-IDF"
+    choices:
+      - text: "เพราะเอกสารสั้นเกินไป"
+        why: "ไม่ใช่เหตุผลหลัก"
+      - text: "เพราะ cosine ผิด"
+        why: "คำนวณถูกต้อง"
+      - text: "TF-IDF เทียบเฉพาะคำที่ตรงกัน \"broken\" ไม่อยู่ในเอกสารเลย"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ stop words"
+        why: "ไม่เกี่ยว"
+  - id: "q3"
+    question: "embedding model ช่วยแก้ปัญหาข้างต้นอย่างไร"
+    choices:
+      - text: "ทำให้ค้นหาเร็วขึ้นอย่างเดียว"
+        why: "ประเด็นคือความหมาย"
+      - text: "ตัดคำทั่วไปออก"
+        why: "นั่นคือ stop words"
+      - text: "แปลงเป็นภาษาไทย"
+        why: "ไม่เกี่ยว"
+      - text: "แปลงข้อความเป็นเวกเตอร์ที่จับความหมาย ข้อความใกล้เคียงความหมายจึงใกล้กันแม้ใช้คำต่างกัน"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ในบทนี้ LSA 10 มิติ hit@1 0.5667 ต่ำกว่า TF-IDF 0.6333 บอกอะไร"
+    choices:
+      - text: "เทคนิคที่ดูทันสมัยไม่ได้ดีกว่าเสมอ โดยเฉพาะเมื่อข้อมูลน้อย ต้องวัดบนชุดคำถามของเราเอง"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "LSA ห้ามใช้เสมอ"
+        why: "สรุปเกินหลักฐาน"
+      - text: "TF-IDF เก่งที่สุด"
+        why: "ไม่จริงเสมอไป"
+      - text: "เลขผิดพลาด"
+        why: "เป็นผลจริง"
+summary:
+  - "TF-IDF แปลงข้อความเป็นเวกเตอร์ (24 × 301, sparse) แล้ววัดด้วย cosine; cosine = a·b ÷ (‖a‖‖b‖)"
+  - "TF-IDF เทียบเฉพาะคำที่ตรงกัน: \"broken\" ไม่อยู่ในคลังคำ เฉลย d08 (damaged) จึงอยู่อันดับ 4 (0.1695) ขณะ d13 ได้ 0.5344"
+  - "Embedding model จับความหมายจึงรับมือ paraphrase ได้ (เรียกในเบราว์เซอร์ไม่ได้); LSA 10 มิติบนข้อมูล 24 เอกสารไม่ดีกว่า TF-IDF (hit@1 0.5667 vs 0.6333)"
+interview:
+  - id: "i1"
+    q: "อธิบายว่า vector search ทำงานอย่างไรในระบบ RAG"
+    a: |
+      ทำเวกเตอร์ของทุก chunk ล่วงหน้าเก็บไว้ (vector store) เมื่อมีคำถามก็แปลงเป็นเวกเตอร์ด้วยโมเดลเดียวกัน แล้วคำนวณความคล้าย (มักใช้ cosine) กับทุก chunk และเลือก top-k ที่คล้ายที่สุดมาใส่ใน prompt สำหรับข้อมูลขนาดใหญ่ใช้ดัชนีแบบประมาณ (ANN) เพื่อให้ค้นหาเร็ว
+  - id: "i2"
+    q: "TF-IDF กับ embeddings ต่างกันอย่างไร และเมื่อไรใช้อย่างไหน"
+    a: |
+      TF-IDF เป็นเวกเตอร์แบบ sparse ตามคำที่ตรงกัน อธิบายง่าย เร็ว ไม่ต้องเรียกโมเดล เหมาะกับคำเฉพาะ/รหัส แต่รับมือ paraphrase ไม่ได้ ส่วน embeddings เป็นเวกเตอร์หนาแน่นที่จับความหมาย รับมือการใช้คำต่างกันได้ดีกว่า แต่ต้องมีโมเดลและต้นทุน ในทางปฏิบัติมักใช้ผสมกัน (hybrid) และวัดบนชุดคำถามของตัวเอง
+flashcards:
+  - id: "c1"
+    front: "cosine similarity คืออะไร"
+    back: "ค่า cos ของมุมระหว่างสองเวกเตอร์ = a·b ÷ (‖a‖‖b‖) ยิ่งใกล้ 1 ยิ่งทิศทางเดียวกัน"
+  - id: "c2"
+    front: "ทำไมต้อง transform คำถามด้วย vectorizer ตัวเดียวกับที่ fit เอกสาร"
+    back: "เพื่อให้ใช้คลังคำและค่า IDF ชุดเดียวกัน มิฉะนั้นมิติของเวกเตอร์ไม่ตรงกัน"

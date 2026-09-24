@@ -1,0 +1,1066 @@
+goals:
+  - "parse JSON จากผลลัพธ์ของโมเดลแบบ strict และดึงจากข้อความที่ปนกันด้วย regex"
+  - "ตรวจ schema (ฟิลด์ที่ต้องมี enum ชนิด ช่วงค่า) และ coerce เฉพาะกรณีที่ปลอดภัย"
+  - "มองผลลัพธ์ของโมเดลเป็นข้อมูลที่ต้องตรวจก่อนใช้"
+examples:
+  - id: "x1"
+    title: "parse แบบ strict vs lenient"
+    lang: "python"
+    prompt: |
+      ทดลองกับผลลัพธ์จำลอง 8 แบบ
+    steps:
+      - text: |
+          parse ตรงๆ ด้วย json.loads — ได้กี่ตัว (ที่เหลือ JSONDecodeError): 5
+        code: |
+          import json
+          import re
+
+          import pandas as pd
+
+          LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+          # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+          RAW = [
+              '{"category": "shipping", "confidence": 0.92}',
+              'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+              '{"category": "payment", "confidence": "0.7"}',
+              "{'category': 'orders', 'confidence': 0.6}",
+              '{"category": "billing", "confidence": 0.5}',
+              '{"category": "promo"}',
+              'The category is account.',
+              '{"category": "support", "confidence": 1.4}',
+          ]
+          ok = 0
+          for text in RAW:
+              try:
+                  json.loads(text)
+                  ok += 1
+              except json.JSONDecodeError:
+                  pass
+          ok
+      - text: |
+          lenient: ลอง strict ก่อน แล้วดึง {…} ด้วย regex — ได้ 6
+        code: |
+          import json
+          import re
+
+          import pandas as pd
+
+          LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+          # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+          RAW = [
+              '{"category": "shipping", "confidence": 0.92}',
+              'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+              '{"category": "payment", "confidence": "0.7"}',
+              "{'category': 'orders', 'confidence': 0.6}",
+              '{"category": "billing", "confidence": 0.5}',
+              '{"category": "promo"}',
+              'The category is account.',
+              '{"category": "support", "confidence": 1.4}',
+          ]
+
+
+          def parse_lenient(text):
+              try:
+                  return json.loads(text)
+              except json.JSONDecodeError:
+                  pass
+              match = re.search(r"\{.*\}", text, re.S)
+              if match:
+                  try:
+                      return json.loads(match.group(0))
+                  except json.JSONDecodeError:
+                      return None
+              return None
+          sum(parse_lenient(t) is not None for t in RAW)
+    pitfall:
+      text: |
+        ดึง JSON ด้วย regex แบบ {.*} กับข้อความที่มีปีกกามากกว่าหนึ่งก้อน — จะจับตั้งแต่ { แรกถึง } สุดท้ายและได้ข้อความที่ parse ไม่ได้ ในงานจริงควรใช้ structured output ของผู้ให้บริการหรือ parser ที่รัดกุมกว่า
+  - id: "x2"
+    title: "ตรวจ schema"
+    lang: "python"
+    prompt: |
+      parse ได้แล้วยังต้องตรวจความถูกต้อง
+    steps:
+      - text: |
+          ผลตรวจแบบไม่ coerce ของแต่ละตัวอย่าง (None = ผ่าน)
+        code: |
+          import json
+          import re
+
+          import pandas as pd
+
+          LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+          # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+          RAW = [
+              '{"category": "shipping", "confidence": 0.92}',
+              'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+              '{"category": "payment", "confidence": "0.7"}',
+              "{'category': 'orders', 'confidence': 0.6}",
+              '{"category": "billing", "confidence": 0.5}',
+              '{"category": "promo"}',
+              'The category is account.',
+              '{"category": "support", "confidence": 1.4}',
+          ]
+
+
+          def parse_lenient(text):
+              try:
+                  return json.loads(text)
+              except json.JSONDecodeError:
+                  pass
+              match = re.search(r"\{.*\}", text, re.S)
+              if match:
+                  try:
+                      return json.loads(match.group(0))
+                  except json.JSONDecodeError:
+                      return None
+              return None
+
+
+          def first_error(obj, coerce=False):
+              if obj is None:
+                  return 'unparseable'
+              if 'category' not in obj or 'confidence' not in obj:
+                  return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+              if obj['category'] not in LABELS:
+                  return 'bad_category'
+              conf = obj['confidence']
+              if coerce and isinstance(conf, str):
+                  try:
+                      conf = float(conf)
+                  except ValueError:
+                      return 'bad_confidence_type'
+              if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+                  return 'bad_confidence_type'
+              if not 0 <= conf <= 1:
+                  return 'confidence_range'
+              return None
+          [first_error(parse_lenient(t)) for t in RAW]
+      - text: |
+          เปิด coerce สตริงตัวเลข → float: ตัวที่ 3 ("0.7") ผ่านเพิ่ม เหลือผ่าน 3 ตัว
+        code: |
+          import json
+          import re
+
+          import pandas as pd
+
+          LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+          # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+          RAW = [
+              '{"category": "shipping", "confidence": 0.92}',
+              'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+              '{"category": "payment", "confidence": "0.7"}',
+              "{'category': 'orders', 'confidence': 0.6}",
+              '{"category": "billing", "confidence": 0.5}',
+              '{"category": "promo"}',
+              'The category is account.',
+              '{"category": "support", "confidence": 1.4}',
+          ]
+
+
+          def parse_lenient(text):
+              try:
+                  return json.loads(text)
+              except json.JSONDecodeError:
+                  pass
+              match = re.search(r"\{.*\}", text, re.S)
+              if match:
+                  try:
+                      return json.loads(match.group(0))
+                  except json.JSONDecodeError:
+                      return None
+              return None
+
+
+          def first_error(obj, coerce=False):
+              if obj is None:
+                  return 'unparseable'
+              if 'category' not in obj or 'confidence' not in obj:
+                  return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+              if obj['category'] not in LABELS:
+                  return 'bad_category'
+              conf = obj['confidence']
+              if coerce and isinstance(conf, str):
+                  try:
+                      conf = float(conf)
+                  except ValueError:
+                      return 'bad_confidence_type'
+              if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+                  return 'bad_confidence_type'
+              if not 0 <= conf <= 1:
+                  return 'confidence_range'
+              return None
+          [first_error(parse_lenient(t), coerce=True) for t in RAW].count(None)
+    pitfall:
+      text: |
+        ใช้ค่าที่ parse ได้ทันทีโดยไม่ตรวจ — category ที่ไม่มีจริง ('billing') หรือ confidence 1.4 จะหลุดเข้าฐานข้อมูลและพังที่ปลายทางในภายหลัง ตรวจ enum ชนิดและช่วงค่าก่อนเสมอ
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      parse สตริง JSON แล้วอ่านค่า category เก็บไว้ในตัวแปร category เติม `___` ให้ครบ
+    starter: |
+      import json
+
+      text = '{"category": "shipping", "confidence": 0.92}'
+      obj = json.___(text)
+      category = obj['category']
+    solution: |
+      import json
+
+      text = '{"category": "shipping", "confidence": 0.92}'
+      obj = json.loads(text)
+      category = obj['category']
+    check: |
+      check_value(category, _sol["category"], name="category")
+    hints:
+      - "ฟังก์ชันที่แปลงสตริง JSON เป็น dict คือ loads"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จาก RAW: parse ด้วย json.loads ตรงๆ สำเร็จกี่ตัว (n_strict) และล้มเหลวกี่ตัว (n_fail)
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      n_strict = ___
+      n_fail = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      n_strict = 0
+      n_fail = 0
+      for text in RAW:
+          try:
+              json.loads(text)
+              n_strict += 1
+          except json.JSONDecodeError:
+              n_fail += 1
+    check: |
+      check_value(n_strict, _sol["n_strict"], name="n_strict")
+      check_value(n_fail, _sol["n_fail"], name="n_fail")
+    hints:
+      - "try/except json.JSONDecodeError"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตัวอย่างแรกของ RAW (index 0) parse แล้วได้ dict — เก็บ category ไว้ใน first_category และ confidence ไว้ใน first_conf
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      first_category = ___
+      first_conf = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      obj = json.loads(RAW[0])
+      first_category = obj['category']
+      first_conf = obj['confidence']
+    check: |
+      check_value(first_category, _sol["first_category"], name="first_category")
+      check_value(first_conf, _sol["first_conf"], name="first_conf", tol=1e-09)
+    hints:
+      - "json.loads(RAW[0])"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ดึงข้อความ JSON ออกจาก RAW[1] (ที่มีคำเกริ่นนำและ ```json) ด้วย re.search(r"\{.*\}", text, re.S) เก็บข้อความที่จับได้ไว้ในตัวแปร extracted
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      extracted = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      extracted = re.search(r"\{.*\}", RAW[1], re.S).group(0)
+    check: |
+      check_value(extracted, _sol["extracted"], name="extracted")
+    hints:
+      - "re.search(...).group(0)"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      แปลง dict {"category": "shipping", "confidence": 0.92} กลับเป็นสตริง JSON ด้วย json.dumps (ค่าเริ่มต้น) เก็บไว้ในตัวแปร dumped
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      dumped = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+      dumped = json.dumps({'category': 'shipping', 'confidence': 0.92})
+    check: |
+      check_value(dumped, _sol["dumped"], name="dumped")
+    hints:
+      - "json.dumps(dict)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ parse_lenient (ให้ไว้แล้ว) กับทุกตัวใน RAW — มีกี่ตัวที่ได้ผล (ไม่ใช่ None) เก็บไว้ในตัวแปร n_lenient และ index (นับจาก 0) ของตัวที่ล้มเหลวทุกตัวเก็บเป็น list ไว้ใน failed_idx
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+      n_lenient = ___
+      failed_idx = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+      parsed = [parse_lenient(t) for t in RAW]
+      n_lenient = sum(p is not None for p in parsed)
+      failed_idx = [i for i, p in enumerate(parsed) if p is None]
+    check: |
+      check_value(n_lenient, _sol["n_lenient"], name="n_lenient")
+      check_value(failed_idx, _sol["failed_idx"], name="failed_idx")
+    hints:
+      - "ใช้ list comprehension กับ parse_lenient"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ first_error (ให้ไว้แล้ว ไม่ coerce) กับผลของ parse_lenient — กี่ตัวที่ผ่าน (n_valid_strict) เมื่อ error เป็น None ถือว่าผ่าน
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      n_valid_strict = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      errors = [first_error(parse_lenient(t)) for t in RAW]
+      n_valid_strict = errors.count(None)
+    check: |
+      check_value(n_valid_strict, _sol["n_valid_strict"], name="n_valid_strict")
+    hints:
+      - "errors.count(None)"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เหมือนข้อ e6 แต่เปิด coerce=True — ผ่านกี่ตัว (n_valid_coerced) และ index ของตัวที่ผ่านเก็บเป็น list ไว้ใน valid_idx
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      n_valid_coerced = ___
+      valid_idx = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      errors = [first_error(parse_lenient(t), coerce=True) for t in RAW]
+      n_valid_coerced = errors.count(None)
+      valid_idx = [i for i, e in enumerate(errors) if e is None]
+    check: |
+      check_value(n_valid_coerced, _sol["n_valid_coerced"], name="n_valid_coerced")
+      check_value(valid_idx, _sol["valid_idx"], name="valid_idx")
+    hints:
+      - "first_error(..., coerce=True)"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      นับชนิดของ error ของทั้ง 8 ตัว (first_error แบบไม่ coerce) — เก็บเฉพาะที่ไม่ใช่ None เป็น dict ชนิด → จำนวน (Counter แปลงเป็น dict) ไว้ในตัวแปร error_counts
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      error_counts = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      from collections import Counter
+
+      errors = [first_error(parse_lenient(t)) for t in RAW]
+      error_counts = dict(Counter(e for e in errors if e is not None))
+    check: |
+      check_value(error_counts, _sol["error_counts"], name="error_counts")
+    hints:
+      - "Counter(e for e in errors if e is not None)"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เก็บเฉพาะผลที่ผ่านการตรวจ (coerce=True) เข้า DataFrame ที่มีคอลัมน์ category และ confidence (แปลง confidence เป็น float) — เก็บจำนวนแถวไว้ใน n_rows และค่าเฉลี่ย confidence (ปัด 4 ตำแหน่ง) ไว้ใน mean_conf
+    starter: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      n_rows = ___
+      mean_conf = ___
+    solution: |
+      import json
+      import re
+
+      import pandas as pd
+
+      LABELS = ['shipping', 'returns', 'payment', 'orders', 'promo', 'account', 'privacy', 'warranty', 'products', 'support']
+
+      # ผลลัพธ์ที่ "จำลอง" ว่าโมเดลตอบกลับมา (ไม่ได้เรียก API จริง) — ไม่ตรงรูปแบบทุกอัน
+      RAW = [
+          '{"category": "shipping", "confidence": 0.92}',
+          'Sure! Here is the JSON:\n```json\n{"category": "returns", "confidence": 0.81}\n```',
+          '{"category": "payment", "confidence": "0.7"}',
+          "{'category': 'orders', 'confidence': 0.6}",
+          '{"category": "billing", "confidence": 0.5}',
+          '{"category": "promo"}',
+          'The category is account.',
+          '{"category": "support", "confidence": 1.4}',
+      ]
+
+
+      def parse_lenient(text):
+          try:
+              return json.loads(text)
+          except json.JSONDecodeError:
+              pass
+          match = re.search(r"\{.*\}", text, re.S)
+          if match:
+              try:
+                  return json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  return None
+          return None
+
+
+      def first_error(obj, coerce=False):
+          if obj is None:
+              return 'unparseable'
+          if 'category' not in obj or 'confidence' not in obj:
+              return 'missing_' + ('confidence' if 'confidence' not in obj else 'category')
+          if obj['category'] not in LABELS:
+              return 'bad_category'
+          conf = obj['confidence']
+          if coerce and isinstance(conf, str):
+              try:
+                  conf = float(conf)
+              except ValueError:
+                  return 'bad_confidence_type'
+          if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+              return 'bad_confidence_type'
+          if not 0 <= conf <= 1:
+              return 'confidence_range'
+          return None
+      rows = []
+      for text in RAW:
+          obj = parse_lenient(text)
+          if first_error(obj, coerce=True) is None:
+              rows.append({'category': obj['category'], 'confidence': float(obj['confidence'])})
+      clean = pd.DataFrame(rows)
+      n_rows = len(clean)
+      mean_conf = round(clean['confidence'].mean(), 4)
+    check: |
+      check_value(n_rows, _sol["n_rows"], name="n_rows")
+      check_value(mean_conf, _sol["mean_conf"], name="mean_conf", tol=0.001)
+    hints:
+      - "สร้าง list ของ dict เฉพาะที่ผ่านตรวจ แล้ว pd.DataFrame"
+quiz:
+  - id: "q1"
+    question: "ทำไม parse JSON ได้แล้วยังต้องตรวจ schema"
+    choices:
+      - text: "เพราะ json.loads ไม่น่าเชื่อถือ"
+        why: "ปัญหาอยู่ที่ข้อมูล ไม่ใช่ตัว parser"
+      - text: "parse ได้ไม่ได้แปลว่าฟิลด์ครบ ชนิดถูก และค่าอยู่ในชุด/ช่วงที่อนุญาต"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ JSON ตรวจไม่ได้เลย"
+        why: "ตรวจได้"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็น"
+  - id: "q2"
+    question: "ใน RAW ตัวอย่างที่ใช้ single quote {'category': ...} ทำไม json.loads ล้มเหลว"
+    choices:
+      - text: "เพราะมีตัวเลขทศนิยม"
+        why: "ไม่เกี่ยว"
+      - text: "เพราะ key ยาวเกินไป"
+        why: "ไม่ใช่"
+      - text: "JSON ที่ถูกต้องต้องใช้ double quote เท่านั้น"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ Python เวอร์ชันเก่า"
+        why: "ไม่ใช่"
+  - id: "q3"
+    question: "การ coerce สตริง \"0.7\" เป็น float 0.7 ควรทำเมื่อใด"
+    choices:
+      - text: "ทำกับทุกค่าโดยอัตโนมัติ"
+        why: "อาจซ่อนข้อผิดพลาดจริง"
+      - text: "ไม่ควรทำเลย"
+        why: "กรณีที่ชัดเจนทำได้"
+      - text: "ทำเฉพาะตอน debug"
+        why: "ไม่ใช่เกณฑ์"
+      - text: "เมื่อความหมายชัดเจนและปลอดภัย ส่วนค่าผิดความหมาย (หมวดไม่มีจริง ค่านอกช่วง) ควรปฏิเสธหรือให้โมเดลแก้"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ตัวอย่างบทนี้ผ่านตรวจ 2 ตัวแบบไม่ coerce และ 3 ตัวแบบ coerce ข้อสรุปที่ถูกคือ"
+    choices:
+      - text: "แม้ parse ได้ 6 ตัว มีเพียง 2–3 ตัวที่ใช้ได้ ต้องมีขั้นตอนตรวจและ retry/fallback"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "parse ได้ = ใช้ได้"
+        why: "ไม่จริง"
+      - text: "coerce ทำให้ผ่านหมดทุกตัว"
+        why: "ผ่านเพิ่มแค่ 1"
+      - text: "ควรเชื่อโมเดลเสมอ"
+        why: "ไม่ควร"
+summary:
+  - "ผลลัพธ์ของโมเดลอาจไม่ใช่ JSON ที่ถูกต้อง: strict parse ได้ 5 จาก 8 ตัวอย่างจำลอง, lenient (ดึงด้วย regex) ได้ 6"
+  - "parse ได้ ≠ ใช้ได้: ตรวจฟิลด์ครบ enum ชนิด และช่วงค่า (ผ่าน 2 ตัวแบบไม่ coerce, 3 ตัวแบบ coerce)"
+  - "coerce เฉพาะกรณีชัดเจน (สตริงตัวเลข) ส่วนค่าผิดความหมายให้ปฏิเสธหรือขอให้โมเดลแก้; ตัวอย่างในบทนี้เป็นผลลัพธ์จำลอง ไม่ได้เรียกโมเดลจริง"
+interview:
+  - id: "i1"
+    q: "คุณจะทำให้ระบบที่ใช้ผลลัพธ์ JSON จาก LLM ทนต่อข้อมูลผิดรูปแบบได้อย่างไร"
+    a: |
+      ใช้ structured output/tool schema ของผู้ให้บริการเพื่อลดปัญหา แต่ตรวจฝั่งเราเสมอ: parse แบบ strict ก่อน ถ้าไม่ได้ลองดึง JSON จากข้อความ ตรวจฟิลด์/ชนิด/enum/ช่วงค่าด้วย schema validator (เช่น pydantic, jsonschema) coerce เฉพาะกรณีปลอดภัย และถ้าไม่ผ่านให้ retry พร้อมส่ง error กลับให้โมเดลแก้ หรือ fallback/ส่งให้คนตรวจ พร้อมบันทึก log อัตราความล้มเหลว
+  - id: "i2"
+    q: "ทำไมผลลัพธ์ของ LLM ควรถูกมองเป็นข้อมูลที่ไม่น่าไว้ใจ"
+    a: |
+      เพราะโมเดลสร้างข้อความตามความน่าจะเป็น ไม่ได้รับประกันรูปแบบหรือความถูกต้อง อาจมีฟิลด์ขาด ชนิดผิด ค่านอกช่วง หรือถูกชักนำด้วย prompt injection การใช้โดยไม่ตรวจอาจทำให้ข้อมูลเสียหรือเกิดช่องโหว่ จึงควรปฏิบัติเหมือนอินพุตจากภายนอกและตรวจก่อนใช้
+flashcards:
+  - id: "c1"
+    front: "regex สำหรับดึงวัตถุ JSON ก้อนเดียวจากข้อความ"
+    back: "re.search(r\"\\{.*\\}\", text, re.S) — re.S ให้ . ข้ามบรรทัดใหม่ได้"
+  - id: "c2"
+    front: "json.loads ยอมรับ single quote ไหม"
+    back: "ไม่ยอมรับ JSON ต้องใช้ double quote เท่านั้น"

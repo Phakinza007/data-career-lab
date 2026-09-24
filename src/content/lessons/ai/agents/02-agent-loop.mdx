@@ -1,0 +1,46 @@
+---
+track: ai
+module: agents
+order: 2
+title: "Agent loop: ให้โมเดลเรียกเครื่องมือหลายรอบ"
+minutes: 40
+prereqs: [ai/agents/01-tools]
+---
+
+## ลูปของ agent
+
+คำถามที่ต้องใช้ข้อมูลหลายอย่าง (เช่น "ลูกค้า 675 มีกี่ออเดอร์ และออเดอร์ 1 สถานะอะไร") ต้องเรียกเครื่องมือมากกว่าหนึ่งครั้ง — **agent loop** คือการวนคุยกับโมเดลจนกว่ามันจะตอบเป็นข้อความสุดท้าย:
+
+```python
+def run_agent(question, model, max_steps=5):
+    messages = [{"role": "user", "content": question}]
+    for step in range(1, max_steps + 1):
+        block = model(messages)                                  # เรียกโมเดล (API จริงในงานจริง)
+        messages.append({"role": "assistant", "content": [block]})
+        if block["type"] == "text":                              # ตอบสุดท้ายแล้ว → จบ
+            return {"final": block["text"], "steps": step, "stopped": "done", "messages": messages}
+        result = dispatch({"name": block["name"], "input": block["input"]})
+        messages.append({"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": block["id"], "content": json.dumps(result)}]})
+    return {"final": None, "steps": max_steps, "stopped": "max_steps", "messages": messages}
+```
+
+จุดสำคัญ:
+- **ประวัติสะสม**: ทุกรอบต้องส่ง messages ทั้งหมดกลับไป (จากบท LLM basics: API ไม่มีความจำ) — ยิ่งหลายรอบ input ยิ่งโตและแพง
+- **จับคู่ tool_use กับ tool_result ด้วย id**: `tool_use_id` ต้องตรงกับ `id` ของคำขอ (API จริงจะปฏิเสธถ้าไม่จับคู่)
+- **เงื่อนไขหยุด**: โมเดลตอบเป็นข้อความ (`type == "text"`) หรือครบ `max_steps` — **ต้องมี `max_steps` เสมอ** ไม่งั้นโมเดลที่วนซ้ำจะเผาเงินไม่จบ
+
+## ในบทนี้: โมเดลจำลอง
+
+เรา **ไม่ได้เรียกโมเดลจริง** — `mock_model` เป็นสคริปต์ที่หา "order N" / "customer N" ในคำถามแล้วขอเรียกเครื่องมือตามลำดับ ครบแล้วสรุปเป็นข้อความ (ทำให้ทดสอบ logic ของลูปได้ซ้ำทุกครั้ง; โมเดลจริงตัดสินใจเองว่าจะเรียกอะไร และอาจผิดพลาดได้)
+เครื่องมือ (`get_order`, `count_orders`) และ `dispatch` คือของจริงบนตาราง orders
+
+ตัวอย่างที่ได้จริง:
+- "Where is order 1?" → เรียก `get_order` แล้วตอบ "Order 1 is completed." ใช้ **2 รอบ** (1 ขอเครื่องมือ + 1 ตอบสุดท้าย) ประวัติ 4 ข้อความ
+- คำถามสองส่วนข้างบน → เรียก `count_orders(675)` (ได้ 14) แล้ว `get_order(1)` ตอบ "That customer has 14 orders. Order 1 is completed." ใช้ **3 รอบ**
+- "Where is order 999999?" → เครื่องมือคืน error "order not found" โมเดลตอบ "I could not find that order." (ข้อผิดพลาดเป็น observation ไม่ทำให้ลูปล้ม)
+- `looping_model` ที่ขอเครื่องมือเดิมซ้ำไม่จบ → ลูปหยุดเองที่ `max_steps` ด้วยสถานะ `max_steps`
+
+## ต้นทุนของลูป
+
+จำนวนรอบ × ขนาดประวัติที่โตขึ้นทุกรอบ = ต้นทุนที่โตเร็วกว่าเส้นตรง จึงควรจำกัดรอบ ตัดผลลัพธ์เครื่องมือให้สั้น และบันทึก trace (ลำดับ tool_use/tool_result) ไว้ดูภายหลัง

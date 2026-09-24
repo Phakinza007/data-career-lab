@@ -1,0 +1,737 @@
+goals:
+  - "retry เฉพาะข้อผิดพลาดชั่วคราวด้วย exponential backoff (พร้อมเพดานและ jitter)"
+  - "ทำ cache ที่มีกุญแจ deterministic และวัด hit rate / ต้นทุนที่ประหยัดได้"
+  - "อธิบายและจำลอง sliding-window rate limiter และ circuit breaker"
+examples:
+  - id: "x1"
+    title: "retry ด้วย backoff"
+    lang: "python"
+    prompt: |
+      ลองเรียกบริการที่ล้มเหลว 2 ครั้งแรก
+    steps:
+      - text: |
+          ตารางเวลารอ (base 1 วินาที เพดาน 8): [1, 2, 4, 8, 8]
+        code: |
+          def backoff_delays(attempts, base=1, cap=8):
+              return [min(cap, base * 2 ** k) for k in range(attempts)]
+
+
+          backoff_delays(5)
+      - text: |
+          retry_call ลองสูงสุด 4 ครั้ง — สำเร็จครั้งที่ 3 โดยรอ 1 + 2 = 3 วินาที (บันทึกไว้ใน log ไม่ได้รอจริง)
+        code: |
+          import hashlib
+          import json
+          import random
+
+
+          class RateLimitError(Exception):
+              pass
+
+
+          def make_flaky(fail_times):
+              """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+              state = {'calls': 0}
+
+              def call(prompt):
+                  state['calls'] += 1
+                  if state['calls'] <= fail_times:
+                      raise RateLimitError('429')
+                  return 'ok: ' + prompt
+
+              return call
+          def retry_call(fn, prompt, max_attempts=4):
+              waits = []
+              for attempt in range(max_attempts):
+                  try:
+                      return fn(prompt), attempt + 1, waits
+                  except RateLimitError:
+                      waits.append(min(8, 1 * 2 ** attempt))
+              raise RuntimeError('giving up')
+
+
+          retry_call(make_flaky(2), 'hello')
+    pitfall:
+      text: |
+        retry ทุกข้อผิดพลาดแบบไม่จำกัดรอบและไม่รอ (tight loop) — ถล่มบริการที่กำลังล่มซ้ำ และคำขอที่ผิดตั้งแต่ต้น (400) จะล้มเหลวตลอดไป จำกัดรอบ รอแบบ exponential และ retry เฉพาะข้อผิดพลาดชั่วคราว
+  - id: "x2"
+    title: "cache และ hit rate"
+    lang: "python"
+    prompt: |
+      สร้างกุญแจ cache และวัดว่าประหยัดกี่คำขอ
+    steps:
+      - text: |
+          กุญแจ cache เป็น sha256 ของ JSON ที่เรียง key — dict ลำดับต่างกันได้กุญแจเดียวกัน
+        code: |
+          import hashlib
+          import json
+          import random
+
+
+          class RateLimitError(Exception):
+              pass
+
+
+          def make_flaky(fail_times):
+              """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+              state = {'calls': 0}
+
+              def call(prompt):
+                  state['calls'] += 1
+                  if state['calls'] <= fail_times:
+                      raise RateLimitError('429')
+                  return 'ok: ' + prompt
+
+              return call
+          a = {'model': 'demo', 'prompt': 'hello'}
+          b = {'prompt': 'hello', 'model': 'demo'}
+
+
+          def cache_key(req):
+              return hashlib.sha256(json.dumps(req, sort_keys=True).encode()).hexdigest()
+
+
+          cache_key(a) == cache_key(b), len(cache_key(a))
+      - text: |
+          ลำดับคำขอ 8 ครั้งมี 4 ข้อความไม่ซ้ำ → เรียกจริง 4 ครั้ง hit rate 0.5
+        code: |
+          prompts = ['a', 'b', 'a', 'c', 'b', 'a', 'd', 'a']
+          cache, api_calls = {}, 0
+          for p in prompts:
+              if p not in cache:
+                  api_calls += 1
+                  cache[p] = 'answer to ' + p
+          api_calls, (len(prompts) - api_calls) / len(prompts)
+    pitfall:
+      text: |
+        ใช้ str(dict) หรือ hash() ของ Python เป็นกุญแจ cache — ลำดับ key ทำให้กุญแจต่างกัน และ hash() ของข้อความเปลี่ยนไปในแต่ละรอบการรันโปรแกรม ใช้ json.dumps(sort_keys=True) + sha256
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      เติมสูตรเวลารอแบบ exponential: attempt ที่ 3 (นับจาก 0) ของ base = 1 วินาที เพดาน 8 วินาที เก็บไว้ใน delay เติม `___` ให้ครบ
+    starter: |
+      attempt, base, cap = 3, 1, 8
+      delay = min(cap, base * 2 ** ___)
+    solution: |
+      attempt, base, cap = 3, 1, 8
+      delay = min(cap, base * 2 ** attempt)
+    check: |
+      check_value(delay, _sol["delay"], name="delay")
+    hints:
+      - "ยกกำลัง 2 ด้วย attempt"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตารางเวลารอสำหรับ 5 ครั้งแรก ด้วยสูตร min(cap, base × 2^k) เมื่อ k = 0..4, base = 1, cap = 8 เก็บเป็น list ไว้ในตัวแปร delays
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      delays = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      base, cap = 1, 8
+      delays = [min(cap, base * 2 ** k) for k in range(5)]
+    check: |
+      check_value(delays, _sol["delays"], name="delays")
+    hints:
+      - "list comprehension บน range(5)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ไม่ใช้เพดาน: เวลารอรวมของ 5 ครั้งแรกเมื่อ base = 0.5 วินาที (0.5 × 2^k, k = 0..4) เก็บไว้ในตัวแปร total_wait
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      total_wait = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      total_wait = sum(0.5 * 2 ** k for k in range(5))
+    check: |
+      check_value(total_wait, _sol["total_wait"], name="total_wait", tol=1e-09)
+    hints:
+      - "sum ของ 0.5 * 2 ** k"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      กุญแจ cache ของคำขอ {"model": "demo", "prompt": "hello"}: sha256 ของ json.dumps(req, sort_keys=True).encode() เอา 8 ตัวอักษรแรกของ hex เก็บไว้ในตัวแปร key8
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      key8 = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      req = {'model': 'demo', 'prompt': 'hello'}
+      key8 = hashlib.sha256(json.dumps(req, sort_keys=True).encode()).hexdigest()[:8]
+    check: |
+      check_value(key8, _sol["key8"], name="key8")
+    hints:
+      - "hashlib.sha256(...).hexdigest()[:8]"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จาก HTTP status [400, 401, 429, 500, 503] มีกี่ตัวที่ควร retry (429 และ 5xx) เก็บไว้ในตัวแปร n_retryable
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      n_retryable = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      statuses = [400, 401, 429, 500, 503]
+      n_retryable = sum(1 for s in statuses if s == 429 or s >= 500)
+    check: |
+      check_value(n_retryable, _sol["n_retryable"], name="n_retryable")
+    hints:
+      - "เงื่อนไข s == 429 or s >= 500"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เขียนฟังก์ชัน retry ที่เรียก fn(prompt) สูงสุด 4 ครั้ง ถ้าเกิด RateLimitError ให้บันทึกเวลารอ min(8, 2^attempt) ลง list (ไม่ต้อง sleep จริง) แล้วลองใหม่ — ใช้กับ make_flaky(2) และ prompt "hello": เก็บข้อความที่ได้ไว้ใน result_text จำนวนครั้งที่เรียกไว้ใน attempts_used และเวลารอรวมไว้ใน total_delay
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      result_text = ___
+      attempts_used = ___
+      total_delay = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      def retry_call(fn, prompt, max_attempts=4):
+          waits = []
+          for attempt in range(max_attempts):
+              try:
+                  return fn(prompt), attempt + 1, waits
+              except RateLimitError:
+                  waits.append(min(8, 2 ** attempt))
+          raise RuntimeError('giving up')
+
+
+      result_text, attempts_used, waits = retry_call(make_flaky(2), 'hello')
+      total_delay = sum(waits)
+    check: |
+      check_value(result_text, _sol["result_text"], name="result_text")
+      check_value(attempts_used, _sol["attempts_used"], name="attempts_used")
+      check_value(total_delay, _sol["total_delay"], name="total_delay")
+    hints:
+      - "วนลูปด้วย try/except RateLimitError"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ลำดับ prompts ที่ให้ไว้: ใช้ dict เป็น cache นับจำนวนครั้งที่ต้องเรียกจริง (api_calls) และ hit rate = (ทั้งหมด − เรียกจริง) ÷ ทั้งหมด (hit_rate)
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      prompts = ['a', 'b', 'a', 'c', 'b', 'a', 'd', 'a']
+      api_calls = ___
+      hit_rate = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      prompts = ['a', 'b', 'a', 'c', 'b', 'a', 'd', 'a']
+      cache = {}
+      api_calls = 0
+      for p in prompts:
+          if p not in cache:
+              api_calls += 1
+              cache[p] = 'answer to ' + p
+      hit_rate = (len(prompts) - api_calls) / len(prompts)
+    check: |
+      check_value(api_calls, _sol["api_calls"], name="api_calls")
+      check_value(hit_rate, _sol["hit_rate"], name="hit_rate", tol=1e-09)
+    hints:
+      - "ถ้า p ยังไม่อยู่ใน cache ให้นับเป็นการเรียกจริง"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      sliding window: อนุญาตคำขอที่เวลา t ได้ก็ต่อเมื่อจำนวนคำขอที่ "ถูกอนุญาตแล้ว" ในช่วง (t − 5, t] ยังน้อยกว่า 3 — นับจำนวนที่อนุญาต (accepted) และถูกปฏิเสธ (rejected) จาก timestamps ที่ให้ไว้
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      timestamps = [0, 1, 2, 3, 10, 11, 11.5, 12, 12.5, 13]
+      accepted = ___
+      rejected = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      timestamps = [0, 1, 2, 3, 10, 11, 11.5, 12, 12.5, 13]
+      window, limit = 5, 3
+      allowed = []
+      rejected = 0
+      for t in timestamps:
+          recent = [a for a in allowed if a > t - window]
+          if len(recent) < limit:
+              allowed.append(t)
+          else:
+              rejected += 1
+      accepted = len(allowed)
+    check: |
+      check_value(accepted, _sol["accepted"], name="accepted")
+      check_value(rejected, _sol["rejected"], name="rejected")
+    hints:
+      - "เก็บเฉพาะเวลาที่ allowed และดูเฉพาะที่ > t − 5"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      circuit breaker: outcomes ที่ให้ไว้ ("ok"/"fail") — ตัวนับความล้มเหลวติดกันรีเซ็ตเมื่อเจอ ok เมื่อล้มเหลวติดกันครบ 3 ครั้งให้ "เปิดวงจร" ทันที เก็บ index ของคำขอที่ทำให้วงจรเปิดไว้ใน opened_at (นับจาก 0) และจำนวนคำขอที่เหลือหลังจากนั้น (ถูกข้าม) ไว้ใน skipped
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      outcomes = ['ok', 'ok', 'fail', 'ok', 'fail', 'fail', 'fail', 'ok', 'fail']
+      opened_at = ___
+      skipped = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      outcomes = ['ok', 'ok', 'fail', 'ok', 'fail', 'fail', 'fail', 'ok', 'fail']
+      consecutive = 0
+      opened_at = None
+      for i, outcome in enumerate(outcomes):
+          consecutive = consecutive + 1 if outcome == 'fail' else 0
+          if consecutive == 3:
+              opened_at = i
+              break
+      skipped = len(outcomes) - opened_at - 1
+    check: |
+      check_value(opened_at, _sol["opened_at"], name="opened_at")
+      check_value(skipped, _sol["skipped"], name="skipped")
+    hints:
+      - "นับ fail ติดกัน รีเซ็ตเมื่อเป็น ok"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      สายคำขอ stream = 10 คำถามแรกของ qs ซ้ำ 3 รอบ ตามด้วยคำถามที่ 11–30 อีกครั้งละหนึ่งรอบ (รวม 50 คำขอ) — ถ้าใช้ cache ตามข้อความคำถาม ต้องเรียก API จริงกี่ครั้ง (unique_calls) ประหยัดได้กี่ครั้ง (calls_saved) และคิดเป็นร้อยละของคำขอทั้งหมด (saving_pct ปัด 1 ตำแหน่ง)
+    starter: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      unique_calls = ___
+      calls_saved = ___
+      saving_pct = ___
+    solution: |
+      import hashlib
+      import json
+      import random
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          """จำลองบริการที่ล้มเหลว fail_times ครั้งแรกแล้วค่อยสำเร็จ"""
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      questions = list(qs['question'])
+      stream = questions[:10] * 3 + questions[10:]
+      unique_calls = len(set(stream))
+      calls_saved = len(stream) - unique_calls
+      saving_pct = round(100 * calls_saved / len(stream), 1)
+    check: |
+      check_value(unique_calls, _sol["unique_calls"], name="unique_calls")
+      check_value(calls_saved, _sol["calls_saved"], name="calls_saved")
+      check_value(saving_pct, _sol["saving_pct"], name="saving_pct", tol=0.001)
+    hints:
+      - "questions[:10] * 3 + questions[10:] แล้วนับ set"
+quiz:
+  - id: "q1"
+    question: "ข้อผิดพลาดแบบใดที่ควร retry"
+    choices:
+      - text: "400 คำขอผิดรูปแบบ"
+        why: "ลองซ้ำก็ผลเดิม"
+      - text: "ข้อผิดพลาดชั่วคราว เช่น 429 rate limit, 5xx, timeout"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "401 ไม่มีสิทธิ์"
+        why: "ลองซ้ำก็ผลเดิม"
+      - text: "ทุกข้อผิดพลาดไม่จำกัดรอบ"
+        why: "อันตราย"
+  - id: "q2"
+    question: "jitter ใน backoff มีไว้ทำไม"
+    choices:
+      - text: "ทำให้ retry เร็วขึ้นเสมอ"
+        why: "ไม่ใช่เป้าหมาย"
+      - text: "ลดต้นทุน token"
+        why: "ไม่เกี่ยว"
+      - text: "กระจายเวลาลองใหม่ของลูกค้าจำนวนมากไม่ให้กลับมาพร้อมกัน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ทำให้ผลของโมเดลสุ่มขึ้น"
+        why: "ไม่เกี่ยว"
+  - id: "q3"
+    question: "ทำไมกุญแจ cache ควรใช้ json.dumps(sort_keys=True) แล้ว hash"
+    choices:
+      - text: "เพราะ sha256 เร็วที่สุด"
+        why: "ไม่ใช่เหตุผลหลัก"
+      - text: "เพราะ dict เอาไปใช้เป็น key ไม่ได้ทุกกรณี"
+        why: "ไม่ใช่ประเด็นนี้"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็นเพื่อความคงที่"
+      - text: "ให้คำขอที่เหมือนกันแต่ลำดับ key ต่างกันได้กุญแจเดียวกัน และกุญแจคงที่ข้ามการรัน"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "circuit breaker ช่วยอะไร"
+    choices:
+      - text: "หยุดยิงคำขอชั่วคราวเมื่อบริการล่มต่อเนื่อง ประหยัดเวลาและไม่ถล่มบริการ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ทำให้บริการไม่ล่ม"
+        why: "ป้องกันฝั่งเราจากความล้มเหลวซ้ำ ไม่ได้ซ่อมบริการ"
+      - text: "เพิ่มความเร็วโมเดล"
+        why: "ไม่เกี่ยว"
+      - text: "แทน cache"
+        why: "คนละหน้าที่"
+summary:
+  - "retry เฉพาะ 429/5xx/timeout ด้วย backoff 1, 2, 4, 8… (มีเพดานและ jitter) และห้าม retry คำขอผิด (400/401) หรือคำขอที่มีผลข้างเคียงโดยไม่มี idempotency key"
+  - "cache ด้วยกุญแจ sha256(json.dumps(req, sort_keys=True)); ตัวอย่างลำดับ 8 คำขอมี 4 ข้อความไม่ซ้ำ hit rate 0.5"
+  - "sliding window จำกัดอัตราคำขอ; circuit breaker เปิดหลังล้มเหลวติดกัน 3 ครั้งเพื่อหยุดถล่มบริการ (บทนี้จำลองบริการด้วยฟังก์ชัน ไม่ได้เรียก API จริง)"
+interview:
+  - id: "i1"
+    q: "คุณจะทำให้แอปที่เรียก LLM API ทนต่อ rate limit และ downtime ได้อย่างไร"
+    a: |
+      retry เฉพาะข้อผิดพลาดชั่วคราวด้วย exponential backoff + jitter และจำกัดจำนวนครั้ง ตั้ง timeout, ใช้ cache สำหรับคำขอซ้ำ, ใส่ rate limiter ฝั่งเราเพื่อไม่ชนเพดาน, circuit breaker/fallback เมื่อบริการล่มนาน, ทำ idempotency สำหรับคำขอที่มีผลข้างเคียง และบันทึก log/metrics ของทุก retry เพื่อดูแนวโน้ม
+  - id: "i2"
+    q: "เมื่อไรที่การ cache คำตอบของ LLM ไม่เหมาะสม"
+    a: |
+      เมื่อต้องการความหลากหลายของคำตอบ เมื่อคำตอบขึ้นกับข้อมูลที่เปลี่ยนตลอดเวลาหรือบริบทเฉพาะผู้ใช้ (ต้องรวมสิ่งเหล่านั้นในกุญแจหรือไม่ cache) และเมื่อเนื้อหาต้นทางเปลี่ยน (ต้องมี TTL/การล้าง cache) รวมถึงข้อมูลส่วนบุคคลที่ไม่ควรเก็บ
+flashcards:
+  - id: "c1"
+    front: "exponential backoff คืออะไร"
+    back: "เพิ่มเวลารอเป็นเท่าตัวในแต่ละครั้งที่ลองใหม่ (1, 2, 4, 8…) จนถึงเพดาน มักเติม jitter เพื่อกระจายเวลา"
+  - id: "c2"
+    front: "hit rate ของ cache คำนวณอย่างไร"
+    back: "(คำขอทั้งหมด − คำขอที่ต้องเรียกจริง) ÷ คำขอทั้งหมด"

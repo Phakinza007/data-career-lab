@@ -1,0 +1,65 @@
+---
+track: ai
+module: agents
+order: 1
+title: "Tool use: schema, dispatcher และ error เป็น observation"
+minutes: 40
+prereqs: [ai/rag/04-rag-eval]
+---
+
+## Agent = โมเดล + เครื่องมือ + ลูป
+
+LLM ล้วนๆ รู้แค่ข้อความที่ให้ ทำอะไรกับโลกภายนอกไม่ได้ (ดูฐานข้อมูล เรียก API คำนวณ) **tool use** แก้ด้วยการให้โมเดล "ขอ" เรียกฟังก์ชันที่เราเตรียมไว้ — โมเดลไม่ได้รันโค้ดเอง มันแค่ **ส่งคำขอเรียกเครื่องมือ (ชื่อ + อาร์กิวเมนต์)** ให้โค้ดของเราตรวจและรัน แล้วส่งผลกลับไปเป็นข้อความ
+
+ใน API จริง (เช่น Anthropic Messages API) ขั้นตอนคือ:
+1. ส่ง `tools=[{name, description, input_schema}]` มากับคำขอ
+2. ถ้าโมเดลต้องการใช้เครื่องมือ คำตอบจะมี block แบบ `tool_use` (`id`, `name`, `input`) และ `stop_reason == "tool_use"`
+3. โค้ดเราเรียกเครื่องมือจริง แล้วส่งข้อความ `user` ที่มี block `tool_result` (`tool_use_id`, `content`) กลับไป
+4. วนซ้ำจนโมเดลตอบเป็นข้อความสุดท้าย
+
+> ในบทนี้เราฝึกส่วนที่เป็นโค้ดของเรา — schema, dispatcher, การตรวจอาร์กิวเมนต์ และรูปแบบของผลลัพธ์ — บนตาราง `orders` / `products` จริงของร้านค้า ส่วน **โมเดลตัดสินใจเรียกเครื่องมือ** ถูกจำลองด้วยสคริปต์ในบทถัดไป
+
+## 1) เครื่องมือ = ฟังก์ชัน + schema
+
+```python
+def get_order(order_id: int) -> dict:
+    """Look up an order by id"""
+    ...
+
+TOOL_SCHEMAS = [
+    {"name": "get_order", "description": "Look up an order by id",
+     "input_schema": {"type": "object",
+                      "properties": {"order_id": {"type": "integer"}},
+                      "required": ["order_id"]}},
+]
+```
+
+`description` สำคัญมาก — เป็นสิ่งเดียวที่โมเดลใช้ตัดสินใจว่าเมื่อไรควรเรียก ตั้งชื่อชัดเจน อธิบายว่าทำอะไรและรับอะไร (สร้าง schema จากฟังก์ชันอัตโนมัติได้ด้วย `inspect` — ดูแบบฝึกหัด)
+
+## 2) Dispatcher: ด่านตรวจก่อนรันจริง
+
+อย่ารัน `REGISTRY[name](**args)` ตรงๆ — อาร์กิวเมนต์มาจากโมเดล (อาจผิด/ขาด/ถูกชักจูงจากข้อความภายนอก) ต้องตรวจ: ชื่อเครื่องมือมีจริงไหม, อาร์กิวเมนต์ที่ต้องมีครบไหม, ชนิดถูกไหม, มีอาร์กิวเมนต์แปลกปลอมไหม, แล้วจับ exception
+
+```python
+def dispatch(call):
+    name, args = call["name"], call.get("input", {})
+    if name not in REGISTRY:
+        return {"ok": False, "error": "unknown tool: " + name}
+    ...
+    try:
+        return {"ok": True, "result": REGISTRY[name](**args)}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+```
+
+## 3) ข้อผิดพลาดคือ "observation" ไม่ใช่การล้ม
+
+เมื่อเครื่องมือล้มเหลว ให้ส่ง **ข้อความ error ที่ชัดเจนกลับให้โมเดล** (`"missing argument: order_id"`) แทนที่จะให้โปรแกรมล้ม — โมเดลมักแก้อาร์กิวเมนต์แล้วลองใหม่ได้เอง
+
+## 4) ผลลัพธ์ที่ส่งกลับต้องเป็นข้อความที่ปลอดภัยและกระชับ
+
+- ส่งเฉพาะฟิลด์ที่จำเป็น (ไม่ใช่ทั้งแถว) เพื่อลด token และไม่เปิดเผยข้อมูลเกินเหตุ
+- ค่า `NaN` ของ pandas (เช่น `discount_pct` ที่ว่างในตาราง orders) ทำให้ `json.dumps` ได้ `NaN` ซึ่ง **ไม่ใช่ JSON ที่ถูกต้อง** — แปลงเป็น `None` (→ `null`) ก่อน
+- จำกัดความยาว (ตัดข้อความยาว) เพราะทุกตัวอักษรที่ส่งกลับคือ input token ของรอบถัดไป
+
+ข้อมูลจริงที่ใช้ในบทนี้: ออเดอร์ #1 ของลูกค้า 8 สถานะ `completed` วันที่ 2024-01-03; ลูกค้า 675 มีออเดอร์มากสุด 14 รายการ

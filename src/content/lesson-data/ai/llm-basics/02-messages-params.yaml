@@ -1,0 +1,557 @@
+goals:
+  - "สร้างคำขอแบบ messages (system + user/assistant) และตัดประวัติให้พอดีงบ token"
+  - "คำนวณ softmax ที่ปรับด้วย temperature และเข้าใจผลต่อความหลากหลายของคำตอบ"
+  - "อธิบาย top-k และ top-p (nucleus) ด้วยการคำนวณเอง"
+examples:
+  - id: "x1"
+    title: "softmax กับ temperature"
+    lang: "python"
+    prompt: |
+      ดูว่า temperature เปลี่ยนความน่าจะเป็นอย่างไร
+    steps:
+      - text: |
+          ที่ T = 1.0 ตัวเลือกแรก ("the") ได้ 0.5745
+        code: |
+          import numpy as np
+
+          tokens = ['the', 'a', 'cat', 'dog']
+          logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+          def softmax(values, temperature=1.0):
+              z = values / temperature
+              z = z - z.max()
+              e = np.exp(z)
+              return e / e.sum()
+          dict(zip(tokens, softmax(logits, 1.0).round(4)))
+      - text: |
+          T = 0.5 คมขึ้น (0.8282) และ T = 2.0 แบนลง (0.4056)
+        code: |
+          import numpy as np
+
+          tokens = ['the', 'a', 'cat', 'dog']
+          logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+          def softmax(values, temperature=1.0):
+              z = values / temperature
+              z = z - z.max()
+              e = np.exp(z)
+              return e / e.sum()
+          round(softmax(logits, 0.5)[0], 4), round(softmax(logits, 2.0)[0], 4)
+    pitfall:
+      text: |
+        คิดว่าตั้ง temperature เป็น 0 (หรือต่ำมาก) แล้วผลจะเหมือนเดิมทุกครั้งเสมอ — ในทางปฏิบัติผู้ให้บริการอาจยังให้ผลต่างกันเล็กน้อย เก็บคำตอบที่ต้องทำซ้ำได้ไว้ด้วย cache
+  - id: "x2"
+    title: "ตัดประวัติให้พอดีงบ token"
+    lang: "python"
+    prompt: |
+      เก็บข้อความใหม่ล่าสุดย้อนหลังจนเต็มงบ
+    steps:
+      - text: |
+          ประมาณ token ของแต่ละข้อความ: [10, 20, 30, 10, 15]
+        code: |
+          import math
+
+          SYSTEM = 'You are a helpful support assistant for an online store.'
+          history = [
+              {'role': 'user', 'content': 'x' * 40},
+              {'role': 'assistant', 'content': 'y' * 80},
+              {'role': 'user', 'content': 'z' * 120},
+              {'role': 'assistant', 'content': 'w' * 40},
+              {'role': 'user', 'content': 'v' * 60},
+          ]
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+          [est_tokens(m['content']) for m in history]
+      - text: |
+          งบ 60 token: เก็บจากท้ายมาต้น — ได้ 3 ข้อความ รวม 55 token
+        code: |
+          import math
+
+          SYSTEM = 'You are a helpful support assistant for an online store.'
+          history = [
+              {'role': 'user', 'content': 'x' * 40},
+              {'role': 'assistant', 'content': 'y' * 80},
+              {'role': 'user', 'content': 'z' * 120},
+              {'role': 'assistant', 'content': 'w' * 40},
+              {'role': 'user', 'content': 'v' * 60},
+          ]
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+          kept, used = [], 0
+          for m in reversed(history):
+              t = est_tokens(m['content'])
+              if used + t > 60:
+                  break
+              kept.insert(0, m)
+              used += t
+          len(kept), used
+    pitfall:
+      text: |
+        ตัดประวัติจากต้นทางแบบสุ่มหรือทิ้ง system prompt — คำสั่งระบบหายทำให้พฤติกรรมเปลี่ยน และบทสนทนาขาดตอนกลางคัน เก็บ system เสมอ แล้วตัดข้อความเก่าสุดก่อน
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      เติมสูตร softmax ที่ปรับด้วย temperature แล้วเก็บความน่าจะเป็นของ token แรกที่ T = 0.5 (ปัด 4 ตำแหน่ง) ไว้ใน p_first เติม `___` ให้ครบ
+    starter: |
+      import numpy as np
+
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+      z = logits / ___
+      e = np.exp(z - z.max())
+      p_first = round(float((e / e.sum())[0]), 4)
+    solution: |
+      import numpy as np
+
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+      z = logits / 0.5
+      e = np.exp(z - z.max())
+      p_first = round(float((e / e.sum())[0]), 4)
+    check: |
+      check_value(p_first, _sol["p_first"], name="p_first", tol=0.001)
+    hints:
+      - "หาร logits ด้วยค่า temperature (0.5)"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      softmax(logits, 1.0) ที่ให้ไว้ — ความน่าจะเป็นของ token แรก ("the") ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร p_top
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p_top = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p_top = round(float(softmax(logits, 1.0)[0]), 4)
+    check: |
+      check_value(p_top, _sol["p_top"], name="p_top", tol=0.001)
+    hints:
+      - "เรียก softmax แล้วเอา index 0"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ที่ temperature 0.5 ความน่าจะเป็นของ token แรกเป็นเท่าไร (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร p_top_low
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p_top_low = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p_top_low = round(float(softmax(logits, 0.5)[0]), 4)
+    check: |
+      check_value(p_top_low, _sol["p_top_low"], name="p_top_low", tol=0.001)
+    hints:
+      - "softmax(logits, 0.5)"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จากประวัติ history ที่ให้ไว้: จำนวนข้อความของ user เก็บไว้ใน n_user และผลรวม token ที่ประมาณของทุกข้อความ (est_tokens ของ content) เก็บไว้ใน history_tokens
+    starter: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      n_user = ___
+      history_tokens = ___
+    solution: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      n_user = sum(1 for m in history if m['role'] == 'user')
+      history_tokens = sum(est_tokens(m['content']) for m in history)
+    check: |
+      check_value(n_user, _sol["n_user"], name="n_user")
+      check_value(history_tokens, _sol["history_tokens"], name="history_tokens")
+    hints:
+      - "นับ role == \"user\" และรวม est_tokens"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตรวจว่า role ของ history สลับ user/assistant กันตลอดหรือไม่ (ข้อความติดกันต้องมี role ต่างกัน) เก็บค่า True/False ไว้ในตัวแปร alternates
+    starter: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      alternates = ___
+    solution: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      roles = [m['role'] for m in history]
+      alternates = all(a != b for a, b in zip(roles, roles[1:]))
+    check: |
+      check_value(alternates, _sol["alternates"], name="alternates")
+    hints:
+      - "เทียบ role ของข้อความติดกันด้วย zip"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ตัดประวัติให้พอดีงบ 60 token โดยเก็บข้อความใหม่ล่าสุดย้อนหลัง (ไม่เกินงบ, ใช้ est_tokens ของ content) เก็บจำนวนข้อความที่เก็บไว้ใน kept_count และผลรวม token ของมันใน kept_tokens
+    starter: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      kept_count = ___
+      kept_tokens = ___
+    solution: |
+      import math
+
+      SYSTEM = 'You are a helpful support assistant for an online store.'
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+      kept_count = 0
+      kept_tokens = 0
+      for m in reversed(history):
+          t = est_tokens(m['content'])
+          if kept_tokens + t > 60:
+              break
+          kept_tokens += t
+          kept_count += 1
+    check: |
+      check_value(kept_count, _sol["kept_count"], name="kept_count")
+      check_value(kept_tokens, _sol["kept_tokens"], name="kept_tokens")
+    hints:
+      - "วนจากท้ายด้วย reversed(history) หยุดเมื่อจะเกินงบ"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      top-k = 2: เก็บเฉพาะ 2 token ที่ความน่าจะเป็น (T = 1.0) สูงสุด แล้วปรับให้ผลรวมเป็น 1 — ความน่าจะเป็นใหม่ของอันดับ 1 และ 2 (ปัด 4 ตำแหน่ง) เก็บไว้ใน p_top2_first, p_top2_second
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p_top2_first = ___
+      p_top2_second = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p = softmax(logits, 1.0)
+      order = np.argsort(-p)[:2]
+      q = p[order] / p[order].sum()
+      p_top2_first = round(float(q[0]), 4)
+      p_top2_second = round(float(q[1]), 4)
+    check: |
+      check_value(p_top2_first, _sol["p_top2_first"], name="p_top2_first", tol=0.001)
+      check_value(p_top2_second, _sol["p_top2_second"], name="p_top2_second", tol=0.001)
+    hints:
+      - "argsort(-p)[:2] แล้วหารด้วยผลรวม"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      สุ่ม token 1,000 ครั้งด้วย np.random.RandomState(42).choice(len(tokens), size=1000, p=...) (สร้าง RandomState ใหม่ทุกครั้ง) ที่ T = 1.0 และ T = 0.2 — สัดส่วนที่ได้ token แรก เก็บไว้ใน frac_t1, frac_t02
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      frac_t1 = ___
+      frac_t02 = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      def frac_first(temperature):
+          rng = np.random.RandomState(42)
+          draws = rng.choice(len(tokens), size=1000, p=softmax(logits, temperature))
+          return float((draws == 0).mean())
+
+
+      frac_t1 = frac_first(1.0)
+      frac_t02 = frac_first(0.2)
+    check: |
+      check_value(frac_t1, _sol["frac_t1"], name="frac_t1", tol=1e-09)
+      check_value(frac_t02, _sol["frac_t02"], name="frac_t02", tol=1e-09)
+    hints:
+      - "สร้าง RandomState(42) ใหม่ในแต่ละครั้งเพื่อให้ผลทำซ้ำได้"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ในช่วง temperature 0.05, 0.10, …, 2.00 (ห่างกัน 0.05 ใช้ round(0.05 * i, 2) เมื่อ i = 1..40) ค่า temperature ที่มากที่สุดที่ทำให้ token แรกยังมีความน่าจะเป็น ≥ 0.9 คือเท่าไร เก็บไว้ใน t_for_90
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      t_for_90 = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      grid = [round(0.05 * i, 2) for i in range(1, 41)]
+      t_for_90 = max(t for t in grid if softmax(logits, t)[0] >= 0.9)
+    check: |
+      check_value(t_for_90, _sol["t_for_90"], name="t_for_90")
+    hints:
+      - "กรองค่าใน grid ที่ p ≥ 0.9 แล้วเอา max"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      top-p (nucleus) ที่ p = 0.9 ที่ T = 1.0: เรียง token ตามความน่าจะเป็นมากไปน้อย แล้วเลือกชุดเล็กสุดที่ความน่าจะเป็นสะสม ≥ 0.9 — เก็บจำนวนไว้ใน nucleus_size และรายชื่อ token (list ตามลำดับ) ไว้ใน nucleus_tokens
+    starter: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      nucleus_size = ___
+      nucleus_tokens = ___
+    solution: |
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+      p = softmax(logits, 1.0)
+      order = np.argsort(-p)
+      cum = np.cumsum(p[order])
+      nucleus_size = int(np.searchsorted(cum, 0.9) + 1)
+      nucleus_tokens = [tokens[i] for i in order[:nucleus_size]]
+    check: |
+      check_value(nucleus_size, _sol["nucleus_size"], name="nucleus_size")
+      check_value(nucleus_tokens, _sol["nucleus_tokens"], name="nucleus_tokens")
+    hints:
+      - "np.cumsum และ np.searchsorted(cum, 0.9) + 1"
+quiz:
+  - id: "q1"
+    question: "ทำไมแอปที่คุยกับ LLM API ต้องส่งประวัติสนทนากลับไปทุกครั้ง"
+    choices:
+      - text: "เพราะโมเดลลืมทุกอย่างหลัง 1 วินาที"
+        why: "ไม่ใช่เรื่องเวลา"
+      - text: "เพราะ API ไม่มีความจำระหว่างคำขอ โมเดลเห็นเฉพาะ messages ที่ส่งในครั้งนั้น"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะต้องการเพิ่มต้นทุน"
+        why: "ไม่ใช่เหตุผล"
+      - text: "ไม่ต้องส่ง โมเดลจำเอง"
+        why: "ไม่จำระหว่างคำขอ"
+  - id: "q2"
+    question: "temperature ต่ำลงมีผลอย่างไรต่อการสุ่ม token"
+    choices:
+      - text: "ทุก token มีโอกาสเท่ากัน"
+        why: "นั่นคือ T สูงมาก"
+      - text: "โมเดลเร็วขึ้น"
+        why: "ไม่เกี่ยว"
+      - text: "ความน่าจะเป็นกระจุกที่ตัวเลือกอันดับสูงสุดมากขึ้น ผลนิ่งขึ้น"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ผลเหมือนเดิมทุกครั้งแน่นอน"
+        why: "ไม่การันตีเสมอไป"
+  - id: "q3"
+    question: "ในบทนี้ที่ T = 0.2 \"the\" ถูกสุ่มได้ 99.6% ของ 1,000 ครั้ง แต่ที่ T = 1.0 ได้ 58.2% ข้อสรุปที่ถูกคือ"
+    choices:
+      - text: "temperature สูงทำให้โมเดลแม่นขึ้น"
+        why: "ไม่จำเป็น"
+      - text: "ผลเปลี่ยนเพราะ seed ต่างกัน"
+        why: "ใช้ seed เดียวกัน"
+      - text: "เป็นความผิดพลาดของ softmax"
+        why: "เป็นพฤติกรรมปกติ"
+      - text: "temperature ต่ำทำให้การสุ่มเข้าใกล้การเลือกตัวที่น่าจะเป็นที่สุดเสมอ"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "เมื่อประวัติยาวเกินงบ token วิธีตัดที่เหมาะสมกว่าคือ"
+    choices:
+      - text: "เก็บ system prompt ไว้เสมอ แล้วเก็บข้อความใหม่ล่าสุดย้อนหลังเท่าที่งบพอ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ตัดข้อความล่าสุดทิ้ง"
+        why: "ข้อความล่าสุดสำคัญที่สุด"
+      - text: "ตัดสุ่ม"
+        why: "บทสนทนาจะขาดตอน"
+      - text: "ส่งทั้งหมดแล้วหวังว่าไม่เกิน"
+        why: "จะ error หรือแพง"
+summary:
+  - "API ไม่มีความจำ: ส่ง system + messages ที่จำเป็นทุกครั้ง และตัดประวัติเก่าสุดให้พอดีงบ token (เก็บ system ไว้เสมอ)"
+  - "softmax(logits / T): T ต่ำ → คมและนิ่ง, T สูง → แบนและหลากหลาย (T=0.2 เลือก \"the\" 99.6%, T=1.0 เลือก 58.2% ใน 1,000 ครั้ง seed 42)"
+  - "top-k เก็บ k ตัวแรก, top-p เก็บชุดเล็กสุดที่ความน่าจะเป็นสะสม ≥ p; งานที่ต้องแม่นใช้ T ต่ำและ cache ผลที่ต้องทำซ้ำได้"
+interview:
+  - id: "i1"
+    q: "LLM API ไม่มีความจำ แล้วแชตบอตจำบทสนทนาได้อย่างไร"
+    a: |
+      ตัวแอปเก็บประวัติเองแล้วส่ง messages ที่เกี่ยวข้องกลับไปทุกคำขอ เมื่อประวัติยาวเกินงบ token ต้องตัดหรือสรุปข้อความเก่า (เก็บ system prompt และข้อความล่าสุด) และอาจดึงข้อมูลที่เกี่ยวข้องมาจากฐานความรู้ภายนอกแทนการพกทุกอย่างไว้ในประวัติ
+  - id: "i2"
+    q: "เมื่อไรควรใช้ temperature ต่ำและเมื่อไรควรสูง"
+    a: |
+      งานที่ต้องการความถูกต้อง สม่ำเสมอ เช่น สกัดข้อมูลเป็น JSON หรือตอบจากเอกสาร ควรใช้ต่ำ ส่วนงานที่ต้องการความหลากหลาย เช่น ระดมไอเดีย เขียนสร้างสรรค์ ใช้สูงกว่า และไม่ควรพึ่ง temperature อย่างเดียวเพื่อให้ผลทำซ้ำได้ ควรเก็บ/แคชผลที่สำคัญ
+flashcards:
+  - id: "c1"
+    front: "temperature ทำอะไรกับ softmax"
+    back: "หาร logits ด้วย T ก่อน softmax: T ต่ำทำให้การกระจายคมขึ้น, T สูงทำให้แบนลง"
+  - id: "c2"
+    front: "top-p (nucleus) คืออะไร"
+    back: "เลือกชุด token ที่เล็กที่สุดซึ่งความน่าจะเป็นสะสมถึง p แล้วสุ่มเฉพาะในชุดนั้น"

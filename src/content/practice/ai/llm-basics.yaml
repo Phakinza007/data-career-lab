@@ -1,0 +1,1093 @@
+title: "ชุดฝึกท้าย module: พื้นฐาน LLM และ API"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ประมาณ token ของคำถามทั้ง 30 ข้อใน qs (est_tokens ของแต่ละคำถาม) รวมกันเป็นเท่าไร เก็บไว้ในตัวแปร question_tokens_total
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      question_tokens_total = int(qs['question'].map(est_tokens).sum())
+    check: |
+      check_value(question_tokens_total, _sol["question_tokens_total"], name="question_tokens_total")
+    hints:
+      - "map(est_tokens).sum()"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      เอกสารไหนมี toy_tokens น้อยที่สุด (doc_id) เก็บไว้ในตัวแปร shortest_doc และจำนวน token ของมันไว้ใน shortest_len
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      lens = docs['text'].map(lambda t: len(toy_tokens(t)))
+      shortest_doc = docs.loc[lens.idxmin(), 'doc_id']
+      shortest_len = int(lens.min())
+    check: |
+      check_value(shortest_doc, _sol["shortest_doc"], name="shortest_doc")
+      check_value(shortest_len, _sol["shortest_len"], name="shortest_len")
+    hints:
+      - "map(lambda t: len(toy_tokens(t))) แล้ว idxmin"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต้นทุนของคำขอที่ใช้ input 5,000 token และ output 800 token (PRICE_IN, PRICE_OUT ที่ให้ไว้ ปัด 6 ตำแหน่ง) เก็บไว้ในตัวแปร cost_5000_800
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      cost_5000_800 = round(5000 * PRICE_IN / 1e6 + 800 * PRICE_OUT / 1e6, 6)
+    check: |
+      check_value(cost_5000_800, _sol["cost_5000_800"], name="cost_5000_800", tol=1e-09)
+    hints:
+      - "input × PRICE_IN + output × PRICE_OUT (÷ 1e6)"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ที่ temperature 0.3 token แรกมีความน่าจะเป็นเท่าไร (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร p_t03
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      p_t03 = round(float(softmax(logits, 0.3)[0]), 4)
+    check: |
+      check_value(p_t03, _sol["p_t03"], name="p_t03", tol=0.001)
+    hints:
+      - "softmax(logits, 0.3)[0]"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ตารางเวลารอ 6 ครั้งแรกเมื่อ base = 2 วินาที เพดาน 30 วินาที (min(30, 2 × 2^k), k = 0..5) เก็บเป็น list ไว้ในตัวแปร delays
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      delays = [min(30, 2 * 2 ** k) for k in range(6)]
+    check: |
+      check_value(delays, _sol["delays"], name="delays")
+    hints:
+      - "list comprehension บน range(6)"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      แชตบอตรับ 1,000 คำถามต่อวัน ทำงาน 30 วัน แต่ละคำขอใช้ input 300 token และ output 120 token — ต้นทุนต่อเดือน (USD, ราคาสมมติ PRICE_IN/PRICE_OUT ปัด 2 ตำแหน่ง) เก็บไว้ในตัวแปร monthly_cost
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      requests = 1000 * 30
+      per_call = 300 * PRICE_IN / 1e6 + 120 * PRICE_OUT / 1e6
+      monthly_cost = round(requests * per_call, 2)
+    check: |
+      check_value(monthly_cost, _sol["monthly_cost"], name="monthly_cost", tol=0.001)
+    hints:
+      - "จำนวนคำขอ × ต้นทุนต่อคำขอ"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ถ้าเพิ่ม cache ที่มี hit rate 40% (คำขอที่ hit ไม่เสียเงิน) ต้นทุนต่อเดือนของข้อ p6 เหลือเท่าไร (ปัด 2 ตำแหน่ง) เก็บไว้ในตัวแปร monthly_cost_cached และประหยัดได้เท่าไร ไว้ใน monthly_saving
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      requests = 1000 * 30
+      per_call = 300 * PRICE_IN / 1e6 + 120 * PRICE_OUT / 1e6
+      full = requests * per_call
+      monthly_cost_cached = round(full * (1 - 0.4), 2)
+      monthly_saving = round(full * 0.4, 2)
+    check: |
+      check_value(monthly_cost_cached, _sol["monthly_cost_cached"], name="monthly_cost_cached", tol=0.001)
+      check_value(monthly_saving, _sol["monthly_saving"], name="monthly_saving", tol=0.001)
+    hints:
+      - "คูณด้วย (1 − hit rate)"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ตัดประวัติ history ให้พอดีงบ 45 token โดยเก็บข้อความใหม่ล่าสุดย้อนหลัง (est_tokens ของ content) เก็บจำนวนข้อความที่เก็บได้ไว้ใน kept_count และผลรวม token ไว้ใน kept_tokens
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      history = [
+          {'role': 'user', 'content': 'x' * 40},
+          {'role': 'assistant', 'content': 'y' * 80},
+          {'role': 'user', 'content': 'z' * 120},
+          {'role': 'assistant', 'content': 'w' * 40},
+          {'role': 'user', 'content': 'v' * 60},
+      ]
+      kept_count = 0
+      kept_tokens = 0
+      for m in reversed(history):
+          t = est_tokens(m['content'])
+          if kept_tokens + t > 45:
+              break
+          kept_tokens += t
+          kept_count += 1
+    check: |
+      check_value(kept_count, _sol["kept_count"], name="kept_count")
+      check_value(kept_tokens, _sol["kept_tokens"], name="kept_tokens")
+    hints:
+      - "วนจากท้ายหยุดเมื่อจะเกินงบ"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เอนโทรปี (บิต: −Σ p·log2 p) ของการกระจาย softmax ที่ T = 1.0 และ T = 0.5 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร entropy_t1, entropy_t05
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      def entropy(p):
+          return float(-(p * np.log2(p)).sum())
+
+
+      entropy_t1 = round(entropy(softmax(logits, 1.0)), 4)
+      entropy_t05 = round(entropy(softmax(logits, 0.5)), 4)
+    check: |
+      check_value(entropy_t1, _sol["entropy_t1"], name="entropy_t1", tol=0.001)
+      check_value(entropy_t05, _sol["entropy_t05"], name="entropy_t05", tol=0.001)
+    hints:
+      - "np.log2 และ softmax ที่แต่ละ T"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      สุ่ม 500 ครั้งด้วย np.random.RandomState(7).choice(4, size=500, p=softmax(logits, 1.0)) แล้วนับจำนวนที่ได้แต่ละ token (np.bincount(..., minlength=4)) เก็บเป็น list ของ int ไว้ในตัวแปร counts_t1
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      rng = np.random.RandomState(7)
+      draws = rng.choice(4, size=500, p=softmax(logits, 1.0))
+      counts_t1 = np.bincount(draws, minlength=4).tolist()
+    check: |
+      check_value(counts_t1, _sol["counts_t1"], name="counts_t1")
+    hints:
+      - "np.bincount(draws, minlength=4).tolist()"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      สตรีมคำถามที่ให้ไว้ (ตัวพิมพ์เล็กใหญ่/ช่องว่างต่างกัน) มีกี่ข้อความที่ไม่ซ้ำแบบดิบ (raw_unique) และหลัง normalize ด้วย strip().lower() (norm_unique)
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      stream = ['Is shipping free?', 'is shipping free?', 'IS SHIPPING FREE? ', 'How long is delivery?', 'how long is delivery?']
+      raw_unique = len(set(stream))
+      norm_unique = len({s.strip().lower() for s in stream})
+    check: |
+      check_value(raw_unique, _sol["raw_unique"], name="raw_unique")
+      check_value(norm_unique, _sol["norm_unique"], name="norm_unique")
+    hints:
+      - "set ของ s.strip().lower()"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      jitter แบบ full: ด้วย rng = random.Random(0) สร้างเวลารอ 5 ครั้งแรก uniform(0, d) เมื่อ d มาจาก min(8, 1 × 2^k), k = 0..4 (เรียก rng.uniform ตามลำดับ) เก็บผลรวมของเวลารอ (ปัด 4 ตำแหน่ง) ไว้ในตัวแปร jitter_total
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      rng = random.Random(0)
+      delays = [min(8, 1 * 2 ** k) for k in range(5)]
+      jitter_total = round(sum(rng.uniform(0, d) for d in delays), 4)
+    check: |
+      check_value(jitter_total, _sol["jitter_total"], name="jitter_total", tol=0.001)
+    hints:
+      - "rng.uniform(0, d) ตามลำดับ"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เรียก make_flaky(5) ด้วยการ retry สูงสุด 4 ครั้ง (จับ RateLimitError) — เก็บ True/False ว่าถอดใจ (gave_up) และจำนวนครั้งที่เรียก (attempts_made)
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      fn = make_flaky(5)
+      gave_up = True
+      attempts_made = 0
+      for attempt in range(4):
+          attempts_made += 1
+          try:
+              fn('hello')
+              gave_up = False
+              break
+          except RateLimitError:
+              pass
+    check: |
+      check_value(gave_up, _sol["gave_up"], name="gave_up")
+      check_value(attempts_made, _sol["attempts_made"], name="attempts_made")
+    hints:
+      - "วน 4 ครั้ง ถ้าสำเร็จให้ break"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ใส่เอกสารตามลำดับ d01, d02, … โดยผลรวม est_tokens ไม่เกินงบ — ใส่ได้กี่เอกสารเมื่องบเป็น 100, 200 และ 400 token เก็บไว้ในตัวแปร fit_100, fit_200, fit_400
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      def fit(budget):
+          used, n = 0, 0
+          for text in docs['text']:
+              t = est_tokens(text)
+              if used + t > budget:
+                  break
+              used += t
+              n += 1
+          return n
+
+
+      fit_100 = fit(100)
+      fit_200 = fit(200)
+      fit_400 = fit(400)
+    check: |
+      check_value(fit_100, _sol["fit_100"], name="fit_100")
+      check_value(fit_200, _sol["fit_200"], name="fit_200")
+      check_value(fit_400, _sol["fit_400"], name="fit_400")
+    hints:
+      - "เขียนฟังก์ชันรับ budget"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      BPE สองรอบบน corpus ที่ให้ไว้: ทุกรอบเลือกคู่ที่พบมากสุด (เสมอเลือก tuple เล็กสุด) แล้วรวมเป็น token เดียวในทุกคำ — เก็บคู่ของรอบที่สองเป็นข้อความ "a+b" (a, b อาจเป็น token ที่รวมแล้ว) ไว้ใน second_pair และจำนวน token รวมหลังสองรอบไว้ใน tokens_after_2
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      corpus = [list(w) for w in ['low', 'low', 'lower', 'newest', 'newest', 'widest']]
+      def merge_once(corpus):
+          pairs = Counter((a, b) for word in corpus for a, b in zip(word, word[1:]))
+          best = min(pairs, key=lambda p: (-pairs[p], p))
+          merged = []
+          for word in corpus:
+              out, i = [], 0
+              while i < len(word):
+                  if i + 1 < len(word) and (word[i], word[i + 1]) == best:
+                      out.append(word[i] + word[i + 1])
+                      i += 2
+                  else:
+                      out.append(word[i])
+                      i += 1
+              merged.append(out)
+          return best, merged
+
+
+      first_best, corpus = merge_once(corpus)
+      best2, corpus = merge_once(corpus)
+      second_pair = best2[0] + '+' + best2[1]
+      tokens_after_2 = sum(len(w) for w in corpus)
+    check: |
+      check_value(second_pair, _sol["second_pair"], name="second_pair")
+      check_value(tokens_after_2, _sol["tokens_after_2"], name="tokens_after_2")
+    hints:
+      - "เขียนฟังก์ชัน merge_once แล้วเรียกสองครั้ง"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เทียบตัวจำกัดอัตรา (สูงสุด 3 คำขอ ต่อ 5 วินาที) กับ timestamps ที่ให้ไว้: (ก) fixed window — แบ่งเวลาเป็นช่อง int(t // 5) แต่ละช่องรับได้ 3 (ข) sliding window — นับคำขอที่ถูกอนุญาตในช่วง (t − 5, t] — เก็บจำนวนที่อนุญาตของแต่ละแบบไว้ใน fixed_accepted, sliding_accepted
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      import hashlib
+      import json
+      import random
+      from collections import Counter
+
+      import numpy as np
+
+      tokens = ['the', 'a', 'cat', 'dog']
+      logits = np.array([2.0, 1.0, 0.5, 0.1])
+
+
+      def softmax(values, temperature=1.0):
+          z = values / temperature
+          z = z - z.max()
+          e = np.exp(z)
+          return e / e.sum()
+
+
+      class RateLimitError(Exception):
+          pass
+
+
+      def make_flaky(fail_times):
+          state = {'calls': 0}
+
+          def call(prompt):
+              state['calls'] += 1
+              if state['calls'] <= fail_times:
+                  raise RateLimitError('429')
+              return 'ok: ' + prompt
+
+          return call
+      timestamps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      fixed_counts = {}
+      fixed_accepted = 0
+      for t in timestamps:
+          slot = int(t // 5)
+          if fixed_counts.get(slot, 0) < 3:
+              fixed_counts[slot] = fixed_counts.get(slot, 0) + 1
+              fixed_accepted += 1
+      allowed = []
+      for t in timestamps:
+          if len([a for a in allowed if a > t - 5]) < 3:
+              allowed.append(t)
+      sliding_accepted = len(allowed)
+    check: |
+      check_value(fixed_accepted, _sol["fixed_accepted"], name="fixed_accepted")
+      check_value(sliding_accepted, _sol["sliding_accepted"], name="sliding_accepted")
+    hints:
+      - "fixed ใช้ int(t // 5) เป็นกุญแจ; sliding ดูเฉพาะ a > t − 5"

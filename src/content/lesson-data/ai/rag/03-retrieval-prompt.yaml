@@ -1,0 +1,1105 @@
+goals:
+  - "ประกอบ prompt แบบ RAG ที่ยึดบริบท อ้างอิง doc id และอนุญาตให้ตอบว่าไม่รู้"
+  - "ใช้ threshold ของคะแนน retrieval แยกคำถามนอกขอบเขต และรู้ข้อจำกัดของมัน"
+  - "ตรวจการอ้างอิงเบื้องต้น และเข้าใจแนวคิด MMR ที่เพิ่มความหลากหลายของบริบท"
+examples:
+  - id: "x1"
+    title: "ประกอบ prompt จาก top-3"
+    lang: "python"
+    prompt: |
+      ดึง 3 เอกสารแล้วประกอบบริบทพร้อม doc id
+    steps:
+      - text: |
+          retrieve คำถามแรก ("How long does standard delivery take?") ได้ d01 อันดับหนึ่ง (0.1787)
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          import numpy as np
+          from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+
+          TEMPLATE_RAG = (
+              "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+              "If the answer is not in the context, reply exactly: I don't know.\n\n"
+              "Context:\n{context}\n\n"
+              "Question: {question}\n"
+              "Answer:"
+          )
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def retrieve(question, k=3):
+              """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+              s = cosine_similarity(vec.transform([question]), D)[0]
+              order = np.argsort(-s, kind='stable')[:k]
+              return [(docs['doc_id'][j], float(s[j])) for j in order]
+          [(d, round(s, 4)) for d, s in retrieve(qs['question'][0], 3)]
+      - text: |
+          ประกอบบริบทรูป "[doc_id] title: text" แล้วใส่ template — วัดขนาด prompt
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          import numpy as np
+          from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+
+          TEMPLATE_RAG = (
+              "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+              "If the answer is not in the context, reply exactly: I don't know.\n\n"
+              "Context:\n{context}\n\n"
+              "Question: {question}\n"
+              "Answer:"
+          )
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def retrieve(question, k=3):
+              """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+              s = cosine_similarity(vec.transform([question]), D)[0]
+              order = np.argsort(-s, kind='stable')[:k]
+              return [(docs['doc_id'][j], float(s[j])) for j in order]
+          question = qs['question'][0]
+          rows = docs.set_index('doc_id')
+          context = '\n'.join(f"[{d}] {rows.loc[d, 'title']}: {rows.loc[d, 'text']}" for d, _ in retrieve(question, 3))
+          prompt = TEMPLATE_RAG.format(context=context, question=question)
+          len(prompt), est_tokens(prompt)
+    pitfall:
+      text: |
+        ให้โมเดลตอบโดยไม่บอกให้ยึดบริบทและไม่มีทางปฏิเสธ — เมื่อ retrieval ดึงมาผิด โมเดลมักเรียบเรียงคำตอบที่ฟังดูมั่นใจจากเอกสารที่ไม่เกี่ยว ให้กำหนดทั้งการยึดบริบท การอ้างอิง และคำตอบ 'ไม่รู้'
+  - id: "x2"
+    title: "threshold และคำถามนอกขอบเขต"
+    lang: "python"
+    prompt: |
+      ดูคะแนนอันดับ 1 ของคำถามในขอบเขตเทียบกับนอกขอบเขต
+    steps:
+      - text: |
+          คำถามในขอบเขต 30 ข้อ: คะแนนอันดับ 1 ต่ำสุดและ median
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          import numpy as np
+          from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+
+          TEMPLATE_RAG = (
+              "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+              "If the answer is not in the context, reply exactly: I don't know.\n\n"
+              "Context:\n{context}\n\n"
+              "Question: {question}\n"
+              "Answer:"
+          )
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def retrieve(question, k=3):
+              """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+              s = cosine_similarity(vec.transform([question]), D)[0]
+              order = np.argsort(-s, kind='stable')[:k]
+              return [(docs['doc_id'][j], float(s[j])) for j in order]
+          top1 = sims.max(axis=1)
+          round(float(top1.min()), 4), round(float(np.median(top1)), 4)
+      - text: |
+          ที่ threshold 0.15 ตอบคำถามในขอบเขตได้ 29 ข้อ และคำถามนอกขอบเขต 6 ข้อถูกตอบ 1 ข้อ ("Do you sell insurance?" ได้ 0.24 เพราะมีคำว่า sell)
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          import numpy as np
+          from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(docs['text'])
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+
+          TEMPLATE_RAG = (
+              "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+              "If the answer is not in the context, reply exactly: I don't know.\n\n"
+              "Context:\n{context}\n\n"
+              "Question: {question}\n"
+              "Answer:"
+          )
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def retrieve(question, k=3):
+              """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+              s = cosine_similarity(vec.transform([question]), D)[0]
+              order = np.argsort(-s, kind='stable')[:k]
+              return [(docs['doc_id'][j], float(s[j])) for j in order]
+          oos = ["What is the capital of France?", "Can I buy a car from you?", "Do you sell insurance?", "Who won the football match yesterday?", "Tell me a joke about cats", "How do I bake bread?"]
+          top1 = sims.max(axis=1)
+          oos_top1 = [retrieve(q, 1)[0][1] for q in oos]
+          int((top1 >= 0.15).sum()), int((np.array(oos_top1) >= 0.15).sum())
+    pitfall:
+      text: |
+        ตั้ง threshold ตามอารมณ์ (เช่น 0.5) โดยไม่ดูการกระจายของคะแนน — คะแนน cosine ของ TF-IDF ที่ถูกต้องมักต่ำ (median 0.327 ในข้อมูลนี้) เกณฑ์สูงเกินไปจะปฏิเสธคำถามที่ตอบได้เกือบหมด ดูการกระจายของทั้งคำถามในและนอกขอบเขตก่อนเลือก
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      ตัดสินว่าจะตอบหรือปฏิเสธ: ถ้าคะแนนอันดับ 1 ≥ threshold ให้ตอบ (True) เก็บผลไว้ในตัวแปร answered เติม `___` ให้ครบ
+    starter: |
+      top_score = 0.24
+      threshold = 0.2
+      answered = top_score ___ threshold
+    solution: |
+      top_score = 0.24
+      threshold = 0.2
+      answered = top_score >= threshold
+    check: |
+      check_value(answered, _sol["answered"], name="answered")
+    hints:
+      - "เปรียบเทียบด้วย >="
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ใช้ retrieve (ให้ไว้) กับคำถามแรกของ qs (k = 3) เก็บ doc_id ทั้งสามเป็น list ไว้ในตัวแปร top3_q01
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      top3_q01 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      top3_q01 = [d for d, _ in retrieve(qs['question'][0], 3)]
+    check: |
+      check_value(top3_q01, _sol["top3_q01"], name="top3_q01")
+    hints:
+      - "retrieve คืน list ของ (doc_id, score)"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ประกอบบริบทของ top-3 ของคำถามแรกในรูป "[doc_id] title: text" หนึ่งบรรทัดต่อเอกสาร (คั่นด้วย "\n") เก็บไว้ใน context และจำนวนบรรทัดไว้ใน n_lines
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      context = ___
+      n_lines = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      rows = docs.set_index('doc_id')
+      context = '\n'.join(f"[{d}] {rows.loc[d, 'title']}: {rows.loc[d, 'text']}" for d, _ in retrieve(qs['question'][0], 3))
+      n_lines = len(context.split('\n'))
+    check: |
+      check_value(context, _sol["context"], name="context")
+      check_value(n_lines, _sol["n_lines"], name="n_lines")
+    hints:
+      - "ใช้ docs.set_index('doc_id') เพื่อ lookup title/text"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ใส่บริบทข้อ e2 กับคำถามแรกใน TEMPLATE_RAG (.format(context=..., question=...)) แล้วเก็บ token ที่ประมาณของ prompt (est_tokens) ไว้ในตัวแปร prompt_tokens
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      prompt_tokens = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      rows = docs.set_index('doc_id')
+      question = qs['question'][0]
+      context = '\n'.join(f"[{d}] {rows.loc[d, 'title']}: {rows.loc[d, 'text']}" for d, _ in retrieve(question, 3))
+      prompt = TEMPLATE_RAG.format(context=context, question=question)
+      prompt_tokens = est_tokens(prompt)
+    check: |
+      check_value(prompt_tokens, _sol["prompt_tokens"], name="prompt_tokens")
+    hints:
+      - "TEMPLATE_RAG.format(context=context, question=question)"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำถามใน qs (30 ข้อ) มีกี่ข้อที่คะแนนอันดับ 1 (sims.max(axis=1)) ต่ำกว่า 0.2 เก็บไว้ในตัวแปร n_below_02
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      n_below_02 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      n_below_02 = int((sims.max(axis=1) < 0.2).sum())
+    check: |
+      check_value(n_below_02, _sol["n_below_02"], name="n_below_02")
+    hints:
+      - "(sims.max(axis=1) < 0.2).sum()"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ที่ threshold 0.15: คำถามใน qs กี่ข้อที่ตอบ (คะแนนอันดับ 1 ≥ 0.15) เก็บไว้ใน n_answered_in และคำถามใน oos (ให้ไว้ ใช้ retrieve(q, 1)) กี่ข้อที่ถูกตอบผิดๆ เก็บไว้ใน n_answered_oos
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      oos = ["What is the capital of France?", "Can I buy a car from you?", "Do you sell insurance?", "Who won the football match yesterday?", "Tell me a joke about cats", "How do I bake bread?"]
+      n_answered_in = ___
+      n_answered_oos = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      oos = ["What is the capital of France?", "Can I buy a car from you?", "Do you sell insurance?", "Who won the football match yesterday?", "Tell me a joke about cats", "How do I bake bread?"]
+      n_answered_in = int((sims.max(axis=1) >= 0.15).sum())
+      n_answered_oos = sum(1 for q in oos if retrieve(q, 1)[0][1] >= 0.15)
+    check: |
+      check_value(n_answered_in, _sol["n_answered_in"], name="n_answered_in")
+      check_value(n_answered_oos, _sol["n_answered_oos"], name="n_answered_oos")
+    hints:
+      - "retrieve(q, 1)[0][1] คือคะแนนอันดับ 1"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ตัดทุกเอกสารเป็นประโยคด้วย sentences (ให้ไว้ ตัดที่ . และ ;) แล้วนับจำนวนประโยครวม (n_sentences) และเฉลี่ยต่อเอกสาร ปัด 2 ตำแหน่ง (avg_sentences)
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+      n_sentences = ___
+      avg_sentences = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+      counts = [len(sentences(t)) for t in docs['text']]
+      n_sentences = sum(counts)
+      avg_sentences = round(sum(counts) / len(counts), 2)
+    check: |
+      check_value(n_sentences, _sol["n_sentences"], name="n_sentences")
+      check_value(avg_sentences, _sol["avg_sentences"], name="avg_sentences", tol=0.001)
+    hints:
+      - "len(sentences(t)) ของแต่ละเอกสาร"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ตรวจการอ้างอิง: answer ให้ไว้ อ้าง doc id หลายตัว — ดึง id ทั้งหมดด้วย re.findall(r"\[(d\d+)\]", answer) เก็บเป็น list ไว้ใน cited และนับ id ที่ไม่อยู่ใน retrieved (ให้ไว้ = ชุดที่ retrieval ส่งมา) ไว้ใน n_invalid
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      answer = "Standard delivery takes 2 to 4 business days [d01]. Express is next day [d02][d99]."
+      retrieved = {"d01", "d13", "d09"}
+      cited = ___
+      n_invalid = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      answer = "Standard delivery takes 2 to 4 business days [d01]. Express is next day [d02][d99]."
+      retrieved = {"d01", "d13", "d09"}
+      cited = re.findall(r'\[(d\d+)\]', answer)
+      n_invalid = sum(1 for c in cited if c not in retrieved)
+    check: |
+      check_value(cited, _sol["cited"], name="cited")
+      check_value(n_invalid, _sol["n_invalid"], name="n_invalid")
+    hints:
+      - "re.findall แล้วตรวจว่า id อยู่ใน retrieved"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ใช้ mock_answer (ให้ไว้) กับทุกคำถามใน qs: (ก) ส่งบริบท top-3 (retrieve) (ข) ส่งเฉพาะ top-1 — สัดส่วนคำถามที่ประโยคที่เลือกมาจากเอกสารเฉลย (gold_doc_id) ของแต่ละแบบ ปัด 4 ตำแหน่ง เก็บไว้ใน from_gold_top3, from_gold_top1
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+      from_gold_top3 = ___
+      from_gold_top1 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+      def rate(k):
+          hits = 0
+          for question, gold in zip(qs['question'], qs['gold_doc_id']):
+              ids = [d for d, _ in retrieve(question, k)]
+              doc_id, _ = mock_answer(question, ids)
+              hits += doc_id == gold
+          return round(hits / len(qs), 4)
+
+
+      from_gold_top3 = rate(3)
+      from_gold_top1 = rate(1)
+    check: |
+      check_value(from_gold_top3, _sol["from_gold_top3"], name="from_gold_top3", tol=0.001)
+      check_value(from_gold_top1, _sol["from_gold_top1"], name="from_gold_top1", tol=0.001)
+    hints:
+      - "เขียนฟังก์ชัน rate(k) ที่วนทุกคำถาม"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เขียน MMR เอง (λ = 0.7, k = 3) บนความคล้ายกับคำถามข้อที่ 8 (index 7) ของ sims และความคล้ายระหว่างเอกสาร dd = cosine_similarity(D): เลือกทีละอันด้วย λ × sims − (1 − λ) × (ค่ามากสุดของ dd กับที่เลือกแล้ว, 0 ถ้ายังไม่มี) เก็บ doc_id ที่เลือกตามลำดับเป็น list ไว้ใน mmr_ids
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      mmr_ids = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+      dd = cosine_similarity(D)
+      selected = []
+      while len(selected) < 3:
+          best, best_value = None, -1e9
+          for c in range(len(docs)):
+              if c in selected:
+                  continue
+              penalty = max(dd[c][s] for s in selected) if selected else 0
+              value = 0.7 * sims[7][c] - 0.3 * penalty
+              if value > best_value:
+                  best, best_value = c, value
+          selected.append(best)
+      mmr_ids = [docs['doc_id'][c] for c in selected]
+    check: |
+      check_value(mmr_ids, _sol["mmr_ids"], name="mmr_ids")
+    hints:
+      - "วนเลือกทีละอัน ใช้ค่าสูงสุดของ dd กับที่เลือกแล้วเป็น penalty"
+quiz:
+  - id: "q1"
+    question: "สามสิ่งที่ prompt ของ RAG ควรสั่งเพื่อให้น่าเชื่อถือ"
+    choices:
+      - text: "ตอบให้ยาวที่สุด"
+        why: "ไม่เกี่ยว"
+      - text: "ตอบจากบริบทที่ให้เท่านั้น อ้างอิง doc id และบอกว่าไม่รู้เมื่อไม่มีคำตอบ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ใช้ความรู้ทั่วไปเสริมเสมอ"
+        why: "ทำให้ปนกับข้อมูลนอกบริบท"
+      - text: "ตอบให้เร็วที่สุด"
+        why: "ไม่ใช่ความน่าเชื่อถือ"
+  - id: "q2"
+    question: "ในบทนี้คำถามนอกขอบเขต \"Do you sell insurance?\" ได้คะแนน 0.24 ทำให้ผ่าน threshold 0.15 ข้อสรุปที่ถูกคือ"
+    choices:
+      - text: "threshold ไม่มีประโยชน์เลย"
+        why: "ยังช่วยกรองได้ 5 จาก 6"
+      - text: "ต้องตั้ง threshold เป็น 1.0"
+        why: "จะปฏิเสธทุกข้อ"
+      - text: "threshold ของคะแนนตัวเดียวแยกคำถามนอกขอบเขตไม่สะอาด (มีคำร่วมโดยบังเอิญ) ต้องมีชั้นป้องกันอื่นด้วย"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เกิดจากโมเดลตอบผิด"
+        why: "ยังไม่ได้เรียกโมเดล"
+  - id: "q3"
+    question: "การตรวจว่า id ที่โมเดลอ้างอิง (เช่น [d99]) ต้องอยู่ในชุดที่ retrieval ส่งไป มีไว้ทำไม"
+    choices:
+      - text: "เพื่อลด token"
+        why: "ไม่เกี่ยว"
+      - text: "เพื่อให้ cosine สูงขึ้น"
+        why: "ไม่เกี่ยว"
+      - text: "ไม่จำเป็น"
+        why: "เป็นการตรวจที่ทำได้ง่ายและมีประโยชน์"
+      - text: "id ที่ไม่มีในบริบทเป็นสัญญาณว่าโมเดลแต่งการอ้างอิงขึ้น (hallucination)"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ผลของ mock_answer ที่เลือกประโยคจากเอกสารเฉลยได้ 0.6333 ทั้งตอนส่ง top-3 และ top-1 บอกอะไร"
+    choices:
+      - text: "คอขวดอยู่ที่ retrieval อันดับ 1 และการเลือกประโยค ไม่ใช่จำนวนเอกสารที่ส่งเข้า prompt"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ยิ่งส่งเยอะยิ่งดีเสมอ"
+        why: "ผลเท่ากัน"
+      - text: "mock_answer ผิดพลาด"
+        why: "เป็นผลจริงของตัวเลือกนี้"
+      - text: "ควรใช้ top-10"
+        why: "ไม่มีหลักฐาน"
+summary:
+  - "Prompt ของ RAG ต้องสั่ง: ตอบจากบริบทเท่านั้น, อ้าง doc id, และตอบ \"ไม่รู้\" เมื่อไม่มีข้อมูล (mock_answer ในบทนี้เป็นตัวแทน LLM แบบสกัดประโยค ไม่ใช่โมเดลจริง)"
+  - "threshold ของคะแนนอันดับ 1 กรองคำถามนอกขอบเขตได้บางส่วน (ที่ 0.15: ตอบ 29/30 ในขอบเขต, 1/6 นอกขอบเขต) แต่แยกไม่สะอาด ต้องมีชั้นป้องกันอื่น"
+  - "ตรวจว่า id ที่อ้างอยู่ในบริบทจริง; MMR ไม่ช่วยในข้อมูลที่ไม่ซ้ำซ้อน (hit@3 0.8 vs 0.8333) และประโยคที่เลือกมาจากเอกสารเฉลย 0.6333 ทั้ง top-1 และ top-3"
+interview:
+  - id: "i1"
+    q: "ออกแบบ prompt ของระบบ RAG เพื่อลดการแต่งคำตอบ (hallucination) อย่างไร"
+    a: |
+      สั่งให้ตอบจากบริบทที่ให้เท่านั้น ให้อ้างอิงแหล่งที่มา (doc id) ให้ปฏิเสธเมื่อบริบทไม่มีคำตอบ แล้วตรวจฝั่งโค้ดว่าการอ้างอิงอยู่ในชุดที่ดึงมาจริง ใช้ threshold คะแนน retrieval กรองคำถามนอกขอบเขต ตั้ง temperature ต่ำ และวัดผลด้วยชุดคำถามที่มีเฉลย
+  - id: "i2"
+    q: "MMR ใช้ทำอะไรและเมื่อไรที่ไม่ช่วย"
+    a: |
+      MMR เลือก chunk ทีละอันโดยถ่วงระหว่างความเกี่ยวข้องกับคำถามและความต่างจากอันที่เลือกแล้ว เพื่อลดข้อมูลซ้ำซ้อนในบริบท มีประโยชน์เมื่อฐานความรู้มีเนื้อหาซ้ำ/คล้ายกันมาก แต่ถ้าเอกสารไม่ซ้ำซ้อนอยู่แล้ว (เช่นในตัวอย่างของเรา) จะไม่ช่วยหรืออาจทำให้ hit@k ลดลงเล็กน้อย
+flashcards:
+  - id: "c1"
+    front: "เหตุผลที่ต้องอนุญาตให้ RAG ตอบว่า \"ไม่รู้\""
+    back: "เมื่อ retrieval ไม่พบข้อมูลที่เกี่ยวข้อง การบังคับให้ตอบจะทำให้โมเดลแต่งคำตอบที่ฟังดูน่าเชื่อ"
+  - id: "c2"
+    front: "การอ้างอิง doc id ช่วยอะไร"
+    back: "ให้ผู้ใช้/ระบบตรวจสอบที่มาของคำตอบได้ และตรวจ hallucination ได้ถ้า id ไม่อยู่ในบริบทที่ส่งไป"

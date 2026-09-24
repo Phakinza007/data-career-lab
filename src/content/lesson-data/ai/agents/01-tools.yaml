@@ -1,0 +1,1532 @@
+goals:
+  - "อธิบายกลไก tool use: โมเดลขอเรียกเครื่องมือ โค้ดของเราตรวจและรัน แล้วส่งผลกลับ"
+  - "เขียน tool schema และ dispatcher ที่ตรวจชื่อ อาร์กิวเมนต์ ชนิด และจับ exception"
+  - "ส่งผลลัพธ์/ข้อผิดพลาดกลับให้โมเดลในรูปแบบที่ปลอดภัยและกระชับ"
+examples:
+  - id: "x1"
+    title: "เรียกเครื่องมือของร้านค้า"
+    lang: "python"
+    prompt: |
+      เรียกฟังก์ชันที่ลงทะเบียนไว้ตรงๆ และอ่าน schema
+    steps:
+      - text: |
+          get_order(1) และ count_orders(675) (ลูกค้าที่มีออเดอร์มากสุด) ได้ 14
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+          get_order(1), count_orders(675)
+      - text: |
+          ชื่อเครื่องมือและฟิลด์ที่ต้องมีของแต่ละอัน
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+          [(s['name'], s['input_schema']['required']) for s in TOOL_SCHEMAS]
+    pitfall:
+      text: |
+        ส่งผลของเครื่องมือกลับเป็น dict ที่มี NaN ของ pandas ผ่าน json.dumps — ได้ข้อความ NaN ที่ไม่ใช่ JSON ที่ถูกต้อง (parser หลายตัวจะ error) แปลง NaN เป็น None ก่อนเสมอ
+  - id: "x2"
+    title: "dispatcher และ error เป็น observation"
+    lang: "python"
+    prompt: |
+      รันคำขอที่ถูกและผิดผ่าน dispatch
+    steps:
+      - text: |
+          คำขอที่ถูกต้องได้ ok และผลลัพธ์; ชื่อเครื่องมือไม่มีจริงได้ error ที่ชัดเจน
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+          [dispatch({'name': 'get_order', 'input': {'order_id': 1}}), dispatch({'name': 'refund_order', 'input': {'order_id': 1}})]
+      - text: |
+          ขาดอาร์กิวเมนต์ที่ต้องมี และชนิดผิด (ส่งสตริงแทนจำนวนเต็ม) ถูกจับก่อนรันจริง
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+          [dispatch({'name': 'get_order', 'input': {}}), dispatch({'name': 'get_order', 'input': {'order_id': '1'}})]
+    pitfall:
+      text: |
+        รันเครื่องมือด้วย REGISTRY[name](**args) โดยไม่ตรวจอะไรเลย — อาร์กิวเมนต์ที่โมเดลสร้างอาจผิดชนิด ขาด หรือมีตัวแปลกปลอมที่ทำให้เกิดผลข้างเคียง ตรวจก่อนรันเสมอและส่ง error ที่อ่านรู้เรื่องกลับให้โมเดล
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      ตรวจว่าชื่อเครื่องมือมีอยู่ใน REGISTRY หรือไม่ เก็บ True/False ไว้ในตัวแปร known เติม `___` ให้ครบ
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      name = 'get_order'
+      known = name ___ REGISTRY
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      name = 'get_order'
+      known = name in REGISTRY
+    check: |
+      check_value(known, _sol["known"], name="known")
+    hints:
+      - "ตรวจสมาชิกของ dict ด้วย in"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      เรียก get_order(1) เก็บสถานะไว้ใน status_1 และวันที่สั่งซื้อไว้ใน date_1
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      status_1 = ___
+      date_1 = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      order = get_order(1)
+      status_1 = order['status']
+      date_1 = order['order_date']
+    check: |
+      check_value(status_1, _sol["status_1"], name="status_1")
+      check_value(date_1, _sol["date_1"], name="date_1")
+    hints:
+      - "อ่านคีย์ status และ order_date"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ลูกค้าหมายเลข 675 มีออเดอร์ทั้งหมดกี่รายการ (n_675) และเป็น cancelled กี่รายการ (n_675_cancelled) ใช้ count_orders
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      n_675 = ___
+      n_675_cancelled = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      n_675 = count_orders(675)
+      n_675_cancelled = count_orders(675, 'cancelled')
+    check: |
+      check_value(n_675, _sol["n_675"], name="n_675")
+      check_value(n_675_cancelled, _sol["n_675_cancelled"], name="n_675_cancelled")
+    hints:
+      - "count_orders(675, 'cancelled')"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      TOOL_SCHEMAS มีกี่เครื่องมือ (n_tools) และชื่อของทั้งหมดเรียงตามลำดับเป็น list (tool_names)
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      n_tools = ___
+      tool_names = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      n_tools = len(TOOL_SCHEMAS)
+      tool_names = [s['name'] for s in TOOL_SCHEMAS]
+    check: |
+      check_value(n_tools, _sol["n_tools"], name="n_tools")
+      check_value(tool_names, _sol["tool_names"], name="tool_names")
+    hints:
+      - "list comprehension บน TOOL_SCHEMAS"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ฟิลด์ที่ต้องมี (required) ของเครื่องมือ count_orders ตาม schema เก็บเป็น list ไว้ในตัวแปร required_count และชื่อฟิลด์ทั้งหมดใน properties (เรียงตามตัวอักษร) ไว้ใน all_params
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      required_count = ___
+      all_params = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      schema = next(s for s in TOOL_SCHEMAS if s['name'] == 'count_orders')['input_schema']
+      required_count = schema['required']
+      all_params = sorted(schema['properties'])
+    check: |
+      check_value(required_count, _sol["required_count"], name="required_count")
+      check_value(all_params, _sol["all_params"], name="all_params")
+    hints:
+      - "next(s for s in TOOL_SCHEMAS if s['name'] == ...)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เขียนฟังก์ชัน dispatch(call) แบบย่อ: ถ้าชื่อไม่อยู่ใน REGISTRY คืน {"ok": False, "error": "unknown tool: <name>"}; ถ้าขาดอาร์กิวเมนต์ที่ต้องมีตาม schema คืน {"ok": False, "error": "missing argument: <arg>"}; ไม่งั้นเรียก REGISTRY[name](**args) แล้วคืน {"ok": True, "result": ผลลัพธ์} — ใช้กับ calls ที่ให้ไว้ เก็บ list ของค่า ok ไว้ใน ok_flags และ error ของตัวที่ล้มเหลวเป็น list ไว้ใน error_texts
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      calls = [
+          {'name': 'get_order', 'input': {'order_id': 2}},
+          {'name': 'cancel_order', 'input': {'order_id': 2}},
+          {'name': 'count_orders', 'input': {}},
+      ]
+      ok_flags = ___
+      error_texts = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      calls = [
+          {'name': 'get_order', 'input': {'order_id': 2}},
+          {'name': 'cancel_order', 'input': {'order_id': 2}},
+          {'name': 'count_orders', 'input': {}},
+      ]
+      def dispatch(call):
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          return {'ok': True, 'result': REGISTRY[name](**args)}
+
+
+      results = [dispatch(c) for c in calls]
+      ok_flags = [r['ok'] for r in results]
+      error_texts = [r['error'] for r in results if not r['ok']]
+    check: |
+      check_value(ok_flags, _sol["ok_flags"], name="ok_flags")
+      check_value(error_texts, _sol["error_texts"], name="error_texts")
+    hints:
+      - "ตรวจชื่อ → ตรวจ required → เรียกจริง"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ dispatch ที่ให้ไว้ (ตรวจชนิดด้วย): ส่ง get_order ที่ order_id เป็นสตริง "1" เก็บข้อความ error ไว้ใน type_error และส่ง get_order ที่มีอาร์กิวเมนต์แปลกปลอม {"order_id": 1, "admin": True} เก็บข้อความ error ไว้ใน unexpected_error
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+      type_error = ___
+      unexpected_error = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+      type_error = dispatch({'name': 'get_order', 'input': {'order_id': '1'}})['error']
+      unexpected_error = dispatch({'name': 'get_order', 'input': {'order_id': 1, 'admin': True}})['error']
+    check: |
+      check_value(type_error, _sol["type_error"], name="type_error")
+      check_value(unexpected_error, _sol["unexpected_error"], name="unexpected_error")
+    hints:
+      - "อ่านคีย์ 'error' ของผล dispatch"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      แปลงผลของเครื่องมือ raw (ให้ไว้ มี NaN ใน discount_pct) เป็นข้อความที่ส่งกลับให้โมเดล: แทนค่า NaN ด้วย None (ใช้ pd.isna) แล้ว json.dumps(..., ensure_ascii=False) เก็บข้อความไว้ในตัวแปร observation และความยาวไว้ใน observation_len
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      raw = {'order_id': 2, 'discount_pct': float('nan'), 'status': 'completed'}
+      observation = ___
+      observation_len = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      raw = {'order_id': 2, 'discount_pct': float('nan'), 'status': 'completed'}
+      clean = {k: (None if isinstance(v, float) and pd.isna(v) else v) for k, v in raw.items()}
+      observation = json.dumps(clean, ensure_ascii=False)
+      observation_len = len(observation)
+    check: |
+      check_value(observation, _sol["observation"], name="observation")
+      check_value(observation_len, _sol["observation_len"], name="observation_len")
+    hints:
+      - "dict comprehension ที่แทน NaN ด้วย None"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      สร้าง schema จากลายเซ็นของฟังก์ชันด้วย inspect: เขียน types_of(fn) คืน dict ชื่อพารามิเตอร์ → ชนิดใน JSON schema (int → "integer", str → "string") และ required_of(fn) คืน list ของพารามิเตอร์ที่ไม่มีค่าเริ่มต้น — ใช้กับ count_orders เก็บไว้ใน types_count และ required_count_fn
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      types_count = ___
+      required_count_fn = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+      import inspect
+
+      JSON_TYPES = {int: 'integer', str: 'string'}
+
+
+      def types_of(fn):
+          return {name: JSON_TYPES[p.annotation] for name, p in inspect.signature(fn).parameters.items()}
+
+
+      def required_of(fn):
+          return [name for name, p in inspect.signature(fn).parameters.items() if p.default is inspect.Parameter.empty]
+
+
+      types_count = types_of(count_orders)
+      required_count_fn = required_of(count_orders)
+    check: |
+      check_value(types_count, _sol["types_count"], name="types_count")
+      check_value(required_count_fn, _sol["required_count_fn"], name="required_count_fn")
+    hints:
+      - "inspect.signature(fn).parameters แต่ละตัวมี .annotation และ .default"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      รัน calls ที่ให้ไว้ (5 คำขอ) ผ่าน dispatch ที่ให้ไว้ เก็บจำนวนที่สำเร็จไว้ใน n_ok, ที่ล้มเหลวไว้ใน n_err และ error ของตัวที่ล้มเหลวทั้งหมดเป็น list (ตามลำดับ) ไว้ใน errors
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+      calls = [
+          {'name': 'get_order', 'input': {'order_id': 6000}},
+          {'name': 'get_product', 'input': {'product_id': 50}},
+          {'name': 'get_order', 'input': {'order_id': 999999}},
+          {'name': 'count_orders', 'input': {'customer_id': 675, 'status': 5}},
+          {'name': 'get_product', 'input': {}},
+      ]
+      n_ok = ___
+      n_err = ___
+      errors = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+      calls = [
+          {'name': 'get_order', 'input': {'order_id': 6000}},
+          {'name': 'get_product', 'input': {'product_id': 50}},
+          {'name': 'get_order', 'input': {'order_id': 999999}},
+          {'name': 'count_orders', 'input': {'customer_id': 675, 'status': 5}},
+          {'name': 'get_product', 'input': {}},
+      ]
+      results = [dispatch(c) for c in calls]
+      n_ok = sum(r['ok'] for r in results)
+      n_err = len(results) - n_ok
+      errors = [r['error'] for r in results if not r['ok']]
+    check: |
+      check_value(n_ok, _sol["n_ok"], name="n_ok")
+      check_value(n_err, _sol["n_err"], name="n_err")
+      check_value(errors, _sol["errors"], name="errors")
+    hints:
+      - "สร้าง list ผลลัพธ์แล้วนับ ok / error"
+quiz:
+  - id: "q1"
+    question: "ใน tool use ใครเป็นผู้รันฟังก์ชันจริง"
+    choices:
+      - text: "โมเดลรันเอง"
+        why: "โมเดลไม่ได้รันโค้ด"
+      - text: "โค้ดของเรา โมเดลแค่ส่งคำขอ (ชื่อ + อาร์กิวเมนต์) ให้เราตรวจและรัน"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ผู้ให้บริการ API รันบนเซิร์ฟเวอร์เรา"
+        why: "ไม่ใช่"
+      - text: "ผู้ใช้รันเอง"
+        why: "ไม่ใช่"
+  - id: "q2"
+    question: "ทำไม dispatcher ต้องตรวจอาร์กิวเมนต์ก่อนรันเครื่องมือ"
+    choices:
+      - text: "เพื่อให้เร็วขึ้น"
+        why: "ไม่ใช่เหตุผลหลัก"
+      - text: "เพราะ Python บังคับ"
+        why: "ไม่บังคับ"
+      - text: "อาร์กิวเมนต์มาจากโมเดล อาจผิด ขาด หรือถูกชักจูง ต้องตรวจเหมือนอินพุตภายนอก"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็น"
+  - id: "q3"
+    question: "เมื่อเครื่องมือล้มเหลว ควรทำอย่างไร"
+    choices:
+      - text: "ให้โปรแกรมล้ม"
+        why: "ไม่นุ่มนวล"
+      - text: "ซ่อน error แล้วตอบว่าสำเร็จ"
+        why: "ทำให้โมเดลเข้าใจผิด"
+      - text: "เรียกซ้ำไม่จำกัด"
+        why: "อันตราย"
+      - text: "ส่งข้อความ error ที่ชัดเจนกลับให้โมเดลเป็น observation เพื่อให้แก้และลองใหม่"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ทำไมต้องแปลง NaN เป็น None ก่อน json.dumps ผลของเครื่องมือ"
+    choices:
+      - text: "NaN ไม่ใช่ JSON ที่ถูกต้อง แปลงเป็น null ให้ parser อ่านได้"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพื่อลดขนาดไฟล์"
+        why: "ไม่ใช่"
+      - text: "เพราะ pandas ห้ามใช้ NaN"
+        why: "ไม่ใช่"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็น"
+summary:
+  - "Tool use: โมเดลส่งคำขอ (ชื่อ + input) โค้ดเราตรวจและรันจริง แล้วส่ง tool_result กลับ — โมเดลไม่ได้รันโค้ดเอง"
+  - "Dispatcher ตรวจชื่อ ฟิลด์ที่ต้องมี ชนิด อาร์กิวเมนต์แปลกปลอม และจับ exception; ข้อผิดพลาดส่งกลับเป็น observation ที่ชัดเจน"
+  - "ผลลัพธ์ควรกระชับและเป็นข้อความปลอดภัย: ส่งเฉพาะฟิลด์จำเป็น แปลง NaN เป็น None ก่อน JSON (บทนี้ใช้ข้อมูล orders/products จริง ส่วนโมเดลจำลองในบทถัดไป)"
+interview:
+  - id: "i1"
+    q: "อธิบายลำดับการทำงานของ tool use กับ LLM API"
+    a: |
+      ส่งรายการ tools (name, description, input_schema) มาพร้อมคำขอ ถ้าโมเดลต้องการเครื่องมือ มันตอบด้วยคำขอเรียกเครื่องมือ (tool_use: id, name, input) แทนข้อความสุดท้าย โค้ดของเราตรวจอาร์กิวเมนต์ รันฟังก์ชันจริง แล้วส่ง tool_result (พร้อม id เดิม) กลับเป็นข้อความถัดไป วนจนโมเดลตอบข้อความสุดท้าย
+  - id: "i2"
+    q: "คุณจะออกแบบ description และ schema ของเครื่องมืออย่างไรให้โมเดลใช้ถูก"
+    a: |
+      ตั้งชื่อสื่อความหมาย เขียน description ว่าเครื่องมือทำอะไร เมื่อไรควรใช้ และไม่ควรใช้เมื่อไร ระบุชนิดและความหมายของแต่ละพารามิเตอร์ ใช้ enum เมื่อมีค่าที่กำหนดได้ ระบุ required ให้ตรง และให้ผลลัพธ์กลับมาสั้นชัดเจน จากนั้นทดสอบกับคำขอจริงหลายแบบเพื่อดูว่าโมเดลเลือกใช้ถูกไหม
+flashcards:
+  - id: "c1"
+    front: "dispatcher ในระบบ agent ทำอะไร"
+    back: "ด่านตรวจระหว่างคำขอของโมเดลกับฟังก์ชันจริง: ตรวจชื่อ อาร์กิวเมนต์ ชนิด แล้วรันและจับ error"
+  - id: "c2"
+    front: "ทำไมต้องส่ง error กลับเป็นข้อความให้โมเดล"
+    back: "เพื่อให้โมเดลเห็นว่าผิดตรงไหนแล้วแก้อาร์กิวเมนต์ลองใหม่ได้ แทนที่โปรแกรมจะล้ม"

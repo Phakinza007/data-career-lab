@@ -1,0 +1,1384 @@
+title: "ชุดฝึกท้าย module: Embeddings และ RAG"
+exercises:
+  - id: "p1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      TfidfVectorizer() ค่าเริ่มต้น (ไม่ตัด stop words) ที่ fit บน docs["text"] มีคำในคลังคำกี่คำ เก็บไว้ในตัวแปร n_terms_default
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      n_terms_default = len(TfidfVectorizer().fit(docs['text']).vocabulary_)
+    check: |
+      check_value(n_terms_default, _sol["n_terms_default"], name="n_terms_default")
+    hints:
+      - "len(vec.vocabulary_)"
+  - id: "p2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      hit@1 ของ TfidfVectorizer() ค่าเริ่มต้น (gold_ranks ให้ไว้) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร hit1_default
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      r = gold_ranks(TfidfVectorizer())
+      hit1_default = round(float((r == 1).mean()), 4)
+    check: |
+      check_value(hit1_default, _sol["hit1_default"], name="hit1_default", tol=0.001)
+    hints:
+      - "gold_ranks(...) แล้ว (r == 1).mean()"
+  - id: "p3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      retrieve (ให้ไว้) คำถาม "When do flash sales start?" ที่ k = 1 — doc_id อันดับหนึ่งเก็บไว้ในตัวแปร top_doc
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      top_doc = retrieve('When do flash sales start?', 1)[0][0]
+    check: |
+      check_value(top_doc, _sol["top_doc"], name="top_doc")
+    hints:
+      - "retrieve(q, 1)[0][0]"
+  - id: "p4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คะแนน cosine ระหว่างคำถาม "I forgot my password" (คำถามที่ 22, index 21) กับเอกสาร d18 (แถวที่ 18, index 17) จาก sims ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร score_q22
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      score_q22 = round(float(sims[21][17]), 4)
+    check: |
+      check_value(score_q22, _sol["score_q22"], name="score_q22", tol=0.001)
+    hints:
+      - "sims[แถวคำถาม][คอลัมน์เอกสาร]"
+  - id: "p5"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ต่อทุกเอกสารเป็นคำเดียวกันเป็นคู่มือ (words = ต่อ text.split() ของทุกเอกสารตามลำดับ) แล้วตัดเป็น chunk ขนาด 80 คำ overlap 10 (เลื่อนทีละ 70 คำ หยุดเมื่อหน้าต่างถึงท้าย) มีกี่ chunk เก็บไว้ในตัวแปร n_chunks_80
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      words = [w for t in docs['text'] for w in t.split()]
+      n_chunks_80 = 0
+      for start in range(0, len(words), 70):
+          n_chunks_80 += 1
+          if start + 80 >= len(words):
+              break
+    check: |
+      check_value(n_chunks_80, _sol["n_chunks_80"], name="n_chunks_80")
+    hints:
+      - "วน start ทีละ 70 นับ chunk และหยุดเมื่อ start + 80 ≥ จำนวนคำ"
+  - id: "p6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      คำถามที่เอกสารเฉลยไม่ได้อันดับ 1 (ranks > 1) มีอันดับเฉลี่ยเท่าไร (ปัด 2 ตำแหน่ง) เก็บไว้ในตัวแปร mean_miss_rank และมีกี่ข้อไว้ใน n_misses
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      miss = ranks[ranks > 1]
+      n_misses = len(miss)
+      mean_miss_rank = round(float(miss.mean()), 2)
+    check: |
+      check_value(n_misses, _sol["n_misses"], name="n_misses")
+      check_value(mean_miss_rank, _sol["mean_miss_rank"], name="mean_miss_rank", tol=0.001)
+    hints:
+      - "กรอง ranks > 1 ก่อน"
+  - id: "p7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      MRR แยกตามหมวดของเอกสารเฉลย: หมวด shipping และ returns (ใช้ gold ที่ให้ไว้) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร shipping_mrr, returns_mrr
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      rr = pd.Series(1 / ranks, index=gold.index)
+      by_cat = rr.groupby(gold['category']).mean()
+      shipping_mrr = round(float(by_cat['shipping']), 4)
+      returns_mrr = round(float(by_cat['returns']), 4)
+    check: |
+      check_value(shipping_mrr, _sol["shipping_mrr"], name="shipping_mrr", tol=0.001)
+      check_value(returns_mrr, _sol["returns_mrr"], name="returns_mrr", tol=0.001)
+    hints:
+      - "groupby(gold[\"category\"]).mean() ของ 1 / ranks"
+  - id: "p8"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ที่ threshold 0.15 คำถามใน qs กี่ข้อที่ถูกตอบ (คะแนนอันดับ 1 ≥ 0.15) เก็บไว้ใน n_answered และในกลุ่มที่ถูกตอบนี้ กี่ข้อที่เอกสารอันดับ 1 คือเอกสารเฉลย เก็บไว้ใน n_correct_answered
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      answered = sims.max(axis=1) >= 0.15
+      n_answered = int(answered.sum())
+      n_correct_answered = int((answered & (ranks == 1)).sum())
+    check: |
+      check_value(n_answered, _sol["n_answered"], name="n_answered")
+      check_value(n_correct_answered, _sol["n_correct_answered"], name="n_correct_answered")
+    hints:
+      - "ใช้ mask answered & (ranks == 1)"
+  - id: "p9"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ประกอบ prompt ของคำถามที่ 14 (index 13) ด้วย TEMPLATE_RAG โดยบริบทเป็น top-2 จาก retrieve ในรูป "[doc_id] title: text" หนึ่งบรรทัดต่อเอกสาร (คั่นด้วย "\n") แล้วเก็บ token ที่ประมาณ (est_tokens) ไว้ในตัวแปร prompt_tokens_q14
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      rows = docs.set_index('doc_id')
+      question = qs['question'][13]
+      context = '\n'.join(f"[{d}] {rows.loc[d, 'title']}: {rows.loc[d, 'text']}" for d, _ in retrieve(question, 2))
+      prompt_tokens_q14 = est_tokens(TEMPLATE_RAG.format(context=context, question=question))
+    check: |
+      check_value(prompt_tokens_q14, _sol["prompt_tokens_q14"], name="prompt_tokens_q14")
+    hints:
+      - "TEMPLATE_RAG.format(...) แล้ว est_tokens"
+  - id: "p10"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      answer ที่ให้ไว้อ้าง doc id หลายตัว: สัดส่วนของการอ้างอิงที่ id อยู่ใน retrieved (cite_precision, ปัด 4 ตำแหน่ง) และจำนวน id ที่แต่งขึ้น (n_fake)
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      answer = "Returns within 14 days [d05]. Refund in 3 days [d06]. Free exchange once [d07][d77]."
+      retrieved = {"d05", "d06", "d08"}
+      cited = re.findall(r'\[(d\d+)\]', answer)
+      n_fake = sum(1 for c in cited if c not in retrieved)
+      cite_precision = round((len(cited) - n_fake) / len(cited), 4)
+    check: |
+      check_value(cite_precision, _sol["cite_precision"], name="cite_precision", tol=0.001)
+      check_value(n_fake, _sol["n_fake"], name="n_fake")
+    hints:
+      - "re.findall แล้วตรวจกับ retrieved"
+  - id: "p11"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      hit@k สำหรับ k = 1..5 (สัดส่วนคำถามที่ ranks <= k ปัด 4 ตำแหน่ง) เก็บเป็น list 5 ค่าไว้ในตัวแปร hit_by_k
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      hit_by_k = [round(float((ranks <= k).mean()), 4) for k in range(1, 6)]
+    check: |
+      check_value(hit_by_k, _sol["hit_by_k"], name="hit_by_k")
+    hints:
+      - "list comprehension บน range(1, 6)"
+  - id: "p12"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      query expansion: แทนคำในคำถามตาม synonyms ที่ให้ไว้ (แทนที่ทั้งคำแบบไม่สนตัวพิมพ์ใหญ่เล็ก เช่นใช้ re.sub(r"\b" + old + r"\b", new, q, flags=re.I)) แล้วจัดอันดับใหม่ด้วย TfidfVectorizer(stop_words="english") ที่ fit บน docs — เก็บ hit@1, hit@3 และ MRR (ปัด 4 ตำแหน่ง) ไว้ใน hit1_exp, hit3_exp, mrr_exp (หมายเหตุ: synonyms เขียนจากคำถามที่เห็นจึงเป็นการจูนกับชุดตรวจ ตัวเลขจะดีเกินจริง)
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      synonyms = {'broken': 'damaged', 'package': 'parcel', 'money': 'refund', 'swap': 'exchange', 'declined': 'fails'}
+      expanded = []
+      for q in qs['question']:
+          for old, new in synonyms.items():
+              q = re.sub(r'\b' + old + r'\b', new, q, flags=re.I)
+          expanded.append(q)
+      vec2 = TfidfVectorizer(stop_words='english')
+      D2 = vec2.fit_transform(docs['text'])
+      sims2 = cosine_similarity(vec2.transform(expanded), D2)
+      r2 = []
+      for i, g in enumerate(qs['gold_doc_id']):
+          order = np.argsort(-sims2[i], kind='stable')
+          r2.append(list(docs['doc_id'].values[order]).index(g) + 1)
+      r2 = np.array(r2)
+      hit1_exp = round(float((r2 == 1).mean()), 4)
+      hit3_exp = round(float((r2 <= 3).mean()), 4)
+      mrr_exp = round(float((1 / r2).mean()), 4)
+    check: |
+      check_value(hit1_exp, _sol["hit1_exp"], name="hit1_exp", tol=0.001)
+      check_value(hit3_exp, _sol["hit3_exp"], name="hit3_exp", tol=0.001)
+      check_value(mrr_exp, _sol["mrr_exp"], name="mrr_exp", tol=0.001)
+    hints:
+      - "วนแทนคำก่อน vectorize แล้วคำนวณอันดับเหมือน gold_ranks"
+  - id: "p13"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      hybrid: คะแนนรวม = 0.5 × cosine TF-IDF (sims) + 0.5 × cosine LSA (TruncatedSVD(10, random_state=42) fit บน D แล้ว transform ทั้งคำถามและเอกสาร) — เก็บ hit@1 และ hit@3 ของ hybrid (ปัด 4 ตำแหน่ง) ไว้ใน hybrid_hit1, hybrid_hit3
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      svd = TruncatedSVD(10, random_state=42).fit(D)
+      Qd = svd.transform(vec.transform(qs['question']))
+      Dd = svd.transform(D)
+      score = 0.5 * sims + 0.5 * cosine_similarity(Qd, Dd)
+      rk = []
+      for i, g in enumerate(qs['gold_doc_id']):
+          order = np.argsort(-score[i], kind='stable')
+          rk.append(list(docs['doc_id'].values[order]).index(g) + 1)
+      rk = np.array(rk)
+      hybrid_hit1 = round(float((rk == 1).mean()), 4)
+      hybrid_hit3 = round(float((rk <= 3).mean()), 4)
+    check: |
+      check_value(hybrid_hit1, _sol["hybrid_hit1"], name="hybrid_hit1", tol=0.001)
+      check_value(hybrid_hit3, _sol["hybrid_hit3"], name="hybrid_hit3", tol=0.001)
+    hints:
+      - "รวมคะแนนสองแบบก่อนจัดอันดับ"
+  - id: "p14"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ใช้ mock_answer (ให้ไว้) กับบริบท top-5 จาก retrieve ของทุกคำถาม — สัดส่วนที่ประโยคที่เลือกมาจากเอกสารเฉลย (ปัด 4 ตำแหน่ง) เก็บไว้ใน from_gold_top5 และจำนวนคำถามที่ mock_answer เลือกจากเอกสารที่ไม่ใช่เฉลยแม้เฉลยอยู่ในบริบท (retrieval ถูกแต่เลือกประโยคผิด) เก็บไว้ใน n_selection_errors
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      hits = 0
+      selection_errors = 0
+      for question, gold_id in zip(qs['question'], qs['gold_doc_id']):
+          ids = [d for d, _ in retrieve(question, 5)]
+          chosen, _ = mock_answer(question, ids)
+          hits += chosen == gold_id
+          selection_errors += (gold_id in ids) and chosen != gold_id
+      from_gold_top5 = round(hits / len(qs), 4)
+      n_selection_errors = int(selection_errors)
+    check: |
+      check_value(from_gold_top5, _sol["from_gold_top5"], name="from_gold_top5", tol=0.001)
+      check_value(n_selection_errors, _sol["n_selection_errors"], name="n_selection_errors")
+    hints:
+      - "ตรวจทั้ง chosen == gold และ gold ∈ ids"
+  - id: "p15"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      bootstrap ช่วง 95% ของ MRR: rng = np.random.RandomState(0), idx = rng.randint(0, 30, (500, 30)), ค่า MRR ของแต่ละรอบ = (1 / ranks)[idx].mean(axis=1), percentile 2.5 และ 97.5 ปัด 4 ตำแหน่ง เก็บไว้ใน mrr_ci_low, mrr_ci_high
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      rng = np.random.RandomState(0)
+      idx = rng.randint(0, 30, (500, 30))
+      boot = (1 / ranks)[idx].mean(axis=1)
+      mrr_ci_low = round(float(np.percentile(boot, 2.5)), 4)
+      mrr_ci_high = round(float(np.percentile(boot, 97.5)), 4)
+    check: |
+      check_value(mrr_ci_low, _sol["mrr_ci_low"], name="mrr_ci_low", tol=0.001)
+      check_value(mrr_ci_high, _sol["mrr_ci_high"], name="mrr_ci_high", tol=0.001)
+    hints:
+      - "เหมือน bootstrap ของ hit@3 แต่เปลี่ยนเป็น 1 / ranks"
+  - id: "p16"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      question_id ของ 3 คำถามที่อันดับของเอกสารเฉลยแย่ที่สุด เรียงจากอันดับแย่สุดไปน้อย (เสมออันดับให้เรียง question_id ตามตัวอักษร) เก็บเป็น list ไว้ในตัวแปร worst3_ids และอันดับของทั้งสามไว้ใน worst3_ranks
+    starter: |
+      # เขียนโค้ด Python ตรงนี้
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      import numpy as np
+      from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(docs['text'])
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+
+      TEMPLATE_RAG = (
+          "Answer the question using ONLY the context below. Cite the doc ids in square brackets. "
+          "If the answer is not in the context, reply exactly: I don't know.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {question}\n"
+          "Answer:"
+      )
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def retrieve(question, k=3):
+          """คืน [(doc_id, คะแนน cosine)] ของ k เอกสารที่คล้ายที่สุด"""
+          s = cosine_similarity(vec.transform([question]), D)[0]
+          order = np.argsort(-s, kind='stable')[:k]
+          return [(docs['doc_id'][j], float(s[j])) for j in order]
+
+
+      def sentences(text):
+          return [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
+
+
+      def content_words(text):
+          return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in ENGLISH_STOP_WORDS}
+
+
+      def mock_answer(question, doc_ids):
+          """ตัวแทน LLM แบบสกัดประโยค (ไม่ใช่โมเดลจริง): เลือกประโยคที่มีคำสำคัญร่วมกับคำถามมากที่สุด (เสมอ = ประโยคแรกที่เจอ)"""
+          best, best_score = None, -1
+          for doc_id in doc_ids:
+              text = docs.loc[docs['doc_id'] == doc_id, 'text'].iloc[0]
+              for s in sentences(text):
+                  score = len(content_words(question) & content_words(s))
+                  if score > best_score:
+                      best, best_score = (doc_id, s), score
+          return best
+
+      from sklearn.decomposition import TruncatedSVD
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      tbl = pd.DataFrame({'question_id': qs['question_id'], 'rank': ranks}).sort_values(['rank', 'question_id'], ascending=[False, True]).head(3)
+      worst3_ids = tbl['question_id'].tolist()
+      worst3_ranks = tbl['rank'].tolist()
+    check: |
+      check_value(worst3_ids, _sol["worst3_ids"], name="worst3_ids")
+      check_value(worst3_ranks, _sol["worst3_ranks"], name="worst3_ranks")
+    hints:
+      - "sort_values([\"rank\", \"question_id\"], ascending=[False, True])"

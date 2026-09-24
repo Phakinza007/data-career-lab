@@ -1,0 +1,961 @@
+goals:
+  - "ตัดเอกสารเป็น chunk แบบ sliding window (size/overlap) และคำนวณจำนวน chunk ได้"
+  - "ประเมินขนาด chunk ด้วย hit@k คู่กับปริมาณข้อความที่ส่งเข้า prompt"
+  - "ระวังตัวเลขที่หลอกตาเมื่อ chunk ใหญ่ครอบคลุมหลายเอกสาร"
+examples:
+  - id: "x1"
+    title: "ตัดคู่มือเป็น chunk"
+    lang: "python"
+    prompt: |
+      ต่อ 24 เอกสารเป็นคู่มือเล่มเดียวแล้วตัดด้วยหน้าต่างเลื่อน
+    steps:
+      - text: |
+          คู่มือมี 973 คำ; เอกสาร d05 อยู่ที่ช่วงคำ (ค่า start, end) ใด
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+          words = []
+          spans = {}
+          for doc_id, text in zip(docs['doc_id'], docs['text']):
+              w = text.split()
+              spans[doc_id] = (len(words), len(words) + len(w))
+              words += w
+          len(words), spans['d05']
+      - text: |
+          ขนาด 100 overlap 20 ได้ 12 chunk เลื่อนทีละ 80 คำ (ตำแหน่งเริ่ม 0, 80, 160, …) และ chunk สุดท้ายเหลือ 93 คำ
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+          words = []
+          spans = {}
+          for doc_id, text in zip(docs['doc_id'], docs['text']):
+              w = text.split()
+              spans[doc_id] = (len(words), len(words) + len(w))
+              words += w
+
+
+          def chunk(words, size, overlap):
+              """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+              step = size - overlap
+              out = []
+              for start in range(0, len(words), step):
+                  out.append((start, ' '.join(words[start:start + size])))
+                  if start + size >= len(words):
+                      break
+              return out
+          chunks = chunk(words, 100, 20)
+          len(chunks), [s for s, _ in chunks][:4], len(chunks[-1][1].split())
+    pitfall:
+      text: |
+        ตั้ง overlap ≥ size — step (size − overlap) จะเป็น 0 หรือติดลบ ทำให้ range() error หรือวนไม่จบ ตรวจให้ overlap < size เสมอ
+  - id: "x2"
+    title: "ขนาด chunk กับ hit@k และปริมาณที่ส่ง"
+    lang: "python"
+    prompt: |
+      วัดด้วย evaluate (ให้ไว้ ค้นด้วย TF-IDF)
+    steps:
+      - text: |
+          ขนาด 40 ไม่ overlap: 25 chunk, hit@1 0.6333, hit@3 0.9
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+          words = []
+          spans = {}
+          for doc_id, text in zip(docs['doc_id'], docs['text']):
+              w = text.split()
+              spans[doc_id] = (len(words), len(words) + len(w))
+              words += w
+
+
+          def chunk(words, size, overlap):
+              """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+              step = size - overlap
+              out = []
+              for start in range(0, len(words), step):
+                  out.append((start, ' '.join(words[start:start + size])))
+                  if start + size >= len(words):
+                      break
+              return out
+
+
+          def evaluate(size, overlap):
+              """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+              chunks = chunk(words, size, overlap)
+              starts = [s for s, _ in chunks]
+              texts = [t for _, t in chunks]
+              vec = TfidfVectorizer(stop_words='english')
+              D = vec.fit_transform(texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              hit1 = hit3 = 0
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  g_start, g_end = spans[gold]
+                  order = np.argsort(-sims[i], kind='stable')
+
+                  def ok(c):
+                      s = starts[c]
+                      return s < g_end and s + len(texts[c].split()) > g_start
+
+                  hit1 += ok(order[0])
+                  hit3 += any(ok(c) for c in order[:3])
+              return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+          evaluate(40, 0)
+      - text: |
+          เทียบประสิทธิภาพต่อปริมาณที่ส่ง (hit@3 ÷ (3 × ขนาด ÷ 100)): ขนาด 40 ได้ 0.75 ขนาด 200 ได้ 0.1667
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+          # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+          words = []
+          spans = {}
+          for doc_id, text in zip(docs['doc_id'], docs['text']):
+              w = text.split()
+              spans[doc_id] = (len(words), len(words) + len(w))
+              words += w
+
+
+          def chunk(words, size, overlap):
+              """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+              step = size - overlap
+              out = []
+              for start in range(0, len(words), step):
+                  out.append((start, ' '.join(words[start:start + size])))
+                  if start + size >= len(words):
+                      break
+              return out
+
+
+          def evaluate(size, overlap):
+              """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+              chunks = chunk(words, size, overlap)
+              starts = [s for s, _ in chunks]
+              texts = [t for _, t in chunks]
+              vec = TfidfVectorizer(stop_words='english')
+              D = vec.fit_transform(texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              hit1 = hit3 = 0
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  g_start, g_end = spans[gold]
+                  order = np.argsort(-sims[i], kind='stable')
+
+                  def ok(c):
+                      s = starts[c]
+                      return s < g_end and s + len(texts[c].split()) > g_start
+
+                  hit1 += ok(order[0])
+                  hit3 += any(ok(c) for c in order[:3])
+              return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+          {size: round(evaluate(size, 0)[2] / (3 * size / 100), 4) for size in (40, 200)}
+    pitfall:
+      text: |
+        เลือก chunk ใหญ่ที่สุดเพราะ hit@k สูงที่สุด — chunk ใหญ่ครอบคลุมหลายเรื่อง (ทั้งเล่ม = 1.0 ทันที) ทำให้ต้นทุนและสิ่งรบกวนเพิ่ม ต้องวัดปริมาณข้อความที่ส่งคู่กันเสมอ
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      ตัดข้อความ 10 คำเป็น chunk ยาว 4 คำ ไม่ overlap แล้วนับจำนวน chunk ในตัวแปร n_chunks เติม `___` ให้ครบ
+    starter: |
+      words = ['w'] * 10
+      size, overlap = 4, 0
+      step = size - ___
+      n_chunks = len(range(0, len(words), step))
+    solution: |
+      words = ['w'] * 10
+      size, overlap = 4, 0
+      step = size - overlap
+      n_chunks = len(range(0, len(words), step))
+    check: |
+      check_value(n_chunks, _sol["n_chunks"], name="n_chunks")
+    hints:
+      - "step = size − overlap"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คู่มือ words มีกี่คำ (n_words) และเอกสาร d05 อยู่ที่ช่วงคำ start ถึง end (spans) เก็บไว้ในตัวแปร d05_start, d05_end
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+      n_words = ___
+      d05_start = ___
+      d05_end = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+      n_words = len(words)
+      d05_start, d05_end = spans['d05']
+    check: |
+      check_value(n_words, _sol["n_words"], name="n_words")
+      check_value(d05_start, _sol["d05_start"], name="d05_start")
+      check_value(d05_end, _sol["d05_end"], name="d05_end")
+    hints:
+      - "spans['d05']"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ใช้ chunk (ให้ไว้) ขนาด 50 ไม่ overlap ได้กี่ chunk เก็บไว้ในตัวแปร n_chunks_50
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      n_chunks_50 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      n_chunks_50 = len(chunk(words, 50, 0))
+    check: |
+      check_value(n_chunks_50, _sol["n_chunks_50"], name="n_chunks_50")
+    hints:
+      - "len(chunk(words, 50, 0))"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ขนาด 100 overlap 20: chunk สุดท้ายมีกี่คำ เก็บไว้ในตัวแปร last_chunk_words
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      last_chunk_words = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      chunks = chunk(words, 100, 20)
+      last_chunk_words = len(chunks[-1][1].split())
+    check: |
+      check_value(last_chunk_words, _sol["last_chunk_words"], name="last_chunk_words")
+    hints:
+      - "chunks[-1][1].split()"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ขนาด 100 overlap 20: ตำแหน่งเริ่มของ 4 chunk แรก (list ของ int) เก็บไว้ในตัวแปร first_starts
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      first_starts = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      first_starts = [start for start, _ in chunk(words, 100, 20)][:4]
+    check: |
+      check_value(first_starts, _sol["first_starts"], name="first_starts")
+    hints:
+      - "เลื่อนทีละ size − overlap"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ขนาด 100 overlap 20: chunk แต่ละอันทับกับกี่เอกสาร (ช่วงคำของ chunk คือ [start, start + จำนวนคำ) ทับกับ spans ถ้า s < g_end และ e > g_start) เก็บจำนวนเอกสารเฉลี่ยต่อ chunk (ปัด 2 ตำแหน่ง) ไว้ใน avg_docs_per_chunk
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      avg_docs_per_chunk = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      counts = []
+      for start, text in chunk(words, 100, 20):
+          end = start + len(text.split())
+          counts.append(sum(1 for g_start, g_end in spans.values() if start < g_end and end > g_start))
+      avg_docs_per_chunk = round(sum(counts) / len(counts), 2)
+    check: |
+      check_value(avg_docs_per_chunk, _sol["avg_docs_per_chunk"], name="avg_docs_per_chunk", tol=0.001)
+    hints:
+      - "วนทุก chunk แล้วนับ spans ที่ทับ"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ evaluate (ให้ไว้) เก็บ hit@3 ของ chunk ขนาด 30, 60 และ 200 (overlap 0) ไว้ในตัวแปร hit3_30, hit3_60, hit3_200
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+
+
+      def evaluate(size, overlap):
+          """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+          chunks = chunk(words, size, overlap)
+          starts = [s for s, _ in chunks]
+          texts = [t for _, t in chunks]
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          hit1 = hit3 = 0
+          for i, gold in enumerate(qs['gold_doc_id']):
+              g_start, g_end = spans[gold]
+              order = np.argsort(-sims[i], kind='stable')
+
+              def ok(c):
+                  s = starts[c]
+                  return s < g_end and s + len(texts[c].split()) > g_start
+
+              hit1 += ok(order[0])
+              hit3 += any(ok(c) for c in order[:3])
+          return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+      hit3_30 = ___
+      hit3_60 = ___
+      hit3_200 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+
+
+      def evaluate(size, overlap):
+          """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+          chunks = chunk(words, size, overlap)
+          starts = [s for s, _ in chunks]
+          texts = [t for _, t in chunks]
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          hit1 = hit3 = 0
+          for i, gold in enumerate(qs['gold_doc_id']):
+              g_start, g_end = spans[gold]
+              order = np.argsort(-sims[i], kind='stable')
+
+              def ok(c):
+                  s = starts[c]
+                  return s < g_end and s + len(texts[c].split()) > g_start
+
+              hit1 += ok(order[0])
+              hit3 += any(ok(c) for c in order[:3])
+          return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+      hit3_30 = evaluate(30, 0)[2]
+      hit3_60 = evaluate(60, 0)[2]
+      hit3_200 = evaluate(200, 0)[2]
+    check: |
+      check_value(hit3_30, _sol["hit3_30"], name="hit3_30", tol=0.001)
+      check_value(hit3_60, _sol["hit3_60"], name="hit3_60", tol=0.001)
+      check_value(hit3_200, _sol["hit3_200"], name="hit3_200", tol=0.001)
+    hints:
+      - "evaluate(size, 0)[2]"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ประสิทธิภาพต่อปริมาณที่ส่ง = hit@3 ÷ (3 × ขนาด ÷ 100) (ปัด 4 ตำแหน่ง, overlap 0) ของขนาด 40 และ 200 เก็บไว้ในตัวแปร eff_40, eff_200
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+
+
+      def evaluate(size, overlap):
+          """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+          chunks = chunk(words, size, overlap)
+          starts = [s for s, _ in chunks]
+          texts = [t for _, t in chunks]
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          hit1 = hit3 = 0
+          for i, gold in enumerate(qs['gold_doc_id']):
+              g_start, g_end = spans[gold]
+              order = np.argsort(-sims[i], kind='stable')
+
+              def ok(c):
+                  s = starts[c]
+                  return s < g_end and s + len(texts[c].split()) > g_start
+
+              hit1 += ok(order[0])
+              hit3 += any(ok(c) for c in order[:3])
+          return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+      eff_40 = ___
+      eff_200 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+
+
+      def evaluate(size, overlap):
+          """คืน (จำนวน chunk, hit@1, hit@3) — chunk ถูกต้องถ้าช่วงคำของมันทับกับเอกสารเฉลยอย่างน้อยหนึ่งคำ"""
+          chunks = chunk(words, size, overlap)
+          starts = [s for s, _ in chunks]
+          texts = [t for _, t in chunks]
+          vec = TfidfVectorizer(stop_words='english')
+          D = vec.fit_transform(texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          hit1 = hit3 = 0
+          for i, gold in enumerate(qs['gold_doc_id']):
+              g_start, g_end = spans[gold]
+              order = np.argsort(-sims[i], kind='stable')
+
+              def ok(c):
+                  s = starts[c]
+                  return s < g_end and s + len(texts[c].split()) > g_start
+
+              hit1 += ok(order[0])
+              hit3 += any(ok(c) for c in order[:3])
+          return len(chunks), round(hit1 / len(qs), 4), round(hit3 / len(qs), 4)
+      eff_40 = round(evaluate(40, 0)[2] / (3 * 40 / 100), 4)
+      eff_200 = round(evaluate(200, 0)[2] / (3 * 200 / 100), 4)
+    check: |
+      check_value(eff_40, _sol["eff_40"], name="eff_40", tol=0.001)
+      check_value(eff_200, _sol["eff_200"], name="eff_200", tol=0.001)
+    hints:
+      - "hit@3 หารด้วยจำนวนร้อยคำที่ส่ง"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เขียนการประเมินเอง (chunk ให้ไว้): ขนาด 60 ไม่ overlap ค้นด้วย TfidfVectorizer(stop_words="english") บนข้อความของ chunk ทุกอัน จัดอันดับด้วย cosine_similarity กับคำถามใน qs (np.argsort(-sims[i], kind="stable")) — chunk ถูกต้องถ้าช่วงคำของมันทับ spans ของเอกสารเฉลย เก็บ hit@1 และ hit@3 (ปัด 4 ตำแหน่ง) ไว้ใน hit1_60, hit3_60
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      hit1_60 = ___
+      hit3_60 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      chunks = chunk(words, 60, 0)
+      starts = [s for s, _ in chunks]
+      texts = [t for _, t in chunks]
+      vec = TfidfVectorizer(stop_words='english')
+      D = vec.fit_transform(texts)
+      sims = cosine_similarity(vec.transform(qs['question']), D)
+      h1 = h3 = 0
+      for i, gold in enumerate(qs['gold_doc_id']):
+          g_start, g_end = spans[gold]
+          order = np.argsort(-sims[i], kind='stable')
+          ok = [starts[c] < g_end and starts[c] + len(texts[c].split()) > g_start for c in order]
+          h1 += ok[0]
+          h3 += any(ok[:3])
+      hit1_60 = round(h1 / len(qs), 4)
+      hit3_60 = round(h3 / len(qs), 4)
+    check: |
+      check_value(hit1_60, _sol["hit1_60"], name="hit1_60", tol=0.001)
+      check_value(hit3_60, _sol["hit3_60"], name="hit3_60", tol=0.001)
+    hints:
+      - "ทุก chunk เรียงตามความคล้าย แล้วดูว่า 1 และ 3 อันดับแรกมี chunk ที่ถูกไหม"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เอกสารที่ถูกตัดข้ามหลาย chunk (ทับกับ chunk ตั้งแต่ 2 อันขึ้นไป) มีกี่เอกสาร เมื่อใช้ขนาด 60 ไม่ overlap (n_split_60) และขนาด 100 ไม่ overlap (n_split_100)
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      n_split_60 = ___
+      n_split_100 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      # ต่อทุกเอกสารเป็น "คู่มือ" เล่มเดียว แล้วจดว่าแต่ละเอกสารอยู่ที่คำลำดับไหนถึงไหน
+      words = []
+      spans = {}
+      for doc_id, text in zip(docs['doc_id'], docs['text']):
+          w = text.split()
+          spans[doc_id] = (len(words), len(words) + len(w))
+          words += w
+
+
+      def chunk(words, size, overlap):
+          """คืน list ของ (ตำแหน่งคำเริ่มต้น, ข้อความ) — หน้าต่างยาว size คำ เลื่อนทีละ size - overlap"""
+          step = size - overlap
+          out = []
+          for start in range(0, len(words), step):
+              out.append((start, ' '.join(words[start:start + size])))
+              if start + size >= len(words):
+                  break
+          return out
+      def n_split(size):
+          chunks = chunk(words, size, 0)
+          ranges = [(s, s + len(t.split())) for s, t in chunks]
+          return sum(1 for g_start, g_end in spans.values() if sum(1 for s, e in ranges if s < g_end and e > g_start) >= 2)
+
+
+      n_split_60 = n_split(60)
+      n_split_100 = n_split(100)
+    check: |
+      check_value(n_split_60, _sol["n_split_60"], name="n_split_60")
+      check_value(n_split_100, _sol["n_split_100"], name="n_split_100")
+    hints:
+      - "นับ chunk ที่ทับแต่ละเอกสาร ถ้า ≥ 2 แปลว่าถูกตัด"
+quiz:
+  - id: "q1"
+    question: "overlap ระหว่าง chunk มีไว้ทำไม"
+    choices:
+      - text: "เพื่อลดจำนวน chunk"
+        why: "overlap ทำให้ chunk เพิ่ม"
+      - text: "กันไม่ให้ข้อมูลสำคัญถูกตัดขาดที่รอยต่อระหว่าง chunk"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพื่อให้ค้นหาเร็วขึ้น"
+        why: "ไม่เกี่ยว"
+      - text: "เพื่อลดต้นทุน token"
+        why: "เพิ่มซ้ำซ้อน"
+  - id: "q2"
+    question: "ในตาราง chunk ขนาดทั้งเล่ม (973 คำ) ได้ hit@1 = 1.0 ข้อสรุปที่ถูกคือ"
+    choices:
+      - text: "เป็นการตั้งค่าที่ดีที่สุด"
+        why: "แพงและรกที่สุด"
+      - text: "ระบบค้นหาสมบูรณ์แบบ"
+        why: "ไม่ได้ค้นหาอะไรเลย"
+      - text: "ตัวเลขหลอกตา เพราะ chunk ใหญ่ครอบคลุมทุกเอกสาร ไม่ได้แปลว่าค้นหาเก่ง"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ควรใช้ทุกครั้ง"
+        why: "ไม่ควร"
+  - id: "q3"
+    question: "ควรเลือกขนาด chunk อย่างไร"
+    choices:
+      - text: "ใช้ 100 คำเสมอ"
+        why: "ไม่มีค่าสากล"
+      - text: "ใช้ใหญ่ที่สุดที่ context ยอม"
+        why: "แพงและรก"
+      - text: "ใช้เล็กที่สุดเสมอ"
+        why: "ตัดขาดความหมาย"
+      - text: "วัด hit@k และปริมาณข้อความที่ส่งเข้า prompt บนชุดคำถามของงานจริง แล้วเลือกจุดที่คุ้ม"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ถ้าตั้ง overlap = size จะเกิดอะไรกับ chunk แบบ sliding window ในบทนี้"
+    choices:
+      - text: "step = 0 ทำให้ range() error/วนไม่จบ ต้องให้ overlap < size"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ได้ chunk ที่ดีที่สุด"
+        why: "ไม่จริง"
+      - text: "จำนวน chunk เป็นครึ่งหนึ่ง"
+        why: "ไม่จริง"
+      - text: "ไม่มีผลอะไร"
+        why: "มีผล"
+summary:
+  - "RAG ค้นหาระดับ chunk: ตัดเอกสารด้วย size/overlap (973 คำ ขนาด 100 overlap 20 → 12 chunk) โดยให้ chunk เป็นหน่วยความหมายที่อ่านเดี่ยวๆ รู้เรื่อง"
+  - "hit@k เพิ่มตามขนาด chunk (ขนาด 200 hit@3 = 1.0, ทั้งเล่ม = 1.0) แต่เป็นเพราะครอบคลุมหลายเอกสาร — ต้องดูปริมาณที่ส่งควบคู่ (ขนาด 40: 0.75 ต่อ 100 คำ vs ขนาด 200: 0.1667)"
+  - "ไม่มีขนาดสากล เลือกจากการวัดบนคำถามจริง; overlap ต้องน้อยกว่า size"
+interview:
+  - id: "i1"
+    q: "คุณจะเลือกขนาด chunk สำหรับระบบ RAG อย่างไร"
+    a: |
+      เริ่มจากตัดตามโครงสร้างเอกสาร (หัวข้อ ย่อหน้า) แล้วจำกัดความยาว จากนั้นทดลองหลายขนาดและ overlap บนชุดคำถามที่มีเฉลย วัด hit@k/recall ของ retrieval และปริมาณ token ที่ส่งเข้า prompt พร้อมคุณภาพคำตอบ เลือกจุดที่คุ้ม ระวังตัวชี้วัดที่ดีขึ้นเพียงเพราะ chunk ใหญ่ครอบคลุมทุกอย่าง
+  - id: "i2"
+    q: "chunk เล็กเกินไปและใหญ่เกินไปมีปัญหาอะไร"
+    a: |
+      เล็กเกินไปตัดบริบทขาด ข้อมูลที่ต้องอ่านร่วมกันแยกไปอยู่คนละ chunk และมีจำนวน chunk มาก; ใหญ่เกินไปมีหลายเรื่องปน retrieval ไม่แม่นยำ สิ้นเปลือง token และสิ่งรบกวนทำให้โมเดลตอบแย่ลง
+flashcards:
+  - id: "c1"
+    front: "chunk overlap คืออะไร"
+    back: "จำนวนคำ/token ที่ซ้อนกันระหว่าง chunk ติดกัน เพื่อไม่ให้ข้อมูลสำคัญถูกตัดขาดตรงรอยต่อ"
+  - id: "c2"
+    front: "hit@k คืออะไรในงาน retrieval"
+    back: "สัดส่วนคำถามที่ผลลัพธ์อันดับ 1..k มีเอกสาร/ส่วนที่ถูกต้องอยู่ด้วย"

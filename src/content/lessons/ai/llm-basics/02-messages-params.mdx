@@ -1,0 +1,54 @@
+---
+track: ai
+module: llm-basics
+order: 2
+title: "Messages, ประวัติสนทนา และการสุ่ม (temperature)"
+minutes: 35
+prereqs: [ai/llm-basics/01-tokens-cost]
+---
+
+## คำขอ LLM คือ "list ของ messages"
+
+API แชตส่วนใหญ่รับข้อมูลเป็น list ของข้อความที่มี `role` (`user` / `assistant`) และ `content` พร้อมคำสั่งระดับระบบ (`system`) แยกต่างหาก — และ **ไม่มีความจำ**: ทุกครั้งที่เรียกต้องส่งประวัติที่จำเป็นกลับไปเองทั้งหมด
+
+```python
+request = {
+    "model": "claude-sonnet-5",
+    "max_tokens": 300,
+    "system": "You are a helpful support assistant for an online store.",
+    "messages": [
+        {"role": "user", "content": "How long does standard delivery take?"},
+    ],
+}
+# ใน notebook (ต้องมี API key):
+#   import anthropic
+#   client = anthropic.Anthropic()
+#   reply = client.messages.create(**request)
+#   reply.content[0].text, reply.usage.input_tokens, reply.usage.output_tokens
+```
+
+ข้อควรรู้: ข้อความ `user` กับ `assistant` สลับกันเสมอ, ประวัติยิ่งยาว input ยิ่งแพง จึงต้อง **ตัดประวัติให้พอดีงบ token** — วิธีพื้นฐานคือเก็บ system prompt ไว้เสมอ แล้วเก็บข้อความ **ใหม่ล่าสุด** ย้อนหลังไปเท่าที่งบพอ
+(ประวัติตัวอย่าง 5 ข้อความมี 10, 20, 30, 10, 15 token ที่งบ 60 token จะเก็บได้ 3 ข้อความหลังสุดรวม 55 token)
+
+## LLM สร้างข้อความโดย "สุ่มเลือก token ถัดไป"
+
+โมเดลให้คะแนน (logit) กับทุก token ที่เป็นไปได้ แล้วแปลงเป็นความน่าจะเป็นด้วย **softmax** ที่หารด้วย **temperature** ก่อน:
+
+```python
+def softmax(values, temperature=1.0):
+    z = values / temperature
+    z = z - z.max()          # เพื่อความเสถียรของตัวเลข
+    e = np.exp(z)
+    return e / e.sum()
+
+logits = np.array([2.0, 1.0, 0.5, 0.1])       # the, a, cat, dog
+softmax(logits, 1.0)   # [0.5745, 0.2114, 0.1282, 0.0859]
+softmax(logits, 0.5)   # [0.8282, 0.1121, 0.0412, 0.0185]  คมขึ้น
+softmax(logits, 2.0)   # [0.4056, 0.2460, 0.1916, 0.1569]  แบนลง
+```
+
+- **temperature ต่ำ** → ความน่าจะเป็นกระจุกที่ตัวเลือกอันดับหนึ่ง คำตอบนิ่ง/ซ้ำได้ ("the" ถูกเลือก 99.6% ของ 1,000 ครั้งที่ T = 0.2 เทียบ 58.2% ที่ T = 1.0 เมื่อสุ่มด้วย seed 42)
+- **temperature สูง** → หลากหลายและเสี่ยงหลุดประเด็นมากขึ้น
+- **top-k** เก็บเฉพาะ k ตัวเลือกแรกแล้วปรับให้ผลรวมเป็น 1 · **top-p (nucleus)** เก็บชุดเล็กสุดที่ความน่าจะเป็นสะสม ≥ p (ตัวอย่างนี้ p = 0.9 ได้ 3 ตัวเลือก: the, a, cat)
+
+งานที่ต้องการความถูกต้อง (สกัดข้อมูล, ตอบจากเอกสาร) ใช้ temperature ต่ำ; งานสร้างสรรค์ใช้สูงกว่า — แต่ต่ำก็ไม่การันตีว่าผลเหมือนเดิมทุกครั้งเสมอไป (ขึ้นกับผู้ให้บริการ) จึงควรเก็บผลที่ต้องการทำซ้ำได้ไว้ (cache) แทนการหวังให้สุ่มซ้ำได้เหมือนเดิม

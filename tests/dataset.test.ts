@@ -93,3 +93,18 @@ it('ml_customers.csv สอดคล้องกับตารางหลั�
   expect(repeated).toBe(one('SELECT COUNT(*) FROM (SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) >= 2)'));
   expect(new Set(rows.map((r) => r[0])).size).toBe(rows.length);
 });
+
+it('kb_docs.csv / kb_questions.csv เชื่อมกันครบ (สร้างจาก scripts/generate_kb_dataset.py)', () => {
+  const parseLine = (line: string) => [...line.matchAll(/("([^"]|"")*"|[^,]*)(,|$)/g)].slice(0, -1).map((m) => m[1].replace(/^"|"$/g, '').replace(/""/g, '"'));
+  const read = (f: string) => readFileSync(`public/data/${f}`, 'utf8').trim().split('\n').map(parseLine);
+  const docs = read('kb_docs.csv');
+  const qs = read('kb_questions.csv');
+  expect(docs[0]).toEqual(['doc_id', 'title', 'category', 'text']);
+  expect(qs[0]).toEqual(['question_id', 'question', 'gold_doc_id']);
+  const docIds = docs.slice(1).map((r) => r[0]);
+  expect(docIds).toHaveLength(24);
+  expect(new Set(docIds).size).toBe(24);
+  expect(qs).toHaveLength(31);
+  for (const [, , gold] of qs.slice(1)) expect(docIds, gold).toContain(gold);
+  expect(new Set(qs.slice(1).map((r) => r[2])).size).toBeGreaterThanOrEqual(20);
+});

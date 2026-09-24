@@ -1,0 +1,2822 @@
+goals:
+  - "เขียน agent loop ที่ต่อประวัติ tool_use / tool_result และหยุดเมื่อโมเดลตอบข้อความสุดท้ายหรือครบ max_steps"
+  - "จับคู่ tool_use กับ tool_result ด้วย id และสร้าง/อ่าน trace ของลูป"
+  - "อธิบายผลของประวัติที่โตขึ้นต่อต้นทุน และรับมือ error ของเครื่องมือในลูป"
+examples:
+  - id: "x1"
+    title: "รัน agent แบบหนึ่งเครื่องมือ"
+    lang: "python"
+    prompt: |
+      ให้ mock_model ขอเรียก get_order แล้วสรุป
+    steps:
+      - text: |
+          รอบแรกโมเดลขอเรียก get_order(order_id=1)
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+          import re
+
+          TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+          def make_plan(text):
+              """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+              plan = []
+              for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+                  tool, arg = TOOL_FOR[kind.lower()]
+                  plan.append({'name': tool, 'input': {arg: int(number)}})
+              return plan
+
+
+          def mock_model(messages):
+              """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+              plan = make_plan(messages[0]['content'])
+              results = [json.loads(m['content'][0]['content']) for m in messages
+                         if m['role'] == 'user' and isinstance(m['content'], list)]
+              if len(results) < len(plan):
+                  step = plan[len(results)]
+                  return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+              if not plan:
+                  return {'type': 'text', 'text': "Sorry, I can't help with that."}
+              parts = []
+              for r in results:
+                  if not r['ok']:
+                      parts.append('A tool call failed: ' + r['error'] + '.')
+                  elif isinstance(r['result'], int):
+                      parts.append(f"That customer has {r['result']} orders.")
+                  elif 'error' in r['result']:
+                      parts.append('I could not find that order.')
+                  else:
+                      parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+              return {'type': 'text', 'text': ' '.join(parts)}
+
+
+          def looping_model(messages):
+              """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+              return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+          mock_model([{'role': 'user', 'content': 'Where is order 1?'}])
+      - text: |
+          รันทั้งลูป: ตอบ "Order 1 is completed." ใช้ 2 รอบ ประวัติ 4 ข้อความ
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+          import re
+
+          TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+          def make_plan(text):
+              """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+              plan = []
+              for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+                  tool, arg = TOOL_FOR[kind.lower()]
+                  plan.append({'name': tool, 'input': {arg: int(number)}})
+              return plan
+
+
+          def mock_model(messages):
+              """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+              plan = make_plan(messages[0]['content'])
+              results = [json.loads(m['content'][0]['content']) for m in messages
+                         if m['role'] == 'user' and isinstance(m['content'], list)]
+              if len(results) < len(plan):
+                  step = plan[len(results)]
+                  return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+              if not plan:
+                  return {'type': 'text', 'text': "Sorry, I can't help with that."}
+              parts = []
+              for r in results:
+                  if not r['ok']:
+                      parts.append('A tool call failed: ' + r['error'] + '.')
+                  elif isinstance(r['result'], int):
+                      parts.append(f"That customer has {r['result']} orders.")
+                  elif 'error' in r['result']:
+                      parts.append('I could not find that order.')
+                  else:
+                      parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+              return {'type': 'text', 'text': ' '.join(parts)}
+
+
+          def looping_model(messages):
+              """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+              return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+          def run_agent(question, model, max_steps=5):
+              messages = [{'role': 'user', 'content': question}]
+              for step in range(1, max_steps + 1):
+                  block = model(messages)
+                  messages.append({'role': 'assistant', 'content': [block]})
+                  if block['type'] == 'text':
+                      return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+                  result = dispatch({'name': block['name'], 'input': block['input']})
+                  messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+              return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+          out = run_agent('Where is order 1?', mock_model)
+          out['final'], out['steps'], out['stopped'], len(out['messages'])
+    pitfall:
+      text: |
+        ไม่ใส่ max_steps ในลูป agent — เมื่อโมเดลวนขอเครื่องมือซ้ำ ลูปไม่จบและเสียเงินทุกรอบ ตั้งเพดานจำนวนรอบเสมอ และคืนสถานะที่บอกว่าหยุดเพราะเพดาน
+  - id: "x2"
+    title: "หลายเครื่องมือและ error"
+    lang: "python"
+    prompt: |
+      คำถามสองส่วน และออเดอร์ที่ไม่มีอยู่
+    steps:
+      - text: |
+          คำถามสองส่วนใช้ 3 รอบ เรียก count_orders แล้ว get_order
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+          import re
+
+          TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+          def make_plan(text):
+              """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+              plan = []
+              for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+                  tool, arg = TOOL_FOR[kind.lower()]
+                  plan.append({'name': tool, 'input': {arg: int(number)}})
+              return plan
+
+
+          def mock_model(messages):
+              """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+              plan = make_plan(messages[0]['content'])
+              results = [json.loads(m['content'][0]['content']) for m in messages
+                         if m['role'] == 'user' and isinstance(m['content'], list)]
+              if len(results) < len(plan):
+                  step = plan[len(results)]
+                  return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+              if not plan:
+                  return {'type': 'text', 'text': "Sorry, I can't help with that."}
+              parts = []
+              for r in results:
+                  if not r['ok']:
+                      parts.append('A tool call failed: ' + r['error'] + '.')
+                  elif isinstance(r['result'], int):
+                      parts.append(f"That customer has {r['result']} orders.")
+                  elif 'error' in r['result']:
+                      parts.append('I could not find that order.')
+                  else:
+                      parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+              return {'type': 'text', 'text': ' '.join(parts)}
+
+
+          def looping_model(messages):
+              """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+              return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+          def run_agent(question, model, max_steps=5):
+              messages = [{'role': 'user', 'content': question}]
+              for step in range(1, max_steps + 1):
+                  block = model(messages)
+                  messages.append({'role': 'assistant', 'content': [block]})
+                  if block['type'] == 'text':
+                      return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+                  result = dispatch({'name': block['name'], 'input': block['input']})
+                  messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+              return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+          out = run_agent('How many orders does customer 675 have and what is the status of order 1?', mock_model)
+          out['final'], out['steps']
+      - text: |
+          ออเดอร์ที่ไม่มีอยู่: เครื่องมือคืน error เป็นข้อมูล โมเดลตอบว่าหาไม่พบ (ลูปไม่ล้ม)
+        code: |
+          import json
+
+          import pandas as pd
+
+          orders = pd.read_csv("data/orders.csv")
+          products = pd.read_csv("data/products.csv")
+
+
+          def get_order(order_id: int) -> dict:
+              """Look up an order by id"""
+              row = orders[orders['order_id'] == order_id]
+              if row.empty:
+                  return {'error': 'order not found'}
+              r = row.iloc[0]
+              return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+          def count_orders(customer_id: int, status: str = None) -> int:
+              """Count orders of a customer, optionally by status"""
+              sel = orders[orders['customer_id'] == customer_id]
+              if status is not None:
+                  sel = sel[sel['status'] == status]
+              return int(len(sel))
+
+
+          def get_product(product_id: int) -> dict:
+              """Look up a product by id"""
+              row = products[products['product_id'] == product_id]
+              if row.empty:
+                  return {'error': 'product not found'}
+              r = row.iloc[0]
+              return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+          REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+          TYPES = {'integer': int, 'string': str}
+
+          TOOL_SCHEMAS = [
+              {'name': 'get_order', 'description': 'Look up an order by id',
+               'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+              {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+               'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+              {'name': 'get_product', 'description': 'Look up a product by id',
+               'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+          ]
+
+
+          def dispatch(call):
+              """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+              name, args = call['name'], call.get('input', {})
+              if name not in REGISTRY:
+                  return {'ok': False, 'error': 'unknown tool: ' + name}
+              schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+              for arg in schema['required']:
+                  if arg not in args:
+                      return {'ok': False, 'error': 'missing argument: ' + arg}
+              for arg, value in args.items():
+                  expected = schema['properties'].get(arg, {}).get('type')
+                  if expected is None:
+                      return {'ok': False, 'error': 'unexpected argument: ' + arg}
+                  if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                      return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+              try:
+                  return {'ok': True, 'result': REGISTRY[name](**args)}
+              except Exception as e:
+                  return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+          import re
+
+          TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+          def make_plan(text):
+              """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+              plan = []
+              for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+                  tool, arg = TOOL_FOR[kind.lower()]
+                  plan.append({'name': tool, 'input': {arg: int(number)}})
+              return plan
+
+
+          def mock_model(messages):
+              """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+              plan = make_plan(messages[0]['content'])
+              results = [json.loads(m['content'][0]['content']) for m in messages
+                         if m['role'] == 'user' and isinstance(m['content'], list)]
+              if len(results) < len(plan):
+                  step = plan[len(results)]
+                  return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+              if not plan:
+                  return {'type': 'text', 'text': "Sorry, I can't help with that."}
+              parts = []
+              for r in results:
+                  if not r['ok']:
+                      parts.append('A tool call failed: ' + r['error'] + '.')
+                  elif isinstance(r['result'], int):
+                      parts.append(f"That customer has {r['result']} orders.")
+                  elif 'error' in r['result']:
+                      parts.append('I could not find that order.')
+                  else:
+                      parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+              return {'type': 'text', 'text': ' '.join(parts)}
+
+
+          def looping_model(messages):
+              """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+              return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+          def run_agent(question, model, max_steps=5):
+              messages = [{'role': 'user', 'content': question}]
+              for step in range(1, max_steps + 1):
+                  block = model(messages)
+                  messages.append({'role': 'assistant', 'content': [block]})
+                  if block['type'] == 'text':
+                      return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+                  result = dispatch({'name': block['name'], 'input': block['input']})
+                  messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+              return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+          out = run_agent('Where is order 999999?', mock_model)
+          out['final'], out['steps']
+    pitfall:
+      text: |
+        ให้ลูปล้มเมื่อเครื่องมือคืน error — ตัวโมเดลควรเห็น error เป็นข้อความ (observation) แล้วตัดสินใจต่อ (แก้อาร์กิวเมนต์ ลองเครื่องมืออื่น หรือแจ้งผู้ใช้)
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      สร้างข้อความ tool_result ที่ตอบกลับคำขอที่มี id "tu_1" ด้วย content = "ok" แล้วเก็บ id ที่ใช้จับคู่ไว้ในตัวแปร pair_id เติม `___` ให้ครบ
+    starter: |
+      msg = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'tu_1', 'content': 'ok'}]}
+      pair_id = msg['content'][0]['___']
+    solution: |
+      msg = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'tu_1', 'content': 'ok'}]}
+      pair_id = msg['content'][0]['tool_use_id']
+    check: |
+      check_value(pair_id, _sol["pair_id"], name="pair_id")
+    hints:
+      - "คีย์ที่ใช้จับคู่คือ tool_use_id"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      เรียก mock_model กับ messages ที่มีข้อความ user เดียว "Where is order 1?" — เก็บชื่อเครื่องมือที่ขอไว้ใน first_tool และหมายเลขออเดอร์ที่ส่งไปไว้ใน first_order_id
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      first_tool = ___
+      first_order_id = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      block = mock_model([{'role': 'user', 'content': 'Where is order 1?'}])
+      first_tool = block['name']
+      first_order_id = block['input']['order_id']
+    check: |
+      check_value(first_tool, _sol["first_tool"], name="first_tool")
+      check_value(first_order_id, _sol["first_order_id"], name="first_order_id")
+    hints:
+      - "block[\"name\"] และ block[\"input\"]"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ถ้าคำถามคือ "Hello" (ไม่มี order/customer) mock_model ตอบเป็นชนิด (type) อะไร เก็บไว้ใน hello_type และข้อความไว้ใน hello_text
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      hello_type = ___
+      hello_text = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      block = mock_model([{'role': 'user', 'content': 'Hello'}])
+      hello_type = block['type']
+      hello_text = block['text']
+    check: |
+      check_value(hello_type, _sol["hello_type"], name="hello_type")
+      check_value(hello_text, _sol["hello_text"], name="hello_text")
+    hints:
+      - "block[\"type\"] และ block[\"text\"]"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      make_plan (ให้ไว้) กับคำถามที่ให้ไว้ วางแผนเรียกกี่เครื่องมือ (n_planned) และชื่อเครื่องมือตามลำดับเป็น list (planned_tools)
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      n_planned = ___
+      planned_tools = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      plan = make_plan(question)
+      n_planned = len(plan)
+      planned_tools = [p['name'] for p in plan]
+    check: |
+      check_value(n_planned, _sol["n_planned"], name="n_planned")
+      check_value(planned_tools, _sol["planned_tools"], name="planned_tools")
+    hints:
+      - "make_plan(question) คืน list ของ dict"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      สร้างข้อความ tool_result ของ user สำหรับคำขอ id "tu_7" ที่ผลเป็น {"ok": True, "result": 14}: {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tu_7", "content": <json.dumps ของผล>}]} เก็บ content ที่เป็นสตริงไว้ใน tool_content และ role ไว้ใน msg_role
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      tool_content = ___
+      msg_role = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      msg = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'tu_7', 'content': json.dumps({'ok': True, 'result': 14})}]}
+      tool_content = msg['content'][0]['content']
+      msg_role = msg['role']
+    check: |
+      check_value(tool_content, _sol["tool_content"], name="tool_content")
+      check_value(msg_role, _sol["msg_role"], name="msg_role")
+    hints:
+      - "json.dumps(dict)"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เขียน run_agent(question, model, max_steps=5) ตามที่เรียนแล้วรันกับ "Where is order 1?" และ mock_model: เก็บข้อความสุดท้ายไว้ใน final_text, จำนวนรอบไว้ใน steps และจำนวนข้อความในประวัติไว้ใน n_messages
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      final_text = ___
+      steps = ___
+      n_messages = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return block['text'], step, messages
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return None, max_steps, messages
+
+
+      final_text, steps, messages = run_agent('Where is order 1?', mock_model)
+      n_messages = len(messages)
+    check: |
+      check_value(final_text, _sol["final_text"], name="final_text")
+      check_value(steps, _sol["steps"], name="steps")
+      check_value(n_messages, _sol["n_messages"], name="n_messages")
+    hints:
+      - "วนเรียกโมเดล ถ้าเป็น text จบ ไม่งั้น dispatch แล้วต่อ tool_result"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใช้ run_agent (ให้ไว้ คืน dict) กับคำถามสองส่วน (question ที่ให้ไว้): เก็บข้อความสุดท้ายไว้ใน final_text, จำนวนรอบไว้ใน steps และชื่อเครื่องมือที่ถูกเรียกตามลำดับ (จาก block ชนิด tool_use ในประวัติ assistant) เป็น list ไว้ใน tools_called
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      final_text = ___
+      steps = ___
+      tools_called = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      out = run_agent(question, mock_model)
+      final_text = out['final']
+      steps = out['steps']
+      tools_called = [m['content'][0]['name'] for m in out['messages'] if m['role'] == 'assistant' and m['content'][0]['type'] == 'tool_use']
+    check: |
+      check_value(final_text, _sol["final_text"], name="final_text")
+      check_value(steps, _sol["steps"], name="steps")
+      check_value(tools_called, _sol["tools_called"], name="tools_called")
+    hints:
+      - "กรอง assistant ที่ content[0]['type'] == 'tool_use'"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ถามหาออเดอร์ที่ไม่มีอยู่ "Where is order 999999?" ด้วย run_agent (ให้ไว้): เก็บข้อความสุดท้ายไว้ใน final_missing และจำนวนรอบไว้ใน steps_missing
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      final_missing = ___
+      steps_missing = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      out = run_agent('Where is order 999999?', mock_model)
+      final_missing = out['final']
+      steps_missing = out['steps']
+    check: |
+      check_value(final_missing, _sol["final_missing"], name="final_missing")
+      check_value(steps_missing, _sol["steps_missing"], name="steps_missing")
+    hints:
+      - "เรียก run_agent แล้วอ่านคีย์ final และ steps"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      ใช้ looping_model (ขอเครื่องมือเดิมไม่จบ) กับ run_agent (ให้ไว้) ที่ max_steps = 4: เก็บเหตุผลที่หยุด (stopped) ไว้ใน stopped_reason, จำนวนรอบไว้ใน steps_used, ข้อความสุดท้ายไว้ใน final_value และจำนวนข้อความในประวัติไว้ใน n_messages
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      stopped_reason = ___
+      steps_used = ___
+      final_value = ___
+      n_messages = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      out = run_agent('loop forever', looping_model, max_steps=4)
+      stopped_reason = out['stopped']
+      steps_used = out['steps']
+      final_value = out['final']
+      n_messages = len(out['messages'])
+    check: |
+      check_value(stopped_reason, _sol["stopped_reason"], name="stopped_reason")
+      check_value(steps_used, _sol["steps_used"], name="steps_used")
+      check_value(final_value, _sol["final_value"], name="final_value")
+      check_value(n_messages, _sol["n_messages"], name="n_messages")
+    hints:
+      - "ตั้ง max_steps=4 แล้วอ่านผลลัพธ์"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      สรุป trace ของคำถามสองส่วน: จากประวัติของ run_agent (ให้ไว้) แปลงแต่ละข้อความเป็น (role, ชนิด) โดยชนิดคือ "text" ถ้า content เป็นสตริงหรือ block ชนิด text, "tool_use" หรือ "tool_result" ตามชนิดของ block แรก เก็บเป็น list ของ tuple ไว้ใน trace และนับจำนวน tool_result ไว้ใน n_tool_results
+    starter: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      trace = ___
+      n_tool_results = ___
+    solution: |
+      import json
+
+      import pandas as pd
+
+      orders = pd.read_csv("data/orders.csv")
+      products = pd.read_csv("data/products.csv")
+
+
+      def get_order(order_id: int) -> dict:
+          """Look up an order by id"""
+          row = orders[orders['order_id'] == order_id]
+          if row.empty:
+              return {'error': 'order not found'}
+          r = row.iloc[0]
+          return {'order_id': int(r['order_id']), 'customer_id': int(r['customer_id']), 'status': r['status'], 'order_date': r['order_date']}
+
+
+      def count_orders(customer_id: int, status: str = None) -> int:
+          """Count orders of a customer, optionally by status"""
+          sel = orders[orders['customer_id'] == customer_id]
+          if status is not None:
+              sel = sel[sel['status'] == status]
+          return int(len(sel))
+
+
+      def get_product(product_id: int) -> dict:
+          """Look up a product by id"""
+          row = products[products['product_id'] == product_id]
+          if row.empty:
+              return {'error': 'product not found'}
+          r = row.iloc[0]
+          return {'product_id': int(r['product_id']), 'name': r['product_name'], 'category': r['category'], 'price': float(r['price'])}
+
+
+      REGISTRY = {'get_order': get_order, 'count_orders': count_orders, 'get_product': get_product}
+      TYPES = {'integer': int, 'string': str}
+
+      TOOL_SCHEMAS = [
+          {'name': 'get_order', 'description': 'Look up an order by id',
+           'input_schema': {'type': 'object', 'properties': {'order_id': {'type': 'integer'}}, 'required': ['order_id']}},
+          {'name': 'count_orders', 'description': 'Count orders of a customer, optionally by status',
+           'input_schema': {'type': 'object', 'properties': {'customer_id': {'type': 'integer'}, 'status': {'type': 'string'}}, 'required': ['customer_id']}},
+          {'name': 'get_product', 'description': 'Look up a product by id',
+           'input_schema': {'type': 'object', 'properties': {'product_id': {'type': 'integer'}}, 'required': ['product_id']}},
+      ]
+
+
+      def dispatch(call):
+          """รับ {'name': ..., 'input': {...}} คืน {'ok': True, 'result': ...} หรือ {'ok': False, 'error': ...}"""
+          name, args = call['name'], call.get('input', {})
+          if name not in REGISTRY:
+              return {'ok': False, 'error': 'unknown tool: ' + name}
+          schema = next(s for s in TOOL_SCHEMAS if s['name'] == name)['input_schema']
+          for arg in schema['required']:
+              if arg not in args:
+                  return {'ok': False, 'error': 'missing argument: ' + arg}
+          for arg, value in args.items():
+              expected = schema['properties'].get(arg, {}).get('type')
+              if expected is None:
+                  return {'ok': False, 'error': 'unexpected argument: ' + arg}
+              if not isinstance(value, TYPES[expected]) or isinstance(value, bool):
+                  return {'ok': False, 'error': f'bad type for {arg}: expected {expected}'}
+          try:
+              return {'ok': True, 'result': REGISTRY[name](**args)}
+          except Exception as e:
+              return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+      import re
+
+      TOOL_FOR = {'order': ('get_order', 'order_id'), 'customer': ('count_orders', 'customer_id')}
+
+
+      def make_plan(text):
+          """ตัวแทนความสามารถของโมเดล (สคริปต์ ไม่ใช่โมเดลจริง): หา 'order N' / 'customer N' ตามลำดับที่ปรากฏ"""
+          plan = []
+          for kind, number in re.findall(r"(order|customer) (\d+)", text, re.I):
+              tool, arg = TOOL_FOR[kind.lower()]
+              plan.append({'name': tool, 'input': {arg: int(number)}})
+          return plan
+
+
+      def mock_model(messages):
+          """จำลองโมเดล: ขอเรียกเครื่องมือตามแผนทีละอัน พอครบแล้วสรุปเป็นข้อความ"""
+          plan = make_plan(messages[0]['content'])
+          results = [json.loads(m['content'][0]['content']) for m in messages
+                     if m['role'] == 'user' and isinstance(m['content'], list)]
+          if len(results) < len(plan):
+              step = plan[len(results)]
+              return {'type': 'tool_use', 'id': f'tu_{len(results) + 1}', 'name': step['name'], 'input': step['input']}
+          if not plan:
+              return {'type': 'text', 'text': "Sorry, I can't help with that."}
+          parts = []
+          for r in results:
+              if not r['ok']:
+                  parts.append('A tool call failed: ' + r['error'] + '.')
+              elif isinstance(r['result'], int):
+                  parts.append(f"That customer has {r['result']} orders.")
+              elif 'error' in r['result']:
+                  parts.append('I could not find that order.')
+              else:
+                  parts.append(f"Order {r['result']['order_id']} is {r['result']['status']}.")
+          return {'type': 'text', 'text': ' '.join(parts)}
+
+
+      def looping_model(messages):
+          """โมเดลที่ไม่ยอมจบ: ขอเรียกเครื่องมือเดิมซ้ำตลอด"""
+          return {'type': 'tool_use', 'id': f'tu_{len(messages)}', 'name': 'get_order', 'input': {'order_id': 1}}
+
+
+      def run_agent(question, model, max_steps=5):
+          messages = [{'role': 'user', 'content': question}]
+          for step in range(1, max_steps + 1):
+              block = model(messages)
+              messages.append({'role': 'assistant', 'content': [block]})
+              if block['type'] == 'text':
+                  return {'final': block['text'], 'steps': step, 'stopped': 'done', 'messages': messages}
+              result = dispatch({'name': block['name'], 'input': block['input']})
+              messages.append({'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps(result)}]})
+          return {'final': None, 'steps': max_steps, 'stopped': 'max_steps', 'messages': messages}
+      question = "How many orders does customer 675 have and what is the status of order 1?"
+      out = run_agent(question, mock_model)
+      trace = []
+      for m in out['messages']:
+          if isinstance(m['content'], str):
+              kind = 'text'
+          else:
+              kind = m['content'][0]['type']
+          trace.append((m['role'], kind))
+      n_tool_results = sum(1 for _, k in trace if k == 'tool_result')
+    check: |
+      check_value(trace, _sol["trace"], name="trace")
+      check_value(n_tool_results, _sol["n_tool_results"], name="n_tool_results")
+    hints:
+      - "content เป็น str หรือ list ของ block — ดู type ของ block แรก"
+quiz:
+  - id: "q1"
+    question: "ทำไม agent loop ต้องมี max_steps"
+    choices:
+      - text: "เพื่อให้โมเดลฉลาดขึ้น"
+        why: "ไม่เกี่ยว"
+      - text: "กันโมเดลที่วนขอเครื่องมือซ้ำไม่จบ ซึ่งจะเผาเงินและเวลา"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ API บังคับ"
+        why: "API ไม่บังคับ ต้องเขียนเอง"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็น"
+  - id: "q2"
+    question: "tool_use_id ของ tool_result ต้องเป็นอะไร"
+    choices:
+      - text: "เลขสุ่มใดๆ"
+        why: "ต้องจับคู่"
+      - text: "ชื่อของเครื่องมือ"
+        why: "ต้องเป็น id"
+      - text: "ตรงกับ id ของคำขอ tool_use ที่มันตอบ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ว่างเปล่า"
+        why: "ต้องมี"
+  - id: "q3"
+    question: "เมื่อ get_order คืน error \"order not found\" ในลูป ควรเกิดอะไรขึ้น"
+    choices:
+      - text: "โปรแกรมล้ม"
+        why: "ไม่นุ่มนวล"
+      - text: "เรียกซ้ำไม่จำกัด"
+        why: "อันตราย"
+      - text: "ซ่อน error"
+        why: "ทำให้โมเดลเข้าใจผิด"
+      - text: "ส่ง error เป็น observation ให้โมเดลตัดสินใจต่อ (เช่น แจ้งว่าหาไม่พบ) ลูปไม่ล้ม"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ทำไมต้นทุนของ agent จึงโตเร็วกว่าจำนวนรอบ"
+    choices:
+      - text: "ทุกรอบต้องส่งประวัติทั้งหมดกลับไป ประวัติจึงยาวขึ้นเรื่อยๆ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะราคาต่อ token เพิ่มขึ้นเอง"
+        why: "ไม่จริง"
+      - text: "เพราะเครื่องมือแพง"
+        why: "ไม่ใช่เหตุผลหลัก"
+      - text: "ไม่โตเร็วกว่า"
+        why: "โตเร็วกว่าเส้นตรง"
+summary:
+  - "Agent loop: เรียกโมเดล → ถ้าขอเครื่องมือ ให้ dispatch แล้วต่อ tool_result (id ตรงกัน) → วนจนได้ข้อความสุดท้ายหรือครบ max_steps (ต้องมี max_steps เสมอ)"
+  - "ตัวอย่าง: \"Where is order 1?\" ใช้ 2 รอบ 4 ข้อความ; คำถามสองส่วนใช้ 3 รอบ (count_orders(675) = 14); ออเดอร์ที่ไม่มีอยู่เป็น observation ไม่ทำให้ลูปล้ม"
+  - "ประวัติสะสมทำให้ต้นทุนโตเร็วกว่าจำนวนรอบ (โมเดลในบทนี้เป็นสคริปต์จำลอง ส่วนเครื่องมือและ dispatcher เป็นของจริงบนตาราง orders)"
+interview:
+  - id: "i1"
+    q: "อธิบายว่า agent ต่างจากการเรียก LLM ครั้งเดียวอย่างไร"
+    a: |
+      agent เรียกโมเดลเป็นลูป: โมเดลตัดสินใจว่าจะตอบเลยหรือเรียกเครื่องมือ โค้ดรันเครื่องมือแล้วส่งผลกลับให้โมเดลเห็น วนจนได้คำตอบ จึงทำงานที่ต้องหาข้อมูลหลายขั้นได้ แต่แลกกับต้นทุน ความช้า และความเสี่ยงที่ต้องควบคุม (จำนวนรอบ สิทธิ์ของเครื่องมือ)
+  - id: "i2"
+    q: "คุณจะดีบัก agent ที่ให้คำตอบผิดอย่างไร"
+    a: |
+      ดู trace ทั้งลำดับ (ข้อความ tool_use อาร์กิวเมนต์ tool_result) ว่าโมเดลเลือกเครื่องมือ/อาร์กิวเมนต์ถูกไหม เครื่องมือคืนอะไร โมเดลตีความผลผิดหรือไม่ แล้วแก้ที่ต้นเหตุ (description ของเครื่องมือ รูปแบบผลลัพธ์ prompt) และเก็บกรณีที่ผิดไว้เป็นชุดทดสอบ
+flashcards:
+  - id: "c1"
+    front: "เงื่อนไขหยุดของ agent loop มีอะไรบ้าง"
+    back: "โมเดลตอบเป็นข้อความสุดท้าย, ครบ max_steps, (และอาจมีงบ token/เวลา หรือ error ร้ายแรง)"
+  - id: "c2"
+    front: "tool_use กับ tool_result ต่างกันอย่างไร"
+    back: "tool_use คือคำขอเรียกเครื่องมือจากโมเดล (id, name, input) ส่วน tool_result คือผลที่โค้ดส่งกลับ (tool_use_id, content)"

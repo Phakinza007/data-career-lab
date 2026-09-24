@@ -1,0 +1,684 @@
+goals:
+  - "ประมาณจำนวน token และคำนวณต้นทุนของคำขอ LLM (input/output แยกกัน)"
+  - "เข้าใจ context window เป็นงบ token และเห็นว่าทำไมจึงไม่ควรยัดทุกอย่างเข้า prompt"
+  - "อธิบายแนวคิด subword/BPE ได้ด้วยตัวอย่างที่คำนวณเอง"
+examples:
+  - id: "x1"
+    title: "ประมาณ token และต้นทุน"
+    lang: "python"
+    prompt: |
+      ใช้ตัวประมาณกับฐานความรู้ร้านค้า (kb_docs) แล้วคิดเป็นเงิน
+    steps:
+      - text: |
+          ประมาณ token ของทุกเอกสารด้วยกฎ 4 ตัวอักษร — ผลรวม 1,398 เฉลี่ย ≈ 58 ต่อเอกสาร
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+          PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def toy_tokens(text):
+              return re.findall(r"\w+|[^\w\s]", text)
+          tok = docs['text'].map(est_tokens)
+          int(tok.sum()), round(tok.mean(), 2)
+      - text: |
+          ต้นทุนของคำขอหนึ่งครั้ง: input 1,200 + output 300 token → 0.0081 USD (ที่ราคาสมมติ)
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+          PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def toy_tokens(text):
+              return re.findall(r"\w+|[^\w\s]", text)
+          round(1200 * PRICE_IN / 1e6 + 300 * PRICE_OUT / 1e6, 6)
+    pitfall:
+      text: |
+        คิดต้นทุนจาก input อย่างเดียวหรือนับคำแทน token — output แพงกว่า input หลายเท่า และ token ไม่เท่ากับคำ ให้คิดแยก input/output และใช้ค่า usage ที่ API รายงานเป็นตัวจริง
+  - id: "x2"
+    title: "ยัดทุกอย่าง vs ดึงเฉพาะที่เกี่ยว"
+    lang: "python"
+    prompt: |
+      เทียบขนาด prompt ตอนยัดทั้งฐานความรู้กับตอนใส่แค่ 3 เอกสาร
+    steps:
+      - text: |
+          ยัดทุกเอกสารเข้า prompt ≈ 1,405 token ส่วนใส่ 3 เอกสารแรก ≈ 198 token (คำถามข้อแรกต่อท้าย)
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+          PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def toy_tokens(text):
+              return re.findall(r"\w+|[^\w\s]", text)
+          question = qs['question'][0]
+          all_docs = ' '.join(docs['text'])
+          first3 = ' '.join(docs['text'][:3])
+          est_tokens(all_docs + question), est_tokens(first3 + question)
+      - text: |
+          ต้นทุน input ต่อคำถาม (ราคาสมมติ): ≈ 0.0042 เทียบ 0.0006 USD
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import math
+          import re
+
+          PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+          PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+          def est_tokens(text):
+              return math.ceil(len(text) / 4)
+
+
+          def toy_tokens(text):
+              return re.findall(r"\w+|[^\w\s]", text)
+          question = qs['question'][0]
+          n_all = est_tokens(' '.join(docs['text']) + question)
+          n_3 = est_tokens(' '.join(docs['text'][:3]) + question)
+          round(n_all * PRICE_IN / 1e6, 6), round(n_3 * PRICE_IN / 1e6, 6)
+    pitfall:
+      text: |
+        สรุปว่า 'context window ใหญ่พอ ยัดทุกอย่างไปเลย' — แม้จะใส่ได้ แต่จ่ายทุกครั้งที่เรียก ช้าลง และข้อมูลไม่เกี่ยวข้องอาจทำให้คำตอบแย่ลง ดึงเฉพาะส่วนที่ต้องใช้
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      คำนวณต้นทุนของคำขอที่ใช้ input 2,000 token และ output 500 token เก็บไว้ในตัวแปร call_cost เติม `___` ให้ครบ
+    starter: |
+      PRICE_IN = 3.0
+      PRICE_OUT = 15.0
+
+      call_cost = 2000 * PRICE_IN / 1e6 + 500 * ___ / 1e6
+    solution: |
+      PRICE_IN = 3.0
+      PRICE_OUT = 15.0
+
+      call_cost = 2000 * PRICE_IN / 1e6 + 500 * PRICE_OUT / 1e6
+    check: |
+      check_value(call_cost, _sol["call_cost"], name="call_cost", tol=1e-09)
+    hints:
+      - "output token คิดราคาด้วย PRICE_OUT"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ฐานความรู้ kb_docs มีกี่คำรวมกันทุกเอกสาร (นับด้วย split() ของคอลัมน์ text) เก็บไว้ในตัวแปร total_words
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      total_words = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      total_words = int(docs['text'].str.split().str.len().sum())
+    check: |
+      check_value(total_words, _sol["total_words"], name="total_words")
+    hints:
+      - "str.split().str.len().sum()"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      ประมาณ token ของเอกสาร d01 ด้วยฟังก์ชัน est_tokens ที่ให้ไว้ เก็บไว้ในตัวแปร tokens_d01
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      tokens_d01 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      text = docs.loc[docs['doc_id'] == 'd01', 'text'].iloc[0]
+      tokens_d01 = est_tokens(text)
+    check: |
+      check_value(tokens_d01, _sol["tokens_d01"], name="tokens_d01")
+    hints:
+      - "กรอง doc_id == \"d01\" แล้วส่งข้อความให้ est_tokens"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำถามแรกใน qs ถูกตัดเป็นกี่ token ด้วย toy_tokens เก็บไว้ในตัวแปร n_toy_tokens
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      n_toy_tokens = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      n_toy_tokens = len(toy_tokens(qs['question'][0]))
+    check: |
+      check_value(n_toy_tokens, _sol["n_toy_tokens"], name="n_toy_tokens")
+    hints:
+      - "len(toy_tokens(...))"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      คำขอหนึ่งครั้งใช้ input 1,200 token และ output 300 token ต้นทุนเป็น USD เท่าไร (ราคา PRICE_IN, PRICE_OUT ที่ให้ไว้ ปัด 6 ตำแหน่ง) เก็บไว้ในตัวแปร call_cost
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      call_cost = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      call_cost = round(1200 * PRICE_IN / 1e6 + 300 * PRICE_OUT / 1e6, 6)
+    check: |
+      check_value(call_cost, _sol["call_cost"], name="call_cost", tol=1e-09)
+    hints:
+      - "input × PRICE_IN + output × PRICE_OUT แล้วหารด้วย 1e6"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ประมาณ token ของทุกเอกสาร (est_tokens) — ค่าเฉลี่ยต่อเอกสาร (ปัด 2 ตำแหน่ง) เก็บไว้ใน avg_tokens และ doc_id ของเอกสารที่ยาวที่สุดเก็บไว้ใน longest_doc
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      avg_tokens = ___
+      longest_doc = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      tok = docs['text'].map(est_tokens)
+      avg_tokens = round(tok.mean(), 2)
+      longest_doc = docs.loc[tok.idxmax(), 'doc_id']
+    check: |
+      check_value(avg_tokens, _sol["avg_tokens"], name="avg_tokens", tol=0.001)
+      check_value(longest_doc, _sol["longest_doc"], name="longest_doc")
+    hints:
+      - "docs[\"text\"].map(est_tokens) แล้วใช้ mean และ idxmax"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      เทียบ input ต่อคำถามข้อแรก: (ก) ยัดทุกเอกสารรวมกับคำถาม (ข) ใส่เฉพาะ 3 เอกสารแรกรวมกับคำถาม (ต่อกันด้วยช่องว่าง) — เก็บ token ที่ประมาณได้ไว้ใน stuffed_tokens, rag_tokens และอัตราส่วน stuffed ÷ rag (ปัด 2 ตำแหน่ง) ไว้ใน saving_ratio
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      stuffed_tokens = ___
+      rag_tokens = ___
+      saving_ratio = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      question = qs['question'][0]
+      stuffed_tokens = est_tokens(' '.join(docs['text']) + question)
+      rag_tokens = est_tokens(' '.join(docs['text'][:3]) + question)
+      saving_ratio = round(stuffed_tokens / rag_tokens, 2)
+    check: |
+      check_value(stuffed_tokens, _sol["stuffed_tokens"], name="stuffed_tokens")
+      check_value(rag_tokens, _sol["rag_tokens"], name="rag_tokens")
+      check_value(saving_ratio, _sol["saving_ratio"], name="saving_ratio", tol=0.001)
+    hints:
+      - "' '.join(docs['text'][:3]) + question"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ใส่เอกสารตามลำดับ d01, d02, … เข้า prompt ทีละเอกสารโดยไม่ให้ผลรวม est_tokens เกิน 500 — ใส่ได้กี่เอกสาร (n_fit) และรวมกี่ token (used_tokens)
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      n_fit = ___
+      used_tokens = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      n_fit = 0
+      used_tokens = 0
+      for text in docs['text']:
+          t = est_tokens(text)
+          if used_tokens + t > 500:
+              break
+          used_tokens += t
+          n_fit += 1
+    check: |
+      check_value(n_fit, _sol["n_fit"], name="n_fit")
+      check_value(used_tokens, _sol["used_tokens"], name="used_tokens")
+    hints:
+      - "วนเอกสารตามลำดับ หยุดเมื่อจะเกิน 500"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      BPE หนึ่งรอบ: จาก corpus (คำแต่ละคำเป็น list ของตัวอักษร) นับความถี่คู่ตัวอักษรที่ติดกันทุกคำ (Counter) แล้วหาคู่ที่พบมากสุด — ถ้าเสมอให้เลือกคู่ที่เรียงตามตัวอักษรก่อน (tuple เล็กสุด) เก็บเป็นข้อความ "a+b" ไว้ใน top_pair และจำนวนครั้งไว้ใน top_pair_count
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      from collections import Counter
+
+      words = ['low', 'low', 'lower', 'newest', 'newest', 'widest']
+      corpus = [list(w) for w in words]
+      top_pair = ___
+      top_pair_count = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      from collections import Counter
+
+      words = ['low', 'low', 'lower', 'newest', 'newest', 'widest']
+      corpus = [list(w) for w in words]
+      pairs = Counter((a, b) for word in corpus for a, b in zip(word, word[1:]))
+      best = min(pairs, key=lambda p: (-pairs[p], p))
+      top_pair = best[0] + '+' + best[1]
+      top_pair_count = pairs[best]
+    check: |
+      check_value(top_pair, _sol["top_pair"], name="top_pair")
+      check_value(top_pair_count, _sol["top_pair_count"], name="top_pair_count")
+    hints:
+      - "min(pairs, key=lambda p: (-pairs[p], p))"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      รวมคู่ที่พบมากสุดจากข้อ e8 (ใช้กฎเสมอเดียวกัน) เป็น token เดียวในทุกคำของ corpus แล้วนับจำนวน token ทั้งหมดก่อนและหลังรวม เก็บไว้ใน tokens_before, tokens_after (ไล่จากซ้ายไปขวา ไม่ซ้อนทับ)
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      from collections import Counter
+
+      words = ['low', 'low', 'lower', 'newest', 'newest', 'widest']
+      corpus = [list(w) for w in words]
+      tokens_before = ___
+      tokens_after = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import math
+      import re
+
+      PRICE_IN = 3.0    # USD ต่อ 1 ล้าน input token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+      PRICE_OUT = 15.0  # USD ต่อ 1 ล้าน output token (ตัวเลขสมมติ ไม่ใช่ราคาจริง)
+
+
+      def est_tokens(text):
+          return math.ceil(len(text) / 4)
+
+
+      def toy_tokens(text):
+          return re.findall(r"\w+|[^\w\s]", text)
+      from collections import Counter
+
+      words = ['low', 'low', 'lower', 'newest', 'newest', 'widest']
+      corpus = [list(w) for w in words]
+      pairs = Counter((a, b) for word in corpus for a, b in zip(word, word[1:]))
+      best = min(pairs, key=lambda p: (-pairs[p], p))
+      tokens_before = sum(len(word) for word in corpus)
+      merged = []
+      for word in corpus:
+          out, i = [], 0
+          while i < len(word):
+              if i + 1 < len(word) and (word[i], word[i + 1]) == best:
+                  out.append(word[i] + word[i + 1])
+                  i += 2
+              else:
+                  out.append(word[i])
+                  i += 1
+          merged.append(out)
+      tokens_after = sum(len(word) for word in merged)
+    check: |
+      check_value(tokens_before, _sol["tokens_before"], name="tokens_before")
+      check_value(tokens_after, _sol["tokens_after"], name="tokens_after")
+    hints:
+      - "วนแต่ละคำ ถ้าคู่ตำแหน่ง i,i+1 ตรงกับ best ให้รวมแล้วข้าม 2 ตำแหน่ง"
+quiz:
+  - id: "q1"
+    question: "ทำไมต้นทุนและขีดจำกัดของ LLM จึงนับเป็น token ไม่ใช่ตัวอักษร"
+    choices:
+      - text: "เพราะตัวอักษรนับยาก"
+        why: "ไม่ใช่เหตุผล"
+      - text: "เพราะโมเดลประมวลผลเป็น token และคิดราคา/context ตามจำนวน token"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพราะ token ไม่เกี่ยวกับราคา"
+        why: "เกี่ยวโดยตรง"
+      - text: "เพราะ 1 token = 1 คำเสมอ"
+        why: "ไม่เสมอไป"
+  - id: "q2"
+    question: "ในการคิดต้นทุนต่อหนึ่งคำขอ ควรทำอย่างไร"
+    choices:
+      - text: "รวมเป็นตัวเลขเดียวแล้วคูณราคาเดียว"
+        why: "สองฝั่งราคาต่างกัน"
+      - text: "นับเฉพาะ input"
+        why: "output มักแพงกว่า"
+      - text: "คิด input และ output แยกกันตามราคาของแต่ละฝั่ง"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "นับเฉพาะจำนวนคำ"
+        why: "ไม่ตรงกับที่คิดเงิน"
+  - id: "q3"
+    question: "ในบทนี้ การใส่เฉพาะ 3 เอกสารแทนทั้ง 24 ลดขนาด input จาก ≈1,405 เหลือ ≈198 token ข้อสรุปที่ถูกคือ"
+    choices:
+      - text: "เอกสาร 3 ชุดแรกดีที่สุดเสมอ"
+        why: "ตัวอย่างเลือกแบบง่าย ต้องมี retrieval ที่เลือกจริง"
+      - text: "ยัดทั้งหมดถูกกว่า"
+        why: "แพงกว่า"
+      - text: "ต้นทุนไม่เปลี่ยน"
+        why: "เปลี่ยนตามขนาด input"
+      - text: "การดึงเฉพาะส่วนที่เกี่ยวข้องลดต้นทุนและความช้าลงมาก แต่ต้องดึงให้ถูกเอกสาร"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "BPE สร้าง token ใหม่อย่างไร"
+    choices:
+      - text: "รวมคู่ token ที่อยู่ติดกันบ่อยที่สุดเป็นหนึ่ง token ซ้ำหลายรอบ"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ตัดทีละคำตามช่องว่างเท่านั้น"
+        why: "นั่นคือ word tokenizer"
+      - text: "สุ่มตัดข้อความ"
+        why: "ไม่สุ่ม"
+      - text: "ใช้พจนานุกรมภาษา"
+        why: "ไม่ต้องใช้พจนานุกรม"
+summary:
+  - "ราคา ความเร็ว และ context window นับเป็น token; input กับ output คิดราคาแยกกัน (ตัวเลขราคาในบทนี้เป็นค่าสมมติ)"
+  - "ตัวประมาณ (4 ตัวอักษร ≈ 1 token) ใช้วางแผนได้ แต่ของจริงให้อ่านจาก usage ที่ API รายงาน"
+  - "ดึงเฉพาะเอกสารที่เกี่ยวข้อง (≈198 token) แทนยัดทั้งฐาน (≈1,405 token) ลดต้นทุนและสิ่งรบกวน; BPE รวมคู่ที่พบบ่อยเป็น token ใหม่"
+interview:
+  - id: "i1"
+    q: "อธิบายว่าคุณจะประเมินต้นทุนต่อเดือนของแชตบอตที่ใช้ LLM API อย่างไร"
+    a: |
+      ประมาณ token เฉลี่ยต่อคำขอ (system prompt + ประวัติ + เอกสารที่ดึงมา = input, คำตอบ = output) คูณราคาต่อ token ของแต่ละฝั่ง แล้วคูณจำนวนคำขอต่อเดือน ตรวจกับ usage จริงจาก API ช่วงทดสอบ และหาวิธีลด เช่น ดึงเฉพาะเอกสารที่เกี่ยวข้อง จำกัดประวัติ cache คำถามซ้ำ และใช้โมเดลเล็กกับงานง่าย
+  - id: "i2"
+    q: "ทำไมข้อความภาษาไทยกับภาษาอังกฤษที่ยาวเท่ากันจึงอาจมีต้นทุนต่างกัน"
+    a: |
+      tokenizer แบบ subword ถูกเทรนมาจากข้อมูลที่ภาษาต่างกันในสัดส่วนไม่เท่ากัน ภาษาที่พบน้อยมักถูกแตกเป็นชิ้นเล็กกว่า จึงใช้ token ต่อข้อความมากกว่า ต้นทุนและการใช้ context เพิ่มขึ้น ควรวัดด้วย tokenizer/usage จริงกับข้อมูลของตัวเอง
+flashcards:
+  - id: "c1"
+    front: "ต้นทุนต่อคำขอคำนวณอย่างไร"
+    back: "input_tokens × ราคา input + output_tokens × ราคา output (ต่อหนึ่งล้าน token)"
+  - id: "c2"
+    front: "BPE คืออะไรโดยย่อ"
+    back: "วิธีสร้าง subword token โดยรวมคู่ตัวอักษร/token ที่อยู่ติดกันบ่อยที่สุดซ้ำๆ"

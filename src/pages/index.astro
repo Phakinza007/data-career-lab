@@ -9,10 +9,7 @@ import { url } from '../lib/url';
 const trackLessons = await Promise.all(TRACKS.map(async (t) => (await getTrack(t.id)).flatMap((m) => m.lessons)));
 const allLessons = trackLessons.flat();
 
-const cards = [
-  ...TRACKS.map((t, i) => ({ title: t.title, blurb: t.lead, lessons: trackLessons[i], href: trackLessons[i].length > 0 ? url(`/${t.id}/`) : null })),
-  { title: 'AI Engineer', blurb: 'LLM API, embeddings และ RAG, agents, evals และการ deploy', lessons: [], href: null },
-];
+const cards = TRACKS.map((t, i) => ({ title: t.title, blurb: t.lead, lessons: trackLessons[i], href: trackLessons[i].length > 0 ? url(`/${t.id}/`) : null }));
 ---
 <Base title="หน้าแรก">
   <section class="hero">

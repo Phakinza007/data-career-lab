@@ -1,0 +1,729 @@
+goals:
+  - "คำนวณ hit@k, MRR และสถิติอันดับจากชุดคำถามที่มีเฉลย"
+  - "แยกวิเคราะห์ตามกลุ่มและรายข้อที่พลาดเพื่อหาจุดที่ต้องแก้"
+  - "ประเมินความไม่แน่นอนด้วย bootstrap และเปรียบเทียบการตั้งค่าอย่างระมัดระวัง"
+examples:
+  - id: "x1"
+    title: "hit@k และ MRR"
+    lang: "python"
+    prompt: |
+      คำนวณจากอันดับของเอกสารเฉลย
+    steps:
+      - text: |
+          อันดับของเอกสารเฉลยของ 30 คำถาม (TF-IDF + stop words) — ส่วนใหญ่ 1, แย่สุด 9
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+
+          def gold_ranks(vec, texts=None):
+              """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+              D = vec.fit_transform(docs['text'] if texts is None else texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              out = []
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  order = np.argsort(-sims[i], kind='stable')
+                  out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+              return np.array(out)
+          ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+          gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+          ranks.tolist()
+      - text: |
+          hit@1 0.6333, hit@3 0.8333, MRR 0.752
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+
+          def gold_ranks(vec, texts=None):
+              """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+              D = vec.fit_transform(docs['text'] if texts is None else texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              out = []
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  order = np.argsort(-sims[i], kind='stable')
+                  out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+              return np.array(out)
+          ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+          gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+          round(float((ranks == 1).mean()), 4), round(float((ranks <= 3).mean()), 4), round(float((1 / ranks).mean()), 4)
+    pitfall:
+      text: |
+        รายงานตัวเลขรวมตัวเดียวแล้วจบ — ซ่อนกลุ่มที่แย่มาก (returns hit@1 = 0.1667) และไม่บอกความไม่แน่นอนของชุดคำถามเล็ก ให้แยกดูตามกลุ่มและรายงานช่วงความไม่แน่นอนด้วย
+  - id: "x2"
+    title: "จุดอ่อนตามหมวดและความไม่แน่นอน"
+    lang: "python"
+    prompt: |
+      แยกตามหมวดของเอกสารเฉลย แล้ว bootstrap
+    steps:
+      - text: |
+          hit@1 และ hit@3 แยกตามหมวด: returns แย่สุด (0.1667 / 0.5)
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+
+          def gold_ranks(vec, texts=None):
+              """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+              D = vec.fit_transform(docs['text'] if texts is None else texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              out = []
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  order = np.argsort(-sims[i], kind='stable')
+                  out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+              return np.array(out)
+          ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+          gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+          df = pd.DataFrame({'category': gold['category'], 'hit1': ranks == 1, 'hit3': ranks <= 3})
+          df.groupby('category').agg(n=('hit1', 'size'), hit1=('hit1', 'mean'), hit3=('hit3', 'mean')).round(4).sort_values('n', ascending=False).head(3)
+      - text: |
+          bootstrap 1,000 รอบ (seed 42): ช่วง 95% ของ hit@3 ≈ 0.70 – 0.9667
+        code: |
+          import pandas as pd
+
+          docs = pd.read_csv("data/kb_docs.csv")
+          qs = pd.read_csv("data/kb_questions.csv")
+          import numpy as np
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          from sklearn.metrics.pairwise import cosine_similarity
+
+
+          def gold_ranks(vec, texts=None):
+              """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+              D = vec.fit_transform(docs['text'] if texts is None else texts)
+              sims = cosine_similarity(vec.transform(qs['question']), D)
+              out = []
+              for i, gold in enumerate(qs['gold_doc_id']):
+                  order = np.argsort(-sims[i], kind='stable')
+                  out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+              return np.array(out)
+          ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+          gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+          rng = np.random.RandomState(42)
+          idx = rng.randint(0, len(ranks), (1000, len(ranks)))
+          boot = (ranks <= 3).astype(float)[idx].mean(axis=1)
+          np.percentile(boot, [2.5, 97.5]).round(4)
+    pitfall:
+      text: |
+        เลือกการตั้งค่าที่ hit@k สูงกว่าเพียง 1–2 ข้อบนชุด 30 ข้อแล้วสรุปว่าดีกว่า — ต่างกันหนึ่งข้อ = 3.3 จุด อยู่ในช่วงความไม่แน่นอนทั้งหมด ดูรายข้อที่เปลี่ยนและใช้ชุดคำถามใหญ่ขึ้น/แยกชุดตรวจสุดท้าย
+faded:
+  - id: "f1"
+    lang: "python"
+    prompt: |
+      คำนวณ hit@3 จากอันดับที่ให้ไว้ เก็บไว้ในตัวแปร hit3 เติม `___` ให้ครบ
+    starter: |
+      import numpy as np
+
+      ranks = np.array([1, 4, 2, 9, 1])
+      hit3 = float((ranks ___ 3).mean())
+    solution: |
+      import numpy as np
+
+      ranks = np.array([1, 4, 2, 9, 1])
+      hit3 = float((ranks <= 3).mean())
+    check: |
+      check_value(hit3, _sol["hit3"], name="hit3", tol=1e-09)
+    hints:
+      - "อันดับ ≤ 3 ถือว่า hit"
+exercises:
+  - id: "e1"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      จาก ranks (ให้ไว้): hit@1 และ hit@3 ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร hit1, hit3
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      hit1 = ___
+      hit3 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      hit1 = round(float((ranks == 1).mean()), 4)
+      hit3 = round(float((ranks <= 3).mean()), 4)
+    check: |
+      check_value(hit1, _sol["hit1"], name="hit1", tol=0.001)
+      check_value(hit3, _sol["hit3"], name="hit3", tol=0.001)
+    hints:
+      - "(ranks == 1).mean() และ (ranks <= 3).mean()"
+  - id: "e2"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      MRR = ค่าเฉลี่ยของ 1 ÷ อันดับ (ปัด 4 ตำแหน่ง) เก็บไว้ในตัวแปร mrr
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mrr = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mrr = round(float((1 / ranks).mean()), 4)
+    check: |
+      check_value(mrr, _sol["mrr"], name="mrr", tol=0.001)
+    hints:
+      - "(1 / ranks).mean()"
+  - id: "e3"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      อันดับเฉลี่ย (ปัด 2 ตำแหน่ง) เก็บไว้ใน mean_rank, มัธยฐานไว้ใน median_rank (float) และอันดับที่แย่สุดไว้ใน worst_rank
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mean_rank = ___
+      median_rank = ___
+      worst_rank = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mean_rank = round(float(ranks.mean()), 2)
+      median_rank = float(np.median(ranks))
+      worst_rank = int(ranks.max())
+    check: |
+      check_value(mean_rank, _sol["mean_rank"], name="mean_rank", tol=0.001)
+      check_value(median_rank, _sol["median_rank"], name="median_rank", tol=1e-09)
+      check_value(worst_rank, _sol["worst_rank"], name="worst_rank")
+    hints:
+      - "ranks.mean(), np.median(ranks), ranks.max()"
+  - id: "e4"
+    level: "basic"
+    lang: "python"
+    prompt: |
+      มีกี่คำถามที่เอกสารเฉลยไม่อยู่ใน top-3 (อันดับ > 3) เก็บไว้ในตัวแปร n_miss_at3 และ question_id ของทั้งหมดเป็น list ไว้ใน miss_ids
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      n_miss_at3 = ___
+      miss_ids = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mask = ranks > 3
+      n_miss_at3 = int(mask.sum())
+      miss_ids = qs.loc[mask, 'question_id'].tolist()
+    check: |
+      check_value(n_miss_at3, _sol["n_miss_at3"], name="n_miss_at3")
+      check_value(miss_ids, _sol["miss_ids"], name="miss_ids")
+    hints:
+      - "qs.loc[mask, 'question_id']"
+  - id: "e5"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      hit@3 ของคำถามที่เฉลยอยู่ในหมวด returns, shipping และ support (จากคอลัมน์ category ของ gold ที่ให้ไว้) ปัด 4 ตำแหน่ง เก็บไว้ในตัวแปร returns_hit3, shipping_hit3, support_hit3
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      returns_hit3 = ___
+      shipping_hit3 = ___
+      support_hit3 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      hit3 = pd.Series(ranks <= 3, index=gold.index).groupby(gold['category']).mean()
+      returns_hit3 = round(float(hit3['returns']), 4)
+      shipping_hit3 = round(float(hit3['shipping']), 4)
+      support_hit3 = round(float(hit3['support']), 4)
+    check: |
+      check_value(returns_hit3, _sol["returns_hit3"], name="returns_hit3", tol=0.001)
+      check_value(shipping_hit3, _sol["shipping_hit3"], name="shipping_hit3", tol=0.001)
+      check_value(support_hit3, _sol["support_hit3"], name="support_hit3", tol=0.001)
+    hints:
+      - "groupby(gold[\"category\"]).mean() บนซีรีส์ hit3"
+  - id: "e6"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      ในหมวดที่มีคำถามอย่างน้อย 4 ข้อ หมวดใดมี hit@1 ต่ำที่สุด เก็บชื่อหมวดไว้ใน weakest_category และค่า hit@1 (ปัด 4 ตำแหน่ง) ไว้ใน weakest_hit1
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      weakest_category = ___
+      weakest_hit1 = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      df = pd.DataFrame({'category': gold['category'], 'hit1': ranks == 1})
+      agg = df.groupby('category').agg(n=('hit1', 'size'), hit1=('hit1', 'mean'))
+      agg = agg[agg['n'] >= 4]
+      weakest_category = agg['hit1'].idxmin()
+      weakest_hit1 = round(float(agg['hit1'].min()), 4)
+    check: |
+      check_value(weakest_category, _sol["weakest_category"], name="weakest_category")
+      check_value(weakest_hit1, _sol["weakest_hit1"], name="weakest_hit1", tol=0.001)
+    hints:
+      - "กรองหมวดที่ n ≥ 4 แล้ว idxmin"
+  - id: "e7"
+    level: "applied"
+    lang: "python"
+    prompt: |
+      question_id ของคำถามในหมวด returns ที่เฉลยไม่ได้อันดับ 1 (ranks > 1) เก็บเป็น list ไว้ใน returns_misses และจำนวนไว้ใน n_returns_misses
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      returns_misses = ___
+      n_returns_misses = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      mask = (gold['category'] == 'returns') & (ranks > 1)
+      returns_misses = gold.loc[mask, 'question_id'].tolist()
+      n_returns_misses = len(returns_misses)
+    check: |
+      check_value(returns_misses, _sol["returns_misses"], name="returns_misses")
+      check_value(n_returns_misses, _sol["n_returns_misses"], name="n_returns_misses")
+    hints:
+      - "กรอง category == \"returns\" และ ranks > 1"
+  - id: "e8"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      bootstrap ช่วง 95% ของ hit@3: rng = np.random.RandomState(42), idx = rng.randint(0, len(ranks), (1000, len(ranks))), คำนวณ hit@3 ของแต่ละรอบจาก (ranks <= 3)[idx] แล้วหา percentile ที่ 2.5 และ 97.5 ปัด 4 ตำแหน่ง เก็บไว้ใน ci_low, ci_high
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      ci_low = ___
+      ci_high = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      ranks = gold_ranks(TfidfVectorizer(stop_words='english'))
+      gold = qs.merge(docs[['doc_id', 'category']], left_on='gold_doc_id', right_on='doc_id')
+      rng = np.random.RandomState(42)
+      idx = rng.randint(0, len(ranks), (1000, len(ranks)))
+      boot = (ranks <= 3).astype(float)[idx].mean(axis=1)
+      ci_low = round(float(np.percentile(boot, 2.5)), 4)
+      ci_high = round(float(np.percentile(boot, 97.5)), 4)
+    check: |
+      check_value(ci_low, _sol["ci_low"], name="ci_low", tol=0.001)
+      check_value(ci_high, _sol["ci_high"], name="ci_high", tol=0.001)
+    hints:
+      - "สุ่ม index แบบใส่คืน แล้วเฉลี่ยของแต่ละรอบ"
+  - id: "e9"
+    level: "challenge"
+    lang: "python"
+    prompt: |
+      เปรียบเทียบ TfidfVectorizer(stop_words="english") กับ TfidfVectorizer(stop_words="english", ngram_range=(1, 2)) ด้วย gold_ranks (ให้ไว้): เก็บจำนวนคำถามที่อันดับเปลี่ยน (n_changed), ที่ดีขึ้น (n_improved: อันดับเลขน้อยลง) และที่แย่ลง (n_worse)
+    starter: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      n_changed = ___
+      n_improved = ___
+      n_worse = ___
+    solution: |
+      import pandas as pd
+
+      docs = pd.read_csv("data/kb_docs.csv")
+      qs = pd.read_csv("data/kb_questions.csv")
+      import numpy as np
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+
+      def gold_ranks(vec, texts=None):
+          """อันดับ (เริ่มที่ 1) ของเอกสารเฉลยของแต่ละคำถาม เมื่อค้นด้วย vectorizer ที่ให้"""
+          D = vec.fit_transform(docs['text'] if texts is None else texts)
+          sims = cosine_similarity(vec.transform(qs['question']), D)
+          out = []
+          for i, gold in enumerate(qs['gold_doc_id']):
+              order = np.argsort(-sims[i], kind='stable')
+              out.append(list(docs['doc_id'].values[order]).index(gold) + 1)
+          return np.array(out)
+      base = gold_ranks(TfidfVectorizer(stop_words='english'))
+      bigram = gold_ranks(TfidfVectorizer(stop_words='english', ngram_range=(1, 2)))
+      n_changed = int((base != bigram).sum())
+      n_improved = int((bigram < base).sum())
+      n_worse = int((bigram > base).sum())
+    check: |
+      check_value(n_changed, _sol["n_changed"], name="n_changed")
+      check_value(n_improved, _sol["n_improved"], name="n_improved")
+      check_value(n_worse, _sol["n_worse"], name="n_worse")
+    hints:
+      - "เทียบอันดับของสองการตั้งค่าทีละคำถาม"
+quiz:
+  - id: "q1"
+    question: "MRR ต่างจาก hit@k อย่างไร"
+    choices:
+      - text: "MRR วัดความเร็ว"
+        why: "ไม่ใช่"
+      - text: "MRR ให้น้ำหนักอันดับที่ดีกว่ามากกว่า (1 ÷ อันดับ) ขณะที่ hit@k นับแค่ว่าอยู่ใน k อันดับแรกหรือไม่"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "hit@k วัดต้นทุน"
+        why: "ไม่ใช่"
+      - text: "เหมือนกัน"
+        why: "ต่างกัน"
+  - id: "q2"
+    question: "ตัวเลข hit@3 รวม 0.8333 อาจซ่อนอะไร"
+    choices:
+      - text: "ไม่ซ่อนอะไร"
+        why: "ซ่อนได้"
+      - text: "ความเร็วของระบบ"
+        why: "ไม่ใช่"
+      - text: "กลุ่มที่แย่มาก เช่นหมวด returns ที่ hit@3 เพียง 0.5 จึงควรแยกดูตามกลุ่ม"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "ขนาดของโมเดล"
+        why: "ไม่ใช่"
+  - id: "q3"
+    question: "บนชุดคำถาม 30 ข้อ การตั้งค่า A ได้ hit@3 สูงกว่า B หนึ่งข้อ ควรสรุปอย่างไร"
+    choices:
+      - text: "A ดีกว่าแน่นอน"
+        why: "สรุปเกินหลักฐาน"
+      - text: "B ดีกว่าแน่นอน"
+        why: "ไม่มีหลักฐาน"
+      - text: "ต้องใช้ A เพราะสูงกว่า"
+        why: "อาจเป็นแค่โชค"
+      - text: "ยังสรุปไม่ได้ เพราะหนึ่งข้อ = 3.3 จุด อยู่ในช่วงความไม่แน่นอน ต้องดูรายข้อที่เปลี่ยนและใช้ข้อมูลมากขึ้น"
+        correct: true
+        why: "ถูกต้อง"
+  - id: "q4"
+    question: "ทำไมต้องเก็บชุดคำถามอีกชุดไว้ตรวจสุดท้าย"
+    choices:
+      - text: "เพราะการจูนซ้ำบนชุดเดียวจะแนบชุดนั้น (overfit) ทำให้ผลที่รายงานดีเกินจริง"
+        correct: true
+        why: "ถูกต้อง"
+      - text: "เพื่อให้ชุดแรกเล็กลง"
+        why: "ไม่ใช่"
+      - text: "เพราะ TF-IDF ต้องใช้สองชุด"
+        why: "ไม่ใช่"
+      - text: "ไม่จำเป็น"
+        why: "จำเป็น"
+summary:
+  - "ประเมิน retrieval ด้วยชุดคำถามที่มีเฉลย: hit@1 0.6333, hit@3 0.8333, MRR 0.752; rank เฉลี่ย 2.1, แย่สุดอันดับ 9"
+  - "ตัวเลขรวมซ่อนจุดอ่อน: หมวด returns hit@1 0.1667 / hit@3 0.5; ชุด 30 ข้อกว้างมาก (bootstrap 95%: hit@3 0.70–0.9667)"
+  - "การตั้งค่าที่ต่างกัน 1–2 ข้ออยู่ในความไม่แน่นอน (bigram เปลี่ยน 2 ข้อ ดีขึ้น 2 แย่ลง 0; title เปลี่ยน 5 ข้อ ดีขึ้น 2 แย่ลง 3) — ดูรายข้อและเก็บชุดตรวจสุดท้าย"
+interview:
+  - id: "i1"
+    q: "คุณจะประเมินระบบ RAG อย่างไร"
+    a: |
+      แยกประเมิน retrieval (hit@k, MRR, recall บนชุดคำถามที่มีเฉลยของเอกสาร) ออกจากคุณภาพคำตอบ (ความถูกต้อง การยึดบริบท/faithfulness การอ้างอิง การปฏิเสธเมื่อไม่มีข้อมูล) วัดแยกตามกลุ่มและรายข้อที่พลาด รายงานความไม่แน่นอน และเก็บชุดตรวจสุดท้ายแยกจากชุดที่ใช้จูน
+  - id: "i2"
+    q: "ถ้า hit@k ต่ำ คุณจะวิเคราะห์หาสาเหตุอย่างไร"
+    a: |
+      ดูรายข้อที่พลาดและอันดับของเฉลย แล้วแยกสาเหตุ: คำถามใช้คำต่างจากเอกสาร (ใช้ embeddings/query expansion/hybrid), chunk ตัดผิดหรือใหญ่เกินไป, เอกสารซ้ำ/กำกวมกันเอง (ปรับเอกสารหรือ metadata), หรือ k น้อยเกินไป (เพิ่ม k + reranker) แก้ทีละอย่างแล้ววัดซ้ำ
+flashcards:
+  - id: "c1"
+    front: "MRR คืออะไร"
+    back: "ค่าเฉลี่ยของ 1 ÷ อันดับของคำตอบที่ถูกต้องตัวแรก ให้น้ำหนักอันดับต้นๆ มาก"
+  - id: "c2"
+    front: "bootstrap ใช้ทำอะไรในการประเมิน"
+    back: "สุ่มตัวอย่างแบบใส่คืนหลายรอบเพื่อประมาณความไม่แน่นอน (ช่วงความเชื่อมั่น) ของตัวชี้วัด"

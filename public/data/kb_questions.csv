@@ -1,0 +1,31 @@
+question_id,question,gold_doc_id
+q01,How long does standard delivery take?,d01
+q02,Is shipping free?,d01
+q03,Can I get my order the next day?,d02
+q04,Where is my package right now?,d03
+q05,Do you deliver to Singapore?,d04
+q06,How many days do I have to send an item back?,d05
+q07,Can I return a lipstick I already opened?,d05
+q08,When will the money for my return arrive on my credit card?,d06
+q09,"I paid cash on delivery, how do I get my refund?",d06
+q10,Can I swap my shirt for a bigger size?,d07
+q11,"My parcel arrived broken, what should I do?",d08
+q12,Which ways of paying do you accept?,d09
+q13,Is there a limit for cash on delivery?,d09
+q14,Can I pay in monthly installments?,d10
+q15,My card was declined at checkout,d11
+q16,How do I cancel the order I just placed?,d12
+q17,"I typed the wrong address, can I fix it?",d13
+q18,Can I use two discount codes together?,d14
+q19,When do flash sales start?,d15
+q20,How do I get a voucher for inviting a friend?,d16
+q21,How many points do I earn per purchase?,d17
+q22,I forgot my password,d18
+q23,How can I close my account?,d19
+q24,Do you sell my personal information?,d20
+q25,How long is the warranty on a laptop?,d21
+q26,Which size should I pick if I am between two sizes?,d22
+q27,"The item is sold out, can I be told when it is back?",d23
+q28,What are your customer service hours?,d24
+q29,Can I return a flash sale item because I changed my mind?,d15
+q30,Will I lose my loyalty points if I return something?,d17

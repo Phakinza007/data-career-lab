@@ -73,3 +73,34 @@
   title: ML Capstone
   description: โปรเจกต์ ML แบบ end-to-end พร้อม notebook
   intro: true
+- id: ai/llm-basics
+  track: ai
+  slug: llm-basics
+  order: 1
+  title: พื้นฐาน LLM และ API
+  description: token และต้นทุน, โครง messages, พารามิเตอร์การสุ่ม (temperature/top-p) และการเรียก API ให้ทนทาน (retry, cache, rate limit)
+- id: ai/structured
+  track: ai
+  slug: structured
+  order: 2
+  title: Prompt และ structured output
+  description: prompt template และ few-shot, การดึงและตรวจ JSON จากผลของโมเดล, guardrails และ retry ที่ส่ง error กลับให้โมเดลแก้
+- id: ai/rag
+  track: ai
+  slug: rag
+  order: 3
+  title: Embeddings และ RAG
+  description: chunking, เวกเตอร์และ cosine similarity, ดึงข้อมูลมาประกอบ prompt พร้อมอ้างอิงแหล่งที่มา และประเมินคุณภาพ retrieval
+- id: ai/agents
+  track: ai
+  slug: agents
+  order: 4
+  title: Agents และ tool use
+  description: tool schema และ dispatcher, agent loop พร้อมข้อจำกัดจำนวนรอบ, ความปลอดภัยของ tool และการประเมิน trajectory
+- id: ai/capstone
+  track: ai
+  slug: capstone
+  order: 5
+  title: AI Capstone
+  description: โปรเจกต์ผู้ช่วยตอบคำถามจากฐานความรู้ (RAG) แบบ end-to-end พร้อม notebook ที่ต่อ API จริง
+  intro: true

@@ -1,4 +1,4 @@
-export const TRACK_IDS = ['da', 'ml'] as const;
+export const TRACK_IDS = ['da', 'ml', 'ai'] as const;
 export type TrackId = (typeof TRACK_IDS)[number];
 
 export interface TrackInfo {
@@ -17,6 +17,11 @@ export const TRACKS: TrackInfo[] = [
     id: 'ml',
     title: 'Machine Learning',
     lead: 'เรียน scikit-learn ตั้งแต่ workflow, การวัดผลโมเดล และ feature engineering ไปจนถึง tree/boosting และ deep learning เบื้องต้น',
+  },
+  {
+    id: 'ai',
+    title: 'AI Engineer',
+    lead: 'เรียนงาน LLM แบบวิศวกร: token/ต้นทุน, prompt และ structured output, embeddings + RAG, agents และการประเมินผล — ฝึกด้วยชิ้นส่วนที่รันในเบราว์เซอร์ได้ แล้วต่อ API จริงใน notebook',
   },
 ];
 

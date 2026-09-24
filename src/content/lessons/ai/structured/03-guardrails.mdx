@@ -1,0 +1,60 @@
+---
+track: ai
+module: structured
+order: 3
+title: "Guardrails: retry พร้อม feedback, PII, injection"
+minutes: 35
+prereqs: [ai/structured/02-json-output]
+---
+
+## Guardrail = ชั้นตรวจก่อนและหลังโมเดล
+
+โมเดลอยู่ตรงกลางระบบ ส่วนที่ทำให้ใช้งานจริงได้อย่างปลอดภัยคือชั้นควบคุม **ก่อนส่งเข้า** (อินพุต) และ **หลังโมเดลตอบ** (เอาต์พุต) เขียนด้วยโค้ดปกติที่ทดสอบได้ ไม่ใช่หวังพึ่ง prompt อย่างเดียว
+
+> บทนี้ใช้ `MockLLM` ที่ **ตอบตามสคริปต์** (ไม่ได้เรียก API จริง) เพื่อให้ทดสอบ logic ของ retry ได้ซ้ำทุกครั้ง โครงเดียวกันนี้ใช้กับ SDK จริงโดยเปลี่ยนแค่ฟังก์ชันที่เรียกโมเดล
+
+## 1) retry พร้อมส่ง error กลับให้โมเดลแก้
+
+เมื่อเอาต์พุตไม่ผ่านการตรวจ อย่าแค่เรียกซ้ำเฉยๆ — ต่อประวัติด้วยคำตอบที่ถูกปฏิเสธ + เหตุผลที่แน่ชัด แล้วให้โมเดลลองใหม่ (จำกัดจำนวนรอบ)
+
+```python
+def ask_with_retry(llm, prompt, max_retries=3):
+    messages = [{"role": "user", "content": prompt}]
+    for attempt in range(1, max_retries + 2):
+        reply = llm(messages)
+        error = validate(reply)
+        if error is None:
+            return json.loads(reply), attempt
+        messages.append({"role": "assistant", "content": reply})
+        messages.append({"role": "user", "content": "Your reply was rejected: " + error})
+    return None, max_retries + 1          # หมดรอบ → ให้ผู้เรียกใช้ fallback
+```
+
+ถ้ารอบสุดท้ายยังไม่ผ่าน ต้องมี **fallback** ที่ปลอดภัย (ค่าเริ่มต้น / ส่งต่อให้คน) ไม่ใช่ปล่อยให้ระบบพังหรือใช้ค่าที่ผิด
+
+## 2) ปกปิดข้อมูลส่วนบุคคล (PII) ก่อนส่งออกหรือบันทึก
+
+```python
+EMAIL = r"[\w.+-]+@[\w-]+\.[\w.]+"
+PHONE = r"\b0\d{1,2}-?\d{3}-?\d{4}\b"
+text = re.sub(EMAIL, "[EMAIL]", text)
+text = re.sub(PHONE, "[PHONE]", text)
+```
+
+regex จับรูปแบบที่คาดเดาได้เท่านั้น (ชื่อ ที่อยู่ เลขบัตร ต้องใช้เครื่องมือ/กฎเพิ่ม) และควรปกปิดทั้งก่อนส่งให้ผู้ให้บริการภายนอกและก่อนเก็บ log
+
+## 3) ตรวจ prompt injection แบบ heuristic — และข้อจำกัด
+
+```python
+INJECTION = [r"ignore (all )?(previous|prior) instructions", r"system prompt", r"you are now"]
+flagged = any(re.search(p, text, re.I) for p in INJECTION)
+```
+
+ทดสอบกับตัวอย่างที่มีเฉลย 6 ข้อความ (จริง 4 ข้อ ไม่จริง 2 ข้อ) ตัวตรวจแบบคำสำคัญจับได้ 3 ใน 4 (พลาดประโยคที่เรียบเรียงใหม่ "disregard everything you were told earlier") และมี **false positive** 1 ข้อ (คำถามเรื่องงานถักที่บังเอิญมีวลี "ignore previous instructions") → precision 0.75, recall 0.75
+บทเรียน: heuristic เป็นตาข่ายชั้นแรกที่ถูกและเร็ว ไม่ใช่เกราะป้องกันหลัก — ชั้นที่แน่นอนคือ **การจำกัดสิทธิ์และตรวจผลฝั่งโค้ด**
+
+## 4) อื่นๆ ที่ควรมี
+
+- จำกัดความยาวเอาต์พุต (`max_tokens` และตัดข้อความก่อนแสดง)
+- log ทุกครั้งที่ guardrail ทำงาน (ถูกปฏิเสธ/retry/fallback กี่ครั้ง) เพื่อรู้ว่าระบบพลาดตรงไหนบ่อย
+- ทดสอบ guardrail ด้วยชุดตัวอย่างที่มีเฉลย เหมือนทดสอบโมเดล
