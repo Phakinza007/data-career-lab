@@ -51,10 +51,10 @@ WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.categor
 ทำให้ query ที่มีหลายขั้นตอนอ่านง่ายขึ้นมาก เมื่อเทียบกับการซ้อน subquery หลายชั้น:
 
 ```sql
-WITH rev AS (
-  SELECT customer_id, SUM(amount) AS total FROM orders GROUP BY customer_id
+WITH order_total AS (
+  SELECT order_id, SUM(quantity * unit_price) AS total FROM order_items GROUP BY order_id
 )
-SELECT * FROM rev WHERE total > 10000
+SELECT * FROM order_total WHERE total > 10000
 ```
 
 ตั้ง CTE ได้หลายตัวในคำสั่งเดียว คั่นด้วยจุลภาค และ CTE ตัวหลังอ้างอิง CTE ตัวก่อนหน้าได้ด้วย:

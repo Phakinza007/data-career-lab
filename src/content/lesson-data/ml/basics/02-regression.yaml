@@ -484,7 +484,7 @@ quiz:
     choices:
       - text: "การเปลี่ยนของค่าทำนายเมื่อ feature นั้นเพิ่ม 1 หน่วย โดย feature อื่นคงที่ (เป็นความสัมพันธ์ ไม่ใช่เหตุผล)"
         correct: true
-        why: "ถูกต้อง"
+        why: "coefficient บอกว่าค่าทำนายเปลี่ยนเท่าไรเมื่อ feature นั้นเพิ่ม 1 หน่วยโดยที่ feature อื่นคงที่ — เป็นคำอธิบายความสัมพันธ์ในโมเดล ไม่ได้พิสูจน์ว่า feature นั้นเป็นสาเหตุ"
       - text: "feature ที่ coefficient สูงคือสาเหตุของ target"
         why: "coefficient บอกความสัมพันธ์ ไม่ได้พิสูจน์สาเหตุ"
       - text: "coefficient คือ accuracy ของ feature นั้น"

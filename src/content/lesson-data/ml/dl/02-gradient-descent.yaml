@@ -466,7 +466,7 @@ quiz:
         why: "นั่นทำให้ loss เพิ่ม"
       - text: "สวนทิศ gradient (ทิศที่ loss ลดลงเร็วที่สุด) ด้วยก้าว learning_rate"
         correct: true
-        why: "ถูกต้อง"
+        why: "gradient ชี้ทิศที่ loss เพิ่มเร็วสุด การเดินสวนทิศจึงลด loss — ตัวอย่างก้าวแรกจาก loss 33.0 ที่ lr 0.05 ทำให้ w=1.4, b=0.5 และ loss ลดลง"
       - text: "สุ่มทิศ"
         why: "ไม่ใช่"
       - text: "ไปทาง loss สูงสุด"
@@ -480,7 +480,7 @@ quiz:
         why: "จะยิ่งแย่"
       - text: "learning rate ใหญ่เกินไป ก้าวข้ามจุดต่ำสุดและห่างออกไปเรื่อยๆ (diverge)"
         correct: true
-        why: "ถูกต้อง"
+        why: "ที่ lr 0.25 แต่ละก้าวเกินจุดต่ำสุดไปไกลกว่าเดิม ค่า error จึงโตขึ้นทุกรอบ (ตัวเลขระเบิดเป็น ~10³⁷) ขณะที่ lr 0.1 ลงตัวที่ w≈2.0002"
       - text: "เป็นเรื่องปกติของ gradient descent"
         why: "ไม่ปกติ"
   - id: "q3"
@@ -494,13 +494,13 @@ quiz:
         why: "ใช้ที่ output"
       - text: "output layer เพราะบีบค่าให้อยู่ระหว่าง 0–1 ใช้เป็นความน่าจะเป็น"
         correct: true
-        why: "ถูกต้อง"
+        why: "sigmoid บีบค่าให้อยู่ระหว่าง 0 กับ 1 ซึ่งตีความเป็นความน่าจะเป็นของคลาส 1 ได้ตรงๆ; hidden layer นิยมใช้ ReLU (เป็นค่าเริ่มต้นของ MLPClassifier)"
   - id: "q4"
     question: "loss_curve_ ลดลงเรื่อยๆ ตลอด 200 รอบ หมายความว่าอย่างไร"
     choices:
       - text: "loss บนข้อมูลเทรนดีขึ้น แต่ยังไม่รู้ว่าดีบนข้อมูลใหม่ ต้องดู validation/test"
         correct: true
-        why: "ถูกต้อง"
+        why: "loss_curve_ คือ loss บนข้อมูลเทรน ลดลงได้แม้โมเดลจำ noise (ในบทถัดไป train 0.7027 แต่ test 0.5986) จึงต้องดูผลบน validation/test ด้วย"
       - text: "โมเดลดีบนข้อมูลใหม่แน่นอน"
         why: "ไม่การันตี"
       - text: "ไม่ overfit"

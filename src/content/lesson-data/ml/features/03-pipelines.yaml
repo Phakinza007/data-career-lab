@@ -617,7 +617,7 @@ quiz:
         why: "ไม่รับประกันความแม่น"
       - text: "รวมขั้นตอนเตรียมข้อมูลและโมเดลเป็นก้อนเดียว fit บน train เท่านั้นโดยอัตโนมัติ ลดโอกาส leakage"
         correct: true
-        why: "ถูกต้อง"
+        why: "Pipeline ห่อขั้นตอนทั้งหมดไว้ด้วยกัน ตอน fit ตัวแปลงเรียนรู้จาก train เท่านั้น และตอน predict ใช้ค่าเดิม จึงไม่มีทางลืมหรือ fit ผิดชุด"
       - text: "ทำให้ไม่ต้องแบ่ง train/test"
         why: "ยังต้องแบ่งและวัดผลเหมือนเดิม"
       - text: "ใช้ได้เฉพาะกับ logistic regression"
@@ -631,7 +631,7 @@ quiz:
         why: "ไม่ใช่หน้าที่หลัก"
       - text: "ใช้ตัวแปลงต่างกันกับคอลัมน์แต่ละกลุ่ม เช่น scale ตัวเลข และ one-hot ตัวหมวด"
         correct: true
-        why: "ถูกต้อง"
+        why: "ข้อมูลจริงมีหลายชนิด (ตัวเลขต้อง scale ตัวหมวดต้อง one-hot) ColumnTransformer ระบุว่าคอลัมน์กลุ่มไหนใช้ตัวแปลงอะไร แล้วรวมผลเป็นตารางเดียวส่งต่อให้โมเดล"
       - text: "เทรนโมเดล"
         why: "ColumnTransformer แปลงข้อมูล ไม่ได้เทรนโมเดล"
   - id: "q3"
@@ -645,13 +645,13 @@ quiz:
         why: "ใช้ได้ตรงๆ"
       - text: "แต่ละ fold จะ fit ตัวแปลงใหม่บนส่วน train ของ fold นั้น จึงไม่มี leakage จากการเตรียมข้อมูล"
         correct: true
-        why: "ถูกต้อง"
+        why: "ถ้า scale ทั้งชุดก่อน CV ค่า mean/std ได้เห็นข้อมูลของ fold ทดสอบแล้ว; เมื่อส่ง pipeline เข้า cross_val_score แต่ละ fold fit scaler ใหม่จาก train ของ fold นั้นเท่านั้น"
   - id: "q4"
     question: "ทำไม pipeline ในบทนี้ทำนายลูกค้าจากเมืองใหม่ได้โดยไม่ error"
     choices:
       - text: "เพราะ OneHotEncoder ตั้ง handle_unknown=\"ignore\" หมวดใหม่จึงกลายเป็นแถวที่เป็น 0 ทั้งหมด"
         correct: true
-        why: "ถูกต้อง"
+        why: "OneHotEncoder(handle_unknown=\"ignore\") เข้ารหัสหมวดที่ไม่เคยเห็นเป็นเวกเตอร์ศูนย์แทนการโยน error — ในแบบฝึกหัดเมือง \"Mars\" จึงยังได้ความน่าจะเป็น"
       - text: "เพราะ pipeline เดาชื่อเมืองเอง"
         why: "ไม่ได้เดา"
       - text: "เพราะ LogisticRegression ไม่สนใจคอลัมน์ city"
